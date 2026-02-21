@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -18,9 +18,26 @@ import {
     ChevronDown,
     ChevronRight,
     Zap,
+    LucideIcon,
 } from 'lucide-react';
 
-const navItems = [
+interface NavChild {
+    label: string;
+    icon: LucideIcon;
+    href: string;
+}
+
+interface NavItem {
+    label: string;
+    icon: LucideIcon;
+    href: string;
+    active?: boolean;
+    expandable?: boolean;
+    defaultOpen?: boolean;
+    children?: NavChild[];
+}
+
+const navItems: NavItem[] = [
     {
         label: 'My Dashboard',
         icon: LayoutDashboard,
@@ -73,9 +90,9 @@ const navItems = [
 
 export default function Sidebar() {
     const pathname = usePathname();
-    const [openMenus, setOpenMenus] = useState({ 'All Alerts': true });
+    const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({ 'All Alerts': true });
 
-    const toggleMenu = (label) => {
+    const toggleMenu = (label: string) => {
         setOpenMenus((prev) => ({ ...prev, [label]: !prev[label] }));
     };
 
@@ -90,7 +107,7 @@ export default function Sidebar() {
             position: 'sticky',
             top: 0,
             overflowY: 'auto',
-        }}>
+        } as React.CSSProperties}>
             {/* Logo */}
             <div style={{
                 padding: '20px 16px',
@@ -98,7 +115,7 @@ export default function Sidebar() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '10px',
-            }}>
+            } as React.CSSProperties}>
                 <div style={{
                     width: '36px',
                     height: '36px',
@@ -108,7 +125,7 @@ export default function Sidebar() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0,
-                }}>
+                } as React.CSSProperties}>
                     <Zap size={18} color="white" />
                 </div>
                 <div>
@@ -137,18 +154,14 @@ export default function Sidebar() {
                                     borderLeft: item.active ? '3px solid #4f8ef7' : '3px solid transparent',
                                     color: item.active ? '#3b82f6' : '#4b5563',
                                     cursor: 'pointer',
-                                    border: 'none',
+                                    borderTop: 'none',
+                                    borderRight: 'none',
+                                    borderBottom: 'none',
                                     textAlign: 'left',
                                     fontSize: '13px',
                                     fontWeight: item.active ? 600 : 500,
                                     transition: 'all 0.15s ease',
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (!item.active) e.currentTarget.style.color = '#1a1a2e';
-                                }}
-                                onMouseLeave={(e) => {
-                                    if (!item.active) e.currentTarget.style.color = '#4b5563';
-                                }}
+                                } as React.CSSProperties}
                             >
                                 <Icon size={16} style={{ flexShrink: 0 }} />
                                 <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
@@ -177,7 +190,7 @@ export default function Sidebar() {
                                                     fontWeight: pathname === child.href ? 600 : 500,
                                                     textDecoration: 'none',
                                                     transition: 'all 0.15s ease',
-                                                }}
+                                                } as React.CSSProperties}
                                             >
                                                 <ChildIcon size={14} style={{ flexShrink: 0 }} />
                                                 {child.label}
@@ -198,7 +211,7 @@ export default function Sidebar() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '10px',
-            }}>
+            } as React.CSSProperties}>
                 <div style={{
                     width: '32px',
                     height: '32px',
@@ -211,7 +224,7 @@ export default function Sidebar() {
                     fontWeight: 700,
                     fontSize: '12px',
                     flexShrink: 0,
-                }}>
+                } as React.CSSProperties}>
                     AM
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -227,7 +240,7 @@ export default function Sidebar() {
                     borderRadius: '4px',
                     display: 'flex',
                     alignItems: 'center',
-                }}>
+                } as React.CSSProperties}>
                     <LogOut size={14} />
                 </button>
             </div>

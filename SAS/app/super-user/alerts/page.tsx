@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
     AlertCircle,
     Clock,
@@ -9,7 +9,6 @@ import {
     Search,
     Eye,
     Mail,
-    MoreHorizontal,
     Anchor,
     Truck,
     Warehouse,
@@ -23,10 +22,10 @@ import {
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import EmailComposeModal from '@/components/EmailComposeModal';
-import AlertDetailsModal from '@/components/AlertDetailsModal';
+import AlertDetailsModal, { AlertData } from '@/components/AlertDetailsModal';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
-const ALERTS = [
+const ALERTS: AlertData[] = [
     {
         id: '#SHP-9921',
         client: 'TechParts Inc.',
@@ -108,7 +107,7 @@ const ALERTS = [
 ];
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
-function PriorityBadge({ level }) {
+function PriorityBadge({ level }: { level: AlertData['priority'] }) {
     const map = {
         Critical: { bg: '#fef2f2', color: '#dc2626', dot: '#dc2626' },
         Medium: { bg: '#fefce8', color: '#ca8a04', dot: '#eab308' },
@@ -128,7 +127,7 @@ function PriorityBadge({ level }) {
     );
 }
 
-function StatusBadge({ status }) {
+function StatusBadge({ status }: { status: AlertData['status'] }) {
     const map = {
         'Get Action': { bg: '#fff0f0', color: '#dc2626', border: '#fca5a5' },
         'Action Taken': { bg: '#eff6ff', color: '#2563eb', border: '#93c5fd' },
@@ -149,7 +148,7 @@ function StatusBadge({ status }) {
     );
 }
 
-function MilestoneIcon({ type }) {
+function MilestoneIcon({ type }: { type: AlertData['milestoneIcon'] }) {
     const props = { size: 14, color: '#6b7280' };
     const map = {
         anchor: <Anchor {...props} />,
@@ -161,16 +160,16 @@ function MilestoneIcon({ type }) {
     return map[type] || null;
 }
 
-function ClientAvatar({ initial, color, name }) {
+function ClientAvatar({ initial, color, name }: { initial?: string, color?: string, name: string }) {
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{
                 width: '28px', height: '28px', borderRadius: '50%',
-                background: color, color: 'white',
+                background: color || '#3b82f6', color: 'white',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontWeight: 700, fontSize: '11px', flexShrink: 0,
             }}>
-                {initial}
+                {initial || name.charAt(0)}
             </div>
             <span style={{ fontSize: '13px', color: '#374151', fontWeight: 500, whiteSpace: 'nowrap' }}>{name}</span>
         </div>
@@ -179,14 +178,13 @@ function ClientAvatar({ initial, color, name }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AlertDashboardPage() {
-    const [viewMode, setViewMode] = useState('table');
+    const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
     const [priorityFilter, setPriorityFilter] = useState('All Priorities');
     const [statusFilter, setStatusFilter] = useState('All Statuses');
     const [search, setSearch] = useState('');
-    const [selected, setSelected] = useState([]);
-    const [composeModalData, setComposeModalData] = useState(null);
-    const [viewModalData, setViewModalData] = useState(null);
-    const [alertsList, setAlertsList] = useState(ALERTS);
+    const [composeModalData, setComposeModalData] = useState<AlertData | null>(null);
+    const [viewModalData, setViewModalData] = useState<AlertData | null>(null);
+    const [alertsList, setAlertsList] = useState<AlertData[]>(ALERTS);
 
     const filtered = alertsList.filter((a) => {
         const matchPriority = priorityFilter === 'All Priorities' || a.priority === priorityFilter;
@@ -198,7 +196,7 @@ export default function AlertDashboardPage() {
         return matchPriority && matchStatus && matchSearch;
     });
 
-    const toggleActionStatus = (id) => {
+    const toggleActionStatus = (id: string) => {
         setAlertsList(prev => prev.map(a =>
             a.id === id ? { ...a, status: a.status === 'Action Taken' ? 'Get Action' : 'Action Taken' } : a
         ));
@@ -235,7 +233,7 @@ export default function AlertDashboardPage() {
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
                 <Topbar />
 
-                <main style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
+                <main style={{ flex: 1, padding: '24px', overflowY: 'auto' } as React.CSSProperties}>
                     {/* Page header */}
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
                         <div>
@@ -257,7 +255,7 @@ export default function AlertDashboardPage() {
                             color: '#374151',
                             cursor: 'pointer',
                             boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                        }}>
+                        } as React.CSSProperties}>
                             <Download size={14} />
                             Export Report
                         </button>
@@ -280,7 +278,7 @@ export default function AlertDashboardPage() {
                                 gap: '18px',
                                 boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
                                 border: '1px solid #f0f0f0',
-                            }}>
+                            } as React.CSSProperties}>
                                 <div style={{
                                     width: '52px', height: '52px',
                                     borderRadius: '12px',
@@ -288,7 +286,7 @@ export default function AlertDashboardPage() {
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     flexShrink: 0,
                                     border: `1px solid ${card.borderColor}`,
-                                }}>
+                                } as React.CSSProperties}>
                                     {card.icon}
                                 </div>
                                 <div>
@@ -310,7 +308,7 @@ export default function AlertDashboardPage() {
                         boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
                         border: '1px solid #f0f0f0',
                         overflow: 'hidden',
-                    }}>
+                    } as React.CSSProperties}>
                         {/* Toolbar */}
                         <div style={{
                             display: 'flex',
@@ -319,12 +317,12 @@ export default function AlertDashboardPage() {
                             padding: '14px 20px',
                             borderBottom: '1px solid #f0f0f0',
                             flexWrap: 'wrap',
-                        }}>
+                        } as React.CSSProperties}>
                             {[
                                 { value: priorityFilter, options: ['All Priorities', 'Critical', 'Medium', 'Low'], setter: setPriorityFilter },
                                 { value: statusFilter, options: ['All Statuses', 'Get Action', 'Action Taken', 'Resolved'], setter: setStatusFilter },
                             ].map((f, i) => (
-                                <div key={i} style={{ position: 'relative' }}>
+                                <div key={i} style={{ position: 'relative' } as React.CSSProperties}>
                                     <select
                                         value={f.value}
                                         onChange={(e) => f.setter(e.target.value)}
@@ -338,7 +336,7 @@ export default function AlertDashboardPage() {
                                             color: '#374151',
                                             cursor: 'pointer',
                                             outline: 'none',
-                                        }}
+                                        } as React.CSSProperties}
                                     >
                                         {f.options.map((o) => <option key={o}>{o}</option>)}
                                     </select>
@@ -346,7 +344,7 @@ export default function AlertDashboardPage() {
                                         position: 'absolute', right: '10px', top: '50%',
                                         transform: 'translateY(-50%) rotate(90deg)',
                                         pointerEvents: 'none',
-                                    }} />
+                                    } as React.CSSProperties} />
                                 </div>
                             ))}
 
@@ -360,7 +358,7 @@ export default function AlertDashboardPage() {
                                 borderRadius: '8px',
                                 padding: '7px 12px',
                                 width: '200px',
-                            }}>
+                            } as React.CSSProperties}>
                                 <Search size={13} color="#9ca3af" />
                                 <input
                                     placeholder="Search table..."
@@ -371,14 +369,14 @@ export default function AlertDashboardPage() {
                             </div>
 
                             {/* View toggle */}
-                            <div style={{ display: 'flex', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+                            <div style={{ display: 'flex', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' } as React.CSSProperties}>
                                 {[
                                     { key: 'table', icon: <LayoutList size={15} />, label: 'Table' },
                                     { key: 'cards', icon: <LayoutGrid size={15} />, label: 'Cards' },
                                 ].map((v) => (
                                     <button
                                         key={v.key}
-                                        onClick={() => setViewMode(v.key)}
+                                        onClick={() => setViewMode(v.key as 'table' | 'cards')}
                                         style={{
                                             display: 'flex', alignItems: 'center', gap: '5px',
                                             padding: '7px 12px',
@@ -388,7 +386,7 @@ export default function AlertDashboardPage() {
                                             fontSize: '12.5px', fontWeight: viewMode === v.key ? 600 : 400,
                                             cursor: 'pointer',
                                             borderRight: v.key === 'table' ? '1px solid #e5e7eb' : 'none',
-                                        }}
+                                        } as React.CSSProperties}
                                     >
                                         {v.icon} {v.label}
                                     </button>
@@ -418,10 +416,10 @@ export default function AlertDashboardPage() {
                                                 key={alert.id}
                                                 style={{
                                                     borderBottom: idx < filtered.length - 1 ? '1px solid #f5f5f5' : 'none',
-                                                    background: selected.includes(alert.id) ? '#f0f4ff' : 'white',
-                                                }}
+                                                    background: 'white',
+                                                } as React.CSSProperties}
                                             >
-                                                <td style={{ ...tdStyle, fontWeight: 600, fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>
+                                                <td style={{ ...tdStyle, fontWeight: 600, fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' } as React.CSSProperties}>
                                                     {alert.id}
                                                 </td>
                                                 <td style={tdStyle}>
@@ -431,17 +429,17 @@ export default function AlertDashboardPage() {
                                                     <PriorityBadge level={alert.priority} />
                                                 </td>
                                                 <td style={tdStyle}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#6b7280', fontSize: '13px', whiteSpace: 'nowrap' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#6b7280', fontSize: '13px', whiteSpace: 'nowrap' } as React.CSSProperties}>
                                                         <MilestoneIcon type={alert.milestoneIcon} />
                                                         {alert.milestone}
                                                     </div>
                                                 </td>
-                                                <td style={{ ...tdStyle, fontSize: '13px', color: '#6b7280', maxWidth: '220px' }}>
-                                                    <span style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                <td style={{ ...tdStyle, fontSize: '13px', color: '#6b7280', maxWidth: '220px' } as React.CSSProperties}>
+                                                    <span style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>
                                                         {alert.issue}
                                                     </span>
                                                 </td>
-                                                <td style={{ ...tdStyle, fontWeight: 700, fontSize: '13px', color: alert.delayColor, whiteSpace: 'nowrap' }}>
+                                                <td style={{ ...tdStyle, fontWeight: 700, fontSize: '13px', color: alert.delayColor, whiteSpace: 'nowrap' } as React.CSSProperties}>
                                                     {alert.delay}
                                                 </td>
                                                 <td style={tdStyle}>
@@ -473,7 +471,7 @@ export default function AlertDashboardPage() {
 
                         {/* CARDS VIEW */}
                         {viewMode === 'cards' && (
-                            <div style={{ padding: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '14px' }}>
+                            <div style={{ padding: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '14px' } as React.CSSProperties}>
                                 {filtered.map((alert) => (
                                     <div
                                         key={alert.id}
@@ -486,17 +484,9 @@ export default function AlertDashboardPage() {
                                             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
                                             cursor: 'pointer',
                                             transition: 'transform 0.1s ease-in-out, box-shadow 0.1s ease-in-out'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.transform = 'translateY(-2px)';
-                                            e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.08)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.transform = 'translateY(0)';
-                                            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)';
-                                        }}
+                                        } as React.CSSProperties}
                                     >
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' } as React.CSSProperties}>
                                             <span style={{ fontWeight: 700, fontSize: '13px', color: '#374151' }}>{alert.id}</span>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 {alert.status !== 'Resolved' && (
@@ -535,7 +525,7 @@ export default function AlertDashboardPage() {
                             justifyContent: 'space-between',
                             padding: '14px 20px',
                             borderTop: '1px solid #f0f0f0',
-                        }}>
+                        } as React.CSSProperties}>
                             <span style={{ fontSize: '13px', color: '#9ca3af' }}>
                                 Showing 1 to {filtered.length} of 42 results
                             </span>
@@ -568,7 +558,7 @@ export default function AlertDashboardPage() {
 }
 
 // ─── Tiny reusable components ─────────────────────────────────────────────────
-const thStyle = {
+const thStyle: React.CSSProperties = {
     padding: '11px 16px',
     textAlign: 'left',
     fontSize: '11px',
@@ -579,12 +569,12 @@ const thStyle = {
     whiteSpace: 'nowrap',
 };
 
-const tdStyle = {
+const tdStyle: React.CSSProperties = {
     padding: '13px 16px',
     verticalAlign: 'middle',
 };
 
-function ActionBtn({ icon, title, onClick }) {
+function ActionBtn({ icon, title, onClick }: { icon: React.ReactNode, title: string, onClick: (e: React.MouseEvent) => void }) {
     return (
         <button
             onClick={onClick}
@@ -604,7 +594,7 @@ function ActionBtn({ icon, title, onClick }) {
     );
 }
 
-function PageBtn({ label, icon, right }) {
+function PageBtn({ label, icon, right }: { label: string, icon: React.ReactNode, right?: boolean }) {
     return (
         <button style={{
             display: 'flex', alignItems: 'center', gap: '5px',
@@ -617,7 +607,7 @@ function PageBtn({ label, icon, right }) {
             cursor: 'pointer',
             fontWeight: 500,
             flexDirection: right ? 'row-reverse' : 'row',
-        }}>
+        } as React.CSSProperties}>
             {icon}
             {label}
         </button>

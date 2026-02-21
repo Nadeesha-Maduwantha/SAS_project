@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { Bell, HelpCircle, Search } from 'lucide-react';
 
 export default function Topbar() {
@@ -16,7 +17,7 @@ export default function Topbar() {
             top: 0,
             zIndex: 50,
             boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-        }}>
+        } as React.CSSProperties}>
             {/* Brand */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{
@@ -28,7 +29,7 @@ export default function Topbar() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: '14px',
-                }}>
+                } as React.CSSProperties}>
                     🚚
                 </div>
                 <span style={{ fontWeight: 700, fontSize: '15px', color: '#1a1a2e', letterSpacing: '-0.3px' }}>
@@ -48,7 +49,7 @@ export default function Topbar() {
                     borderRadius: '8px',
                     padding: '7px 14px',
                     width: '220px',
-                }}>
+                } as React.CSSProperties}>
                     <Search size={14} color="#9ca3af" />
                     <input
                         placeholder="Search alerts, IDs..."
@@ -59,7 +60,7 @@ export default function Topbar() {
                             fontSize: '13px',
                             color: '#374151',
                             width: '100%',
-                        }}
+                        } as React.CSSProperties}
                     />
                 </div>
 
@@ -75,7 +76,7 @@ export default function Topbar() {
                         background: '#ef4444',
                         borderRadius: '50%',
                         border: '1.5px solid white',
-                    }} />
+                    } as React.CSSProperties} />
                 </div>
 
                 {/* Help */}
@@ -100,7 +101,7 @@ export default function Topbar() {
                             fontWeight: 700,
                             fontSize: '12px',
                             cursor: 'pointer',
-                        }}>
+                        } as React.CSSProperties}>
                             AP
                         </div>
                         <span style={{
@@ -112,7 +113,7 @@ export default function Topbar() {
                             background: '#22c55e',
                             borderRadius: '50%',
                             border: '1.5px solid white',
-                        }} />
+                        } as React.CSSProperties} />
                     </div>
                 </div>
             </div>
