@@ -13,7 +13,8 @@ import {
   Shield,
   Plus,
 } from 'lucide-react';
-import '../../../styles/ComponentStyles/AdminLeftNavBar.css';
+import '../../styles/ComponentStyles/AdminLeftNavBar.css';
+
 
 export default function AdminLeftNavBar() {
   const router = useRouter();
@@ -68,7 +69,7 @@ export default function AdminLeftNavBar() {
           onClick={() => toggleSection('shipments')}
         >
           <FileText className="nav-icon" />
-          <span>DEPARTMENT SHIPMENTS</span>
+          <span>Department Shipments</span>
           <ChevronDown
             className={`chevron-icon ${expandedSections.shipments ? 'expanded' : ''}`}
           />
@@ -103,7 +104,7 @@ export default function AdminLeftNavBar() {
         onClick={() => handleNavigation('/admin/templates')}
       >
         <Plus className="nav-icon" />
-        <span>CREATE TEMPLATE</span>
+        <span>Create Template</span>
       </button>
 
       {/* Department Alerts */}
@@ -113,7 +114,7 @@ export default function AdminLeftNavBar() {
           onClick={() => toggleSection('alerts')}
         >
           <Bell className="nav-icon" />
-          <span>DEPARTMENT ALERTS</span>
+          <span>Department Alerts</span>
           <ChevronDown
             className={`chevron-icon ${expandedSections.alerts ? 'expanded' : ''}`}
           />
@@ -185,7 +186,7 @@ export default function AdminLeftNavBar() {
           onClick={() => toggleSection('history')}
         >
           <Clock className="nav-icon" />
-          <span>HISTORY</span>
+          <span>History</span>
           <ChevronDown
             className={`chevron-icon ${expandedSections.history ? 'expanded' : ''}`}
           />
@@ -215,7 +216,7 @@ export default function AdminLeftNavBar() {
           onClick={() => toggleSection('settings')}
         >
           <Settings className="nav-icon" />
-          <span>SETTINGS</span>
+          <span>Settings</span>
           <ChevronDown
             className={`chevron-icon ${expandedSections.settings ? 'expanded' : ''}`}
           />
