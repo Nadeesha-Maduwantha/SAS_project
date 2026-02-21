@@ -1,14 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { getShipmentById } from '@/lib/services/shipment.service'
 import { ShipmentStatusBadge } from '@/components/shipments/ShipmentStatusBadge'
 import { Shipment } from '@/types'
 import {
-  ArrowLeft, Printer, Pencil, Truck, Calendar,
-  MapPin, Package, User, Mail, Phone
+  ArrowLeft, Printer, Truck, Calendar,
+  MapPin, Package, User, Mail, Phone, Box
 } from 'lucide-react'
+import { exportShipmentDetailPDF } from '@/lib/Utils/exportPDF'
 
 function formatDate(date: Date | null | undefined) {
   if (!date) return '—'
@@ -25,39 +26,28 @@ function formatDateTime(date: Date | null | undefined) {
   })
 }
 
-// ─── Modular Stat Card ────────────────────────────────────────
-interface StatItem {
-  label: string
-  value: string
-  icon: React.ReactNode
+function getProgressPercent(stage: string): number {
+  const map: Record<string, number> = {
+    processing: 10,
+    in_transit: 50,
+    arrived_at_port: 75,
+    customs_hold: 60,
+    port_congestion: 55,
+    weather_delay: 50,
+    equipment_issue: 45,
+    documentation_issue: 40,
+    vessel_delay: 50,
+    delivered: 100,
+  }
+  return map[stage] ?? 30
 }
 
-function StatCard({ label, value, icon }: StatItem) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 flex items-center gap-4 shadow-sm">
-      <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
-        {icon}
-      </div>
-      <div>
-        <p className="text-xs text-gray-500 font-medium">{label}</p>
-        <p className="text-sm font-semibold text-gray-900 mt-0.5">{value}</p>
-      </div>
-    </div>
-  )
-}
-
-// ─── Placeholder Milestone ────────────────────────────────────
-const placeholderMilestones = [
-  { title: 'Cargo Pickup', date: 'Waiting for milestone data', note: 'Will be connected to milestone module', done: false },
-  { title: 'Cargo Received', date: 'Waiting for milestone data', note: 'Will be connected to milestone module', done: false },
-  { title: 'Cargo Ready', date: 'Waiting for milestone data', note: 'Will be connected to milestone module', done: false },
-  { title: 'Shipment Created', date: 'Waiting for milestone data', note: 'Will be connected to milestone module', done: false },
-]
-
-// ─── Main Page ────────────────────────────────────────────────
 export default function ShipmentDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const from = searchParams.get('from') ?? '/admin/shipments'
+
   const [shipment, setShipment] = useState<Shipment | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -79,383 +69,329 @@ export default function ShipmentDetailPage() {
   }, [params.id])
 
   if (loading) return (
-    <div className="p-6 flex items-center justify-center h-64">
-      <p className="text-gray-500 text-sm">Loading shipment...</p>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+      <p style={{ color: '#6b7280', fontSize: '14px' }}>Loading shipment...</p>
     </div>
   )
 
   if (error || !shipment) return (
-    <div className="p-6 flex items-center justify-center h-64">
-      <p className="text-red-500 text-sm">{error}</p>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+      <p style={{ color: '#ef4444', fontSize: '14px' }}>{error}</p>
     </div>
   )
 
-  // ─── Modular stats — swap these when API gives more fields ───
-  const stats: StatItem[] = [
-    {
-      label: 'Carrier',
-      value: shipment.carrier,
-      icon: <Truck className="w-5 h-5" />,
-    },
-    {
-      label: 'Transport Mode',
-      value: shipment.transportMode ?? '—',
-      icon: <Package className="w-5 h-5" />,
-    },
-    {
-      label: 'House Bill Number',
-      value: shipment.houseBillNumber ?? '—',
-      icon: <MapPin className="w-5 h-5" />,
-    },
-    {
-      label: 'ETA',
-      value: formatDate(shipment.estimatedArrival),
-      icon: <Calendar className="w-5 h-5" />,
-    },
-  ]
+  const progress = getProgressPercent(shipment.currentStage)
+
+  const backLabel =
+    from.includes('delayed') ? 'Delayed Shipments' :
+    from.includes('archive') ? 'Archived Shipments' :
+    'Shipments'
 
   return (
-    <div className="p-6 max-w-7xl">
+    <div style={{ padding: '24px', maxWidth: '1400px', fontFamily: 'inherit' }}>
 
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#6b7280', marginBottom: '16px' }}>
         <button
-          onClick={() => router.push('/admin/shipments')}
-          className="flex items-center gap-1 hover:text-gray-700 transition-colors"
+          onClick={() => router.push(from)}
+          style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '13px' }}
         >
-          <ArrowLeft className="w-4 h-4" />
-          Shipments
+          <ArrowLeft style={{ width: '14px', height: '14px' }} />
+          {backLabel}
         </button>
         <span>›</span>
-        <span className="text-blue-600 font-medium">#{shipment.cargowiseId}</span>
+        <span style={{ color: '#2563eb', fontWeight: 500 }}>#{shipment.cargowiseId}</span>
       </div>
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#111827', margin: 0 }}>
               Shipment #{shipment.cargowiseId}
             </h1>
             <ShipmentStatusBadge status={shipment.currentStage} />
           </div>
-          <div className="flex items-center gap-4 mt-1.5 text-sm text-gray-500">
-            <span className="flex items-center gap-1">
-              <Truck className="w-4 h-4" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', color: '#6b7280', fontSize: '13px' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Truck style={{ width: '14px', height: '14px' }} />
               Carrier: {shipment.carrier}
             </span>
-            <span className="flex items-center gap-1">
-              <Calendar className="w-4 h-4" />
+            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Calendar style={{ width: '14px', height: '14px' }} />
               ETA: {formatDate(shipment.estimatedArrival)}
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-            <Printer className="w-4 h-4" />
-            Print Label
-          </button>
-          <button className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
-            <Pencil className="w-4 h-4" />
-            Edit Shipment
-          </button>
-        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+  <button
+    onClick={() => exportShipmentDetailPDF(shipment)}
+    style={{
+      display: 'flex', alignItems: 'center', gap: '6px',
+      padding: '8px 16px', fontSize: '13px', fontWeight: 500,
+      color: '#374151', background: 'white', border: '1px solid #d1d5db',
+      borderRadius: '8px', cursor: 'pointer'
+    }}
+  >
+    <Printer style={{ width: '14px', height: '14px' }} />
+    Export PDF
+  </button>
+</div>
       </div>
 
-      {/* Modular Stats Bar */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        {stats.map((stat, i) => (
-          <StatCard key={i} {...stat} />
+      {/* Stat Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+        {[
+          { label: 'Carrier', value: shipment.carrier, icon: <Truck style={{ width: '18px', height: '18px' }} /> },
+          { label: 'Transport Mode', value: shipment.transportMode ?? '—', icon: <Package style={{ width: '18px', height: '18px' }} /> },
+          { label: 'House Bill Number', value: shipment.houseBillNumber ?? '—', icon: <Box style={{ width: '18px', height: '18px' }} /> },
+          { label: 'ETA', value: formatDate(shipment.estimatedArrival), icon: <Calendar style={{ width: '18px', height: '18px' }} /> },
+        ].map((stat, i) => (
+          <div key={i} style={{
+            background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb',
+            padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+          }}>
+            <div style={{
+              width: '40px', height: '40px', borderRadius: '10px',
+              background: '#eff6ff', color: '#2563eb',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+            }}>
+              {stat.icon}
+            </div>
+            <div>
+              <p style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500, margin: '0 0 2px' }}>{stat.label}</p>
+              <p style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: 0 }}>{stat.value}</p>
+            </div>
+          </div>
         ))}
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-3 gap-6">
+      {/* Main 2-Column Layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', alignItems: 'start' }}>
 
-        {/* Left Column — 2/3 width */}
-        <div className="col-span-2 space-y-6">
+        {/* ── LEFT COLUMN ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-          {/* Current Status Card */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-4">
+          {/* Current Status */}
+          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div>
-                <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-blue-500" />
-                  Current Status
-                </h2>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6', display: 'inline-block' }} />
+                  <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: 0 }}>Current Status</h2>
+                </div>
+                <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0 }}>
                   Last updated {formatDateTime(shipment.jobLastEditTime)}
                 </p>
               </div>
-              <button className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                Manage Status
-              </button>
+              
             </div>
 
             {/* Status Box */}
-            <div className="bg-blue-50 rounded-lg p-4 flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <Truck className="w-5 h-5 text-blue-600" />
+            <div style={{ background: '#f0f7ff', borderRadius: '10px', padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Truck style={{ width: '20px', height: '20px', color: '#2563eb' }} />
                 </div>
                 <div>
-                  <p className="text-base font-semibold text-gray-900">
-                    {shipment.stDescription ?? shipment.currentStage}
+                  <p style={{ fontSize: '16px', fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>
+                    {shipment.stDescription ?? shipment.currentStage.replace(/_/g, ' ')}
                   </p>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    {shipment.originCity} ({shipment.originCountryCode}) →{' '}
-                    {shipment.destinationCity} ({shipment.destinationCountryCode})
+                  <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>
+                    {shipment.originCity} ({shipment.originCountryCode}) → {shipment.destinationCity} ({shipment.destinationCountryCode})
                   </p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-xs text-gray-400">LAST UPDATE</p>
-                <p className="text-sm font-semibold text-gray-900 mt-0.5">
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px' }}>Last Update</p>
+                <p style={{ fontSize: '13px', fontWeight: 600, color: '#111827', margin: 0 }}>
                   {formatDateTime(shipment.updatedAt)}
                 </p>
               </div>
             </div>
 
             {/* Progress Bar */}
-            <div className="mt-4">
-              <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+            <div style={{ marginBottom: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#6b7280', marginBottom: '6px' }}>
                 <span>{shipment.originCity} ({shipment.originCountryCode})</span>
                 <span>{shipment.destinationCity} ({shipment.destinationCountryCode})</span>
               </div>
-              <div className="h-1.5 bg-gray-200 rounded-full">
-                <div
-                  className="h-1.5 bg-blue-500 rounded-full transition-all"
-                  style={{
-                    width: shipment.currentStage === 'delivered' ? '100%' :
-                           shipment.currentStage === 'arrived_at_port' ? '80%' :
-                           shipment.currentStage === 'in_transit' ? '50%' :
-                           shipment.currentStage === 'processing' ? '30%' : '20%'
-                  }}
-                />
+              <div style={{ height: '6px', background: '#e5e7eb', borderRadius: '9999px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${progress}%`, background: '#2563eb', borderRadius: '9999px', transition: 'width 0.5s ease' }} />
               </div>
             </div>
 
-            {/* Note */}
             {shipment.stNoteText && (
-              <p className="text-xs text-gray-500 mt-3 bg-gray-50 rounded-lg px-3 py-2">
+              <p style={{ fontSize: '12px', color: '#6b7280', background: '#f9fafb', borderRadius: '8px', padding: '8px 12px', margin: '12px 0 0' }}>
                 📝 {shipment.stNoteText}
               </p>
             )}
           </div>
 
-          {/* Route Details Card */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">Route Details</h2>
+          {/* Route Details */}
+          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 16px' }}>Route Details</h2>
 
-            <div className="grid grid-cols-2 gap-6">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '20px' }}>
               {/* Shipper */}
               <div>
-                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">
+                <p style={{ fontSize: '11px', fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
                   Shipper (From)
                 </p>
-                <p className="text-sm font-semibold text-gray-900">
+                <p style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 4px' }}>
                   {shipment.shipperName ?? shipment.originCity}
                 </p>
-                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 8px', lineHeight: 1.5 }}>
                   {shipment.shipperAddress ?? `${shipment.originCity}, ${shipment.originCountryCode}`}
                 </p>
                 {shipment.shipperContact && (
-                  <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                    <User className="w-3 h-3" />
-                    {shipment.shipperContact}
+                  <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <User style={{ width: '12px', height: '12px' }} /> {shipment.shipperContact}
                   </p>
                 )}
                 {shipment.shipperPhone && (
-                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                    <Phone className="w-3 h-3" />
-                    {shipment.shipperPhone}
+                  <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <Phone style={{ width: '12px', height: '12px' }} /> {shipment.shipperPhone}
                   </p>
                 )}
               </div>
 
               {/* Consignee */}
               <div>
-                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">
+                <p style={{ fontSize: '11px', fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
                   Consignee (To)
                 </p>
-                <p className="text-sm font-semibold text-gray-900">
+                <p style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 4px' }}>
                   {shipment.consigneeName ?? shipment.destinationCity}
                 </p>
-                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 8px', lineHeight: 1.5 }}>
                   {shipment.consigneeAddress ?? `${shipment.destinationCity}, ${shipment.destinationCountryCode}`}
                 </p>
                 {shipment.consigneeContact && (
-                  <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                    <User className="w-3 h-3" />
-                    {shipment.consigneeContact}
+                  <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <User style={{ width: '12px', height: '12px' }} /> {shipment.consigneeContact}
                   </p>
                 )}
                 {shipment.consigneeEmail && (
-                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                    <Mail className="w-3 h-3" />
-                    {shipment.consigneeEmail}
+                  <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <Mail style={{ width: '12px', height: '12px' }} /> {shipment.consigneeEmail}
                   </p>
                 )}
               </div>
             </div>
 
             {/* Map Placeholder */}
-            <div className="mt-4 h-40 bg-gray-100 rounded-lg flex items-center justify-center border border-dashed border-gray-300">
-              <div className="text-center">
-                <MapPin className="w-6 h-6 text-gray-400 mx-auto mb-1" />
-                <p className="text-xs text-gray-400 font-medium">Interactive Map</p>
-                <p className="text-xs text-gray-400">
-                  Will show route when milestone data is available
-                </p>
-              </div>
+            <div style={{
+              height: '160px', background: '#f9fafb', borderRadius: '10px',
+              border: '1.5px dashed #d1d5db', display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: '6px'
+            }}>
+              <MapPin style={{ width: '24px', height: '24px', color: '#9ca3af' }} />
+              <p style={{ fontSize: '13px', fontWeight: 500, color: '#6b7280', margin: 0 }}>Interactive Map</p>
+              <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0 }}>Will show route when milestone data is available</p>
             </div>
           </div>
 
-          {/* Cargo Dates Card */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">Cargo Timeline</h2>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-xs text-gray-500">Cargo Ready</p>
-                <p className="text-sm font-semibold text-gray-900 mt-1">
-                  {formatDate(shipment.cargoReadyDate)}
-                </p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-xs text-gray-500">Cargo Received</p>
-                <p className="text-sm font-semibold text-gray-900 mt-1">
-                  {formatDate(shipment.cargoReceivedDate)}
-                </p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-xs text-gray-500">Cargo Pickup</p>
-                <p className="text-sm font-semibold text-gray-900 mt-1">
-                  {formatDate(shipment.cargoPickupDate)}
-                </p>
-              </div>
+          {/* Cargo Timeline */}
+          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 16px' }}>Cargo Timeline</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+              {[
+                { label: 'Cargo Ready', date: shipment.cargoReadyDate },
+                { label: 'Cargo Received', date: shipment.cargoReceivedDate },
+                { label: 'Cargo Pickup', date: shipment.cargoPickupDate },
+              ].map((item, i) => (
+                <div key={i} style={{ background: '#f9fafb', borderRadius: '8px', padding: '12px 14px' }}>
+                  <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 4px', fontWeight: 500 }}>{item.label}</p>
+                  <p style={{ fontSize: '13px', fontWeight: 600, color: '#111827', margin: 0 }}>{formatDate(item.date)}</p>
+                </div>
+              ))}
             </div>
           </div>
-
         </div>
 
-        {/* Right Column — 1/3 width */}
-        <div className="space-y-6">
+        {/* ── RIGHT COLUMN ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-          {/* Milestone History — Placeholder */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-gray-900">
-                Previous Milestones
-              </h2>
-              <button className="text-xs text-blue-600 hover:underline">
+          {/* Previous Milestones */}
+          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: 0 }}>Previous Milestones</h2>
+              <button style={{ fontSize: '12px', color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>
                 History Page →
               </button>
             </div>
 
-            <div className="space-y-4">
-              {placeholderMilestones.map((m, i) => (
-                <div key={i} className="flex gap-3">
-                  <div className="flex flex-col items-center">
-                    <div className="w-3 h-3 rounded-full bg-gray-300 border-2 border-gray-200 flex-shrink-0 mt-0.5" />
-                    {i < placeholderMilestones.length - 1 && (
-                      <div className="w-px h-8 bg-gray-200 mt-1" />
-                    )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+              {[
+                { title: 'Departed Chicago O\'Hare', time: 'Oct 23, 2023 - 08:45 PM', note: 'Flight LH431 en route to Munich for transfer.' },
+                { title: 'Picked up from Shipper', time: 'Oct 22, 2023 - 02:30 PM', note: 'Driver: Mike Johnson. Condition: Good.' },
+                { title: 'Label Created', time: 'Oct 22, 2023 - 09:15 AM', note: 'Shipping information received.' },
+                { title: 'Order Placed', time: 'Oct 21, 2023 - 04:00 PM', note: '' },
+              ].map((m, i, arr) => (
+                <div key={i} style={{ display: 'flex', gap: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#bfdbfe', border: '2px solid #93c5fd', marginTop: '2px', flexShrink: 0 }} />
+                    {i < arr.length - 1 && <div style={{ width: '1.5px', flex: 1, background: '#e5e7eb', margin: '4px 0' }} />}
                   </div>
-                  <div className="pb-2">
-                    <p className="text-xs font-semibold text-gray-700">{m.title}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{m.date}</p>
-                    <p className="text-xs text-gray-400 italic mt-0.5">{m.note}</p>
+                  <div style={{ paddingBottom: i < arr.length - 1 ? '14px' : '0' }}>
+                    <p style={{ fontSize: '12px', fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>{m.title}</p>
+                    <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>{m.time}</p>
+                    {m.note && <p style={{ fontSize: '11px', color: '#6b7280', margin: 0 }}>{m.note}</p>}
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="mt-4 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
-              <p className="text-xs text-yellow-700 text-center">
-                ⏳ Waiting for milestone module integration
+            <div style={{ marginTop: '14px', padding: '8px 12px', background: '#fefce8', border: '1px solid #fde68a', borderRadius: '8px' }}>
+              <p style={{ fontSize: '11px', color: '#92400e', margin: 0, textAlign: 'center' }}>
+                ⏳ Milestone data will connect when module is ready
               </p>
             </div>
+
+            <button style={{
+              width: '100%', marginTop: '12px', padding: '8px',
+              fontSize: '12px', fontWeight: 500, color: '#374151',
+              background: '#f9fafb', border: '1px solid #e5e7eb',
+              borderRadius: '8px', cursor: 'pointer'
+            }}>
+              Download Full Audit Log (CSV)
+            </button>
           </div>
 
-          {/* CargoWise Info */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">
-              CargoWise Details
-            </h2>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-xs text-gray-500">Job Number</span>
-                <span className="text-xs font-medium text-gray-900">
-                  {shipment.jobNumber ?? '—'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-xs text-gray-500">House Bill</span>
-                <span className="text-xs font-medium text-gray-900">
-                  {shipment.houseBillNumber ?? '—'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-xs text-gray-500">Branch</span>
-                <span className="text-xs font-medium text-gray-900">
-                  {shipment.branch ?? '—'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-xs text-gray-500">Transport Mode</span>
-                <span className="text-xs font-medium text-gray-900">
-                  {shipment.transportMode ?? '—'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-xs text-gray-500">LLM Type</span>
-                <span className="text-xs font-medium text-gray-900">
-                  {shipment.llmIdentifiedType ?? '—'}
-                </span>
-              </div>
-              <div className="border-t border-gray-100 pt-3">
-                <p className="text-xs text-gray-500 mb-1">Created By</p>
-                <p className="text-xs font-medium text-gray-900">
-                  {shipment.createdBy.name}
-                </p>
-                <p className="text-xs text-gray-400">{shipment.createdBy.email}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Last Updated By</p>
-                <p className="text-xs font-medium text-gray-900">
-                  {shipment.lastUpdatedBy.name}
-                </p>
-                <p className="text-xs text-gray-400">{shipment.lastUpdatedBy.email}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Documents Placeholder */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">
-              Attached Documents
-            </h2>
-            <div className="space-y-2">
-              {['Commercial Invoice', 'Bill of Lading', 'Packing List'].map((doc) => (
-                <div key={doc} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-red-100 rounded flex items-center justify-center">
-                      <span className="text-red-600 text-xs font-bold">PDF</span>
-                    </div>
-                    <span className="text-xs text-gray-700">{doc}.pdf</span>
-                  </div>
-                  <button className="text-xs text-blue-600 hover:underline">
-                    Download
-                  </button>
+          {/* CargoWise Details */}
+          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 14px' }}>CargoWise Details</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[
+                { label: 'Job Number', value: shipment.jobNumber },
+                { label: 'House Bill', value: shipment.houseBillNumber },
+                { label: 'Branch', value: shipment.branch },
+                { label: 'Transport Mode', value: shipment.transportMode },
+                { label: 'LLM Type', value: shipment.llmIdentifiedType },
+              ].map((item, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', color: '#9ca3af' }}>{item.label}</span>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>{item.value ?? '—'}</span>
                 </div>
               ))}
-            </div>
-            <div className="mt-3 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
-              <p className="text-xs text-yellow-700 text-center">
-                ⏳ Real documents coming from API
-              </p>
+
+              <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '10px', marginTop: '2px' }}>
+                <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 4px' }}>Created By</p>
+                <p style={{ fontSize: '13px', fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>{shipment.createdBy.name}</p>
+                <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>{shipment.createdBy.email}</p>
+              </div>
+
+              <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '10px' }}>
+                <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 4px' }}>Last Updated By</p>
+                <p style={{ fontSize: '13px', fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>{shipment.lastUpdatedBy.name}</p>
+                <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>{shipment.lastUpdatedBy.email}</p>
+              </div>
             </div>
           </div>
+
+        
 
         </div>
       </div>
