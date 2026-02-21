@@ -1,12 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { AlertTriangle, Flag, Clock, FileText } from 'lucide-react'
 import { getDelayedShipments, getDelayedStats } from '@/lib/services/shipment.service'
 import { ShipmentStatusBadge } from '@/components/shipments/ShipmentStatusBadge'
 import { ShipmentStatsCard } from '@/components/shipments/ShipmentStatsCard'
 import { ShipmentPagination } from '@/components/shipments/ShipmentPagination'
 import { Shipment } from '@/types'
+import { ShipmentFilter } from '@/components/shipments/ShipmentFilter'
+import { exportDelayedShipmentsPDF } from '@/lib/Utils/exportPDF'
+import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
 
 function formatDate(date: Date | null) {
   if (!date) return '—'
@@ -14,11 +18,48 @@ function formatDate(date: Date | null) {
 }
 
 export default function DelayedShipmentsPage() {
+  const router = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
   const [shipments, setShipments] = useState<Shipment[]>([])
   const [stats, setStats] = useState({ totalDelayed: 0, highPriority: 0, avgDelayDays: 0, customsIssues: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({
+  transportMode: '',
+  delayRange: '',
+})
+const [searchQuery, setSearchQuery] = useState('')
+const filteredShipments = shipments.filter((s) => {
+  if (activeFilters.transportMode && s.transportMode !== activeFilters.transportMode) return false
+  if (activeFilters.delayRange) {
+    const days = s.delayDays ?? 0
+    if (activeFilters.delayRange === '1-3' && !(days >= 1 && days <= 3)) return false
+    if (activeFilters.delayRange === '4-7' && !(days >= 4 && days <= 7)) return false
+    if (activeFilters.delayRange === '7+' && !(days > 7)) return false
+  }
+  if (searchQuery && !s.cargowiseId.toLowerCase().includes(searchQuery.toLowerCase())) return false
+  return true
+})
+const filterGroups = [
+  {
+    label: 'By Department',
+    key: 'transportMode',
+    options: [
+      { label: 'Air Freight', value: 'AIR' },
+      { label: 'Sea Freight', value: 'SEA' },
+      { label: 'Road Freight', value: 'ROAD' },
+    ],
+  },
+  {
+    label: 'No of Delayed Days',
+    key: 'delayRange',
+    options: [
+      { label: '1 - 3 Days', value: '1-3' },
+      { label: '4 - 7 Days', value: '4-7' },
+      { label: '7+ Days', value: '7+' },
+    ],
+  },
+]
 
   useEffect(() => {
     async function fetchData() {
@@ -30,7 +71,7 @@ export default function DelayedShipmentsPage() {
         ])
         setShipments(shipmentsData)
         setStats(statsData)
-      } catch (err) {
+      } catch {
         setError('Failed to load delayed shipments')
       } finally {
         setLoading(false)
@@ -69,8 +110,26 @@ export default function DelayedShipmentsPage() {
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
         <div className="flex items-center gap-2 px-5 pt-5 pb-4">
-          <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Filter</button>
-          <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Export</button>
+          <ShipmentSearch value={searchQuery} onChange={setSearchQuery} />
+          <ShipmentFilter
+  groups={filterGroups}
+  activeFilters={activeFilters}
+  onFilterChange={(key, value) =>
+    setActiveFilters((prev) => ({ ...prev, [key]: value }))
+  }
+  onClearAll={() =>
+    setActiveFilters({ transportMode: '', delayRange: '' })
+  }
+/>
+          <button
+  onClick={() => exportDelayedShipmentsPDF(filteredShipments)}
+  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+>
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+  </svg>
+  Export PDF
+</button>
         </div>
 
         <div className="overflow-x-auto">
@@ -84,10 +143,11 @@ export default function DelayedShipmentsPage() {
                 <th className="text-left px-5 py-3">Est. Arrival</th>
                 <th className="text-left px-5 py-3">Delay Reason</th>
                 <th className="text-left px-5 py-3">Action</th>
+                <th className="text-left px-5 py-3">Details</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {shipments.map((shipment) => (
+              {filteredShipments.map((shipment) => (
                 <tr key={shipment.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-2">
@@ -107,14 +167,22 @@ export default function DelayedShipmentsPage() {
                   <td className="px-5 py-3.5 text-sm text-gray-700">{formatDate(shipment.estimatedArrival)}</td>
                   <td className="px-5 py-3.5 text-sm text-gray-600">{shipment.delayReason ?? '—'}</td>
                   <td className="px-5 py-3.5">
-                    <button className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700">Resolve</button>
+                    <button className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Resolve</button>
+                  </td>
+                  <td className="px-5 py-3.5">
+                   <button
+                     onClick={() => router.push(`/admin/shipments/${shipment.id}?from=/admin/shipments/delayed`)}
+                     className="text-xs font-medium text-blue-600 hover:underline"
+                   >
+                     View Details
+                   </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <ShipmentPagination currentPage={currentPage} totalPages={Math.ceil(shipments.length / 10)} totalResults={shipments.length} pageSize={10} onPageChange={setCurrentPage} />
+        <ShipmentPagination currentPage={currentPage} totalResults={filteredShipments.length} totalPages={Math.ceil(filteredShipments.length / 10)} pageSize={10} onPageChange={setCurrentPage} />
       </div>
     </div>
   )

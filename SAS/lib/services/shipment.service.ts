@@ -192,3 +192,57 @@ export async function getDelayedStats() {
     customsIssues: data.filter((s) => s.current_stage === 'customs_hold').length,
   }
 }
+export async function getActiveShipmentsByDepartment(
+  transportMode: string
+): Promise<Shipment[]> {
+  const { data, error } = await supabase
+    .from('shipments')
+    .select('*')
+    .eq('transport_mode', transportMode)
+    .is('archived_date', null)
+    .is('delivery_date', null)
+    .order('created_at', { ascending: false })
+
+  console.log('TRANSPORT MODE:', transportMode)
+  console.log('ACTIVE SHIPMENTS:', data?.length)
+  console.log('DATA:', data)
+
+  if (error) throw new Error(error.message)
+  return data.map(mapRow)
+}
+
+export async function getArchivedShipmentsByDepartment(
+  transportMode: string
+): Promise<Shipment[]> {
+  const { data, error } = await supabase
+    .from('shipments')
+    .select('*')
+    .eq('transport_mode', transportMode)
+    .eq('current_stage', 'delivered')
+    .not('archived_date', 'is', null)
+    .order('archived_date', { ascending: false })
+
+  if (error) throw new Error(error.message)
+  return data.map(mapRow)
+}
+
+export async function getDepartmentStats(transportMode: string) {
+  const { data, error } = await supabase
+    .from('shipments')
+    .select('current_stage, is_priority, delivery_date, delay_days')
+    .eq('transport_mode', transportMode)
+
+  if (error) throw new Error(error.message)
+
+  const today = new Date().toDateString()
+
+  return {
+    onTime: data.filter((s) => !s.delay_days && s.current_stage !== 'delivered').length,
+    delayed: data.filter((s) => s.delay_days && s.delay_days > 0).length,
+    atRisk: data.filter((s) => s.is_priority).length,
+    deliveredToday: data.filter((s) =>
+      s.delivery_date &&
+      new Date(s.delivery_date).toDateString() === today
+    ).length,
+  }
+}
