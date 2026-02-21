@@ -1,16 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, FormEvent, ChangeEvent } from 'react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberDevice, setRememberDevice] = useState(true);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // Handle login logic here
     console.log({ email, password, rememberDevice });
+  };
+
+  const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+  };
+
+  const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value);
+  };
+
+  const handleRememberChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setRememberDevice(e.target.checked);
   };
 
   return (
@@ -68,7 +80,7 @@ export default function LoginPage() {
                 type="email"
                 id="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={handleEmailChange}
                 placeholder="name@company.com"
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
@@ -89,7 +101,7 @@ export default function LoginPage() {
                 type="password"
                 id="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={handlePasswordChange}
                 placeholder="••••••••"
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
@@ -102,7 +114,7 @@ export default function LoginPage() {
                 type="checkbox"
                 id="remember"
                 checked={rememberDevice}
-                onChange={(e) => setRememberDevice(e.target.checked)}
+                onChange={handleRememberChange}
                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
               <label htmlFor="remember" className="ml-2 text-sm text-gray-700">
