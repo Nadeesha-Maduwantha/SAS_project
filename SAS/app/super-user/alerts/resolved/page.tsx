@@ -1,13 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
     CheckCircle2,
     Download,
     Search,
     Eye,
     Mail,
-    MoreHorizontal,
     Anchor,
     Truck,
     Warehouse,
@@ -21,10 +20,10 @@ import {
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import EmailComposeModal from '@/components/EmailComposeModal';
-import AlertDetailsModal from '@/components/AlertDetailsModal';
+import AlertDetailsModal, { AlertData } from '@/components/AlertDetailsModal';
 
 // ─── All alerts — only Resolved ones shown ────────────────────────────────────
-const ALL_ALERTS = [
+const ALL_ALERTS: AlertData[] = [
     {
         id: '#SHP-9921',
         client: 'TechParts Inc.',
@@ -94,7 +93,7 @@ const ALL_ALERTS = [
 const RESOLVED_ALERTS = ALL_ALERTS.filter((a) => a.status === 'Resolved');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function PriorityBadge({ level }) {
+function PriorityBadge({ level }: { level: AlertData['priority'] }) {
     const map = {
         Critical: { bg: '#fef2f2', color: '#dc2626', dot: '#dc2626' },
         Medium: { bg: '#fefce8', color: '#ca8a04', dot: '#eab308' },
@@ -114,7 +113,7 @@ function PriorityBadge({ level }) {
     );
 }
 
-function MilestoneIcon({ type }) {
+function MilestoneIcon({ type }: { type: AlertData['milestoneIcon'] }) {
     const props = { size: 14, color: '#6b7280' };
     const icons = {
         anchor: <Anchor {...props} />,
@@ -126,23 +125,23 @@ function MilestoneIcon({ type }) {
     return icons[type] || null;
 }
 
-function ClientAvatar({ initial, color, name }) {
+function ClientAvatar({ initial, color, name }: { initial?: string, color?: string, name: string }) {
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{
                 width: '28px', height: '28px', borderRadius: '50%',
-                background: color, color: 'white',
+                background: color || '#3b82f6', color: 'white',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontWeight: 700, fontSize: '11px', flexShrink: 0,
             }}>
-                {initial}
+                {initial || name.charAt(0)}
             </div>
             <span style={{ fontSize: '13px', color: '#374151', fontWeight: 500, whiteSpace: 'nowrap' }}>{name}</span>
         </div>
     );
 }
 
-function ActionBtn({ icon, title, onClick }) {
+function ActionBtn({ icon, title, onClick }: { icon: React.ReactNode, title: string, onClick: (e: React.MouseEvent) => void }) {
     return (
         <button onClick={onClick} title={title} style={{
             width: '28px', height: '28px',
@@ -158,12 +157,11 @@ function ActionBtn({ icon, title, onClick }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function ResolvedAlertsPage() {
-    const [viewMode, setViewMode] = useState('table');
+    const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
     const [priorityFilter, setPriorityFilter] = useState('All Priorities');
     const [search, setSearch] = useState('');
-    const [selected, setSelected] = useState([]);
-    const [composeModalData, setComposeModalData] = useState(null);
-    const [viewModalData, setViewModalData] = useState(null);
+    const [composeModalData, setComposeModalData] = useState<AlertData | null>(null);
+    const [viewModalData, setViewModalData] = useState<AlertData | null>(null);
 
     const filtered = RESOLVED_ALERTS.filter((a) => {
         const matchPriority = priorityFilter === 'All Priorities' || a.priority === priorityFilter;
@@ -174,19 +172,6 @@ export default function ResolvedAlertsPage() {
         return matchPriority && matchSearch;
     });
 
-    const toggleActionStatus = (id) => {
-        setAlertsList(prev => prev.map(a =>
-            a.id === id ? { ...a, status: a.status === 'Action Taken' ? 'Get Action' : 'Action Taken' } : a
-        ));
-    };
-
-    const thStyle = {
-        padding: '11px 16px', textAlign: 'left',
-        fontSize: '11px', fontWeight: 600, color: '#9ca3af',
-        letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap',
-    };
-    const tdStyle = { padding: '13px 16px', verticalAlign: 'middle' };
-
     return (
         <div style={{ display: 'flex', minHeight: '100vh', background: '#f0f2f5' }}>
             <Sidebar />
@@ -194,7 +179,7 @@ export default function ResolvedAlertsPage() {
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
                 <Topbar />
 
-                <main style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
+                <main style={{ flex: 1, padding: '24px', overflowY: 'auto' } as React.CSSProperties}>
 
                     {/* Page header */}
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px' }}>
@@ -204,7 +189,7 @@ export default function ResolvedAlertsPage() {
                                     width: '32px', height: '32px', borderRadius: '8px',
                                     background: 'linear-gradient(135deg,#22c55e,#15803d)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                }}>
+                                } as React.CSSProperties}>
                                     <CheckCircle2 size={16} color="white" />
                                 </div>
                                 <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1a1a2e', letterSpacing: '-0.4px' }}>
@@ -229,7 +214,7 @@ export default function ResolvedAlertsPage() {
                             borderRadius: '8px', padding: '8px 16px',
                             fontSize: '13px', fontWeight: 500, color: '#374151',
                             cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                        }}>
+                        } as React.CSSProperties}>
                             <Download size={14} />
                             Export Report
                         </button>
@@ -246,7 +231,7 @@ export default function ResolvedAlertsPage() {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '12px',
-                    }}>
+                    } as React.CSSProperties}>
                         <CheckCircle2 size={20} color="#22c55e" style={{ flexShrink: 0 }} />
                         <div>
                             <div style={{ fontWeight: 600, fontSize: '13.5px', color: '#14532d' }}>
@@ -263,25 +248,25 @@ export default function ResolvedAlertsPage() {
                         background: 'white', borderRadius: '12px',
                         boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
                         border: '1px solid #f0f0f0', overflow: 'hidden',
-                    }}>
+                    } as React.CSSProperties}>
                         {/* Toolbar */}
                         <div style={{
                             display: 'flex', alignItems: 'center', gap: '10px',
                             padding: '14px 20px', borderBottom: '1px solid #f0f0f0', flexWrap: 'wrap',
-                        }}>
+                        } as React.CSSProperties}>
                             {/* Locked Resolved badge */}
                             <div style={{
                                 display: 'flex', alignItems: 'center', gap: '6px',
                                 background: '#f0fdf4', border: '1px solid #86efac',
                                 borderRadius: '8px', padding: '7px 14px',
                                 fontSize: '13px', fontWeight: 600, color: '#15803d',
-                            }}>
+                            } as React.CSSProperties}>
                                 <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22c55e' }} />
                                 Resolved
                             </div>
 
                             {/* Priority filter */}
-                            <div style={{ position: 'relative' }}>
+                            <div style={{ position: 'relative' } as React.CSSProperties}>
                                 <select
                                     value={priorityFilter}
                                     onChange={(e) => setPriorityFilter(e.target.value)}
@@ -291,7 +276,7 @@ export default function ResolvedAlertsPage() {
                                         padding: '7px 30px 7px 12px',
                                         fontSize: '13px', color: '#374151',
                                         cursor: 'pointer', outline: 'none',
-                                    }}
+                                    } as React.CSSProperties}
                                 >
                                     {['All Priorities', 'Critical', 'Medium', 'Low'].map((o) => (
                                         <option key={o}>{o}</option>
@@ -300,7 +285,7 @@ export default function ResolvedAlertsPage() {
                                 <ChevronRight size={12} color="#9ca3af" style={{
                                     position: 'absolute', right: '10px', top: '50%',
                                     transform: 'translateY(-50%) rotate(90deg)', pointerEvents: 'none',
-                                }} />
+                                } as React.CSSProperties} />
                             </div>
 
                             <div style={{ flex: 1 }} />
@@ -310,7 +295,7 @@ export default function ResolvedAlertsPage() {
                                 display: 'flex', alignItems: 'center', gap: '8px',
                                 background: '#f9fafb', border: '1px solid #e5e7eb',
                                 borderRadius: '8px', padding: '7px 12px', width: '200px',
-                            }}>
+                            } as React.CSSProperties}>
                                 <Search size={13} color="#9ca3af" />
                                 <input
                                     placeholder="Search table..."
@@ -321,12 +306,12 @@ export default function ResolvedAlertsPage() {
                             </div>
 
                             {/* View toggle */}
-                            <div style={{ display: 'flex', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+                            <div style={{ display: 'flex', borderRadius: '8px', border: '1px solid #e5e7eb', overflow: 'hidden' } as React.CSSProperties}>
                                 {[
                                     { key: 'table', icon: <LayoutList size={15} />, label: 'Table' },
                                     { key: 'cards', icon: <LayoutGrid size={15} />, label: 'Cards' },
                                 ].map((v) => (
-                                    <button key={v.key} onClick={() => setViewMode(v.key)} style={{
+                                    <button key={v.key} onClick={() => setViewMode(v.key as 'table' | 'cards')} style={{
                                         display: 'flex', alignItems: 'center', gap: '5px',
                                         padding: '7px 12px',
                                         background: viewMode === v.key ? '#f0fdf4' : 'white',
@@ -334,7 +319,7 @@ export default function ResolvedAlertsPage() {
                                         border: 'none', fontSize: '12.5px',
                                         fontWeight: viewMode === v.key ? 600 : 400, cursor: 'pointer',
                                         borderRight: v.key === 'table' ? '1px solid #e5e7eb' : 'none',
-                                    }}>
+                                    } as React.CSSProperties}>
                                         {v.icon} {v.label}
                                     </button>
                                 ))}
@@ -367,9 +352,9 @@ export default function ResolvedAlertsPage() {
                                         ) : filtered.map((alert, idx) => (
                                             <tr key={alert.id} style={{
                                                 borderBottom: idx < filtered.length - 1 ? '1px solid #f5f5f5' : 'none',
-                                                background: selected.includes(alert.id) ? '#f0fdf4' : 'white',
-                                            }}>
-                                                <td style={{ ...tdStyle, fontWeight: 600, fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>
+                                                background: 'white',
+                                            } as React.CSSProperties}>
+                                                <td style={{ ...tdStyle, fontWeight: 600, fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' } as React.CSSProperties}>
                                                     {alert.id}
                                                 </td>
                                                 <td style={tdStyle}>
@@ -379,20 +364,20 @@ export default function ResolvedAlertsPage() {
                                                     <PriorityBadge level={alert.priority} />
                                                 </td>
                                                 <td style={tdStyle}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#6b7280', fontSize: '13px', whiteSpace: 'nowrap' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#6b7280', fontSize: '13px', whiteSpace: 'nowrap' } as React.CSSProperties}>
                                                         <MilestoneIcon type={alert.milestoneIcon} />
                                                         {alert.milestone}
                                                     </div>
                                                 </td>
-                                                <td style={{ ...tdStyle, fontSize: '13px', color: '#6b7280', maxWidth: '220px' }}>
-                                                    <span style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                <td style={{ ...tdStyle, fontSize: '13px', color: '#6b7280', maxWidth: '220px' } as React.CSSProperties}>
+                                                    <span style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>
                                                         {alert.issue}
                                                     </span>
                                                 </td>
-                                                <td style={{ ...tdStyle, fontWeight: 600, fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                                                <td style={{ ...tdStyle, fontWeight: 600, fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' } as React.CSSProperties}>
                                                     {alert.delay}
                                                 </td>
-                                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
+                                                <td style={{ ...tdStyle, whiteSpace: 'nowrap' } as React.CSSProperties}>
                                                     <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12.5px', color: '#15803d', fontWeight: 500 }}>
                                                         <CheckCircle2 size={13} color="#22c55e" />
                                                         {alert.resolvedAt}
@@ -413,7 +398,7 @@ export default function ResolvedAlertsPage() {
 
                         {/* CARDS VIEW */}
                         {viewMode === 'cards' && (
-                            <div style={{ padding: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '14px' }}>
+                            <div style={{ padding: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '14px' } as React.CSSProperties}>
                                 {filtered.map((alert) => (
                                     <div
                                         key={alert.id}
@@ -424,7 +409,7 @@ export default function ResolvedAlertsPage() {
                                             boxShadow: '0 1px 3px rgba(34,197,94,0.08)',
                                             cursor: 'pointer',
                                             transition: 'transform 0.1s ease-in-out, box-shadow 0.1s ease-in-out'
-                                        }}
+                                        } as React.CSSProperties}
                                         onMouseEnter={(e) => {
                                             e.currentTarget.style.transform = 'translateY(-2px)';
                                             e.currentTarget.style.boxShadow = '0 4px 6px rgba(34,197,94,0.15)';
@@ -434,21 +419,9 @@ export default function ResolvedAlertsPage() {
                                             e.currentTarget.style.boxShadow = '0 1px 3px rgba(34,197,94,0.08)';
                                         }}
                                     >
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' } as React.CSSProperties}>
                                             <span style={{ fontWeight: 700, fontSize: '13px', color: '#374151' }}>{alert.id}</span>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                {alert.status !== 'Resolved' && (
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={alert.status === 'Action Taken'}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        onChange={(e) => {
-                                                            e.stopPropagation();
-                                                            toggleActionStatus(alert.id);
-                                                        }}
-                                                        style={{ width: '15px', height: '15px', cursor: 'pointer' }}
-                                                    />
-                                                )}
                                                 <ActionBtn icon={<Mail size={14} />} title="Email" onClick={(e) => { e.stopPropagation(); setComposeModalData(alert); }} />
                                                 <PriorityBadge level={alert.priority} />
                                             </div>
@@ -470,26 +443,13 @@ export default function ResolvedAlertsPage() {
                         <div style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             padding: '14px 20px', borderTop: '1px solid #f0f0f0',
-                        }}>
+                        } as React.CSSProperties}>
                             <span style={{ fontSize: '13px', color: '#9ca3af' }}>
                                 Showing {filtered.length} resolved alert{filtered.length !== 1 ? 's' : ''}
                             </span>
                             <div style={{ display: 'flex', gap: '8px' }}>
-                                {[
-                                    { label: 'Previous', icon: <ChevronLeft size={13} />, dir: 'row' },
-                                    { label: 'Next', icon: <ChevronRight size={13} />, dir: 'row-reverse' },
-                                ].map((btn) => (
-                                    <button key={btn.label} style={{
-                                        display: 'flex', alignItems: 'center', gap: '5px',
-                                        flexDirection: btn.dir,
-                                        padding: '7px 14px', border: '1px solid #e5e7eb',
-                                        borderRadius: '8px', background: 'white',
-                                        fontSize: '13px', color: '#374151',
-                                        cursor: 'pointer', fontWeight: 500,
-                                    }}>
-                                        {btn.icon}{btn.label}
-                                    </button>
-                                ))}
+                                <PageBtn label="Previous" icon={<ChevronLeft size={13} />} />
+                                <PageBtn label="Next" icon={<ChevronRight size={13} />} right />
                             </div>
                         </div>
                     </div>
@@ -512,5 +472,28 @@ export default function ResolvedAlertsPage() {
                 }}
             />
         </div>
+    );
+}
+
+const thStyle: React.CSSProperties = {
+    padding: '11px 16px', textAlign: 'left',
+    fontSize: '11px', fontWeight: 600, color: '#9ca3af',
+    letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+};
+const tdStyle: React.CSSProperties = { padding: '13px 16px', verticalAlign: 'middle' };
+
+function PageBtn({ label, icon, right }: { label: string, icon: React.ReactNode, right?: boolean }) {
+    return (
+        <button style={{
+            display: 'flex', alignItems: 'center', gap: '5px',
+            padding: '7px 14px', border: '1px solid #e5e7eb',
+            borderRadius: '8px', background: 'white',
+            fontSize: '13px', color: '#374151',
+            cursor: 'pointer', fontWeight: 500,
+            flexDirection: right ? 'row-reverse' : 'row',
+        } as React.CSSProperties}>
+            {icon}
+            {label}
+        </button>
     );
 }

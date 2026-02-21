@@ -1,23 +1,31 @@
 'use client';
 
+import React from 'react';
 import {
     X, Save, Wand2, Send,
     Bold, Italic, Underline, Undo, Redo, List, ListOrdered, Image as ImageIcon,
     Paperclip, ChevronDown, Sparkles, Eye, Bot
 } from 'lucide-react';
+import { AlertData } from './AlertDetailsModal';
 
-export default function EmailComposeModal({ isOpen, onClose, alertData }) {
+interface EmailComposeModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    alertData: AlertData | null;
+}
+
+export default function EmailComposeModal({ isOpen, onClose, alertData }: EmailComposeModalProps) {
     if (!isOpen) return null;
 
     const shipmentId = alertData?.id || 'Shipment #49201';
     const clientName = alertData?.client || 'Customer';
     const clientEmail = alertData?.client ? `contact@${alertData.client.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}.com` : 'recipient@logistics.com';
 
-    const handleFormat = (command, value = null) => {
-        document.execCommand(command, false, value);
+    const handleFormat = (command: string, value: string | null = null) => {
+        document.execCommand(command, false, value || undefined);
     };
 
-    const handleAction = (e, command, value = null) => {
+    const handleAction = (e: React.MouseEvent, command: string, value: string | null = null) => {
         e.preventDefault(); // Keep focus on the contentEditable area
         handleFormat(command, value);
     };
@@ -32,7 +40,7 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }) {
             alignItems: 'center',
             justifyContent: 'center',
             padding: '24px'
-        }}>
+        } as React.CSSProperties}>
             <style>{`
                 .rich-text-editor ul {
                     list-style-type: disc;
@@ -55,13 +63,13 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }) {
                 flexDirection: 'column',
                 overflow: 'hidden',
                 boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)'
-            }}>
+            } as React.CSSProperties}>
                 {/* Header */}
                 <header style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '16px 24px', borderBottom: '1px solid #e5e7eb',
                     backgroundColor: '#ffffff'
-                }}>
+                } as React.CSSProperties}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#111827', margin: 0 }}>
                             Email Creation Centre
@@ -84,7 +92,7 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }) {
                             border: '1px solid #e5e7eb', backgroundColor: 'white',
                             color: '#374151', fontSize: '13px', fontWeight: 500,
                             cursor: 'pointer'
-                        }}>
+                        } as React.CSSProperties}>
                             <Save size={16} /> Save Draft
                         </button>
 
@@ -94,7 +102,7 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }) {
                             border: 'none', backgroundColor: '#ecfeff',
                             color: '#0891b2', fontSize: '13px', fontWeight: 500,
                             cursor: 'pointer'
-                        }}>
+                        } as React.CSSProperties}>
                             <Sparkles size={16} /> Generate with AI
                         </button>
 
@@ -103,14 +111,14 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }) {
                             border: 'none', backgroundColor: '#06b6d4',
                             color: 'white', fontSize: '13px', fontWeight: 500,
                             cursor: 'pointer'
-                        }}>
+                        } as React.CSSProperties}>
                             Send Email
                         </button>
 
                         <button onClick={onClose} style={{
                             background: 'none', border: 'none', cursor: 'pointer',
                             color: '#9ca3af', padding: '4px', marginLeft: '8px'
-                        }}>
+                        } as React.CSSProperties}>
                             <X size={20} />
                         </button>
                     </div>
@@ -120,19 +128,19 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }) {
                 <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
                     {/* Left Pane: Editor */}
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', overflowY: 'auto' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', overflowY: 'auto' } as React.CSSProperties}>
 
                         {/* To Field */}
                         <div style={{
                             border: '1px solid #e5e7eb', borderRadius: '8px',
                             padding: '8px 16px', marginBottom: '16px',
                             position: 'relative'
-                        }}>
+                        } as React.CSSProperties}>
                             <span style={{
                                 position: 'absolute', top: '-10px', left: '12px',
                                 backgroundColor: 'white', padding: '0 4px',
                                 fontSize: '12px', color: '#0284c7', fontWeight: 500
-                            }}>To *</span>
+                            } as React.CSSProperties}>To *</span>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <input
                                     type="text"
@@ -143,7 +151,7 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }) {
                                         backgroundColor: 'transparent'
                                     }}
                                 />
-                                <div style={{ display: 'flex', gap: '8px', color: '#6b7280', fontSize: '12px', fontWeight: 500 }}>
+                                <div style={{ display: 'flex', gap: '8px', color: '#6b7280', fontSize: '12px', fontWeight: 500 } as React.CSSProperties}>
                                     <span style={{ cursor: 'pointer' }}>CC</span>
                                     <span style={{ cursor: 'pointer' }}>BCC</span>
                                 </div>
@@ -155,12 +163,12 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }) {
                             border: '1px solid #e5e7eb', borderRadius: '8px',
                             padding: '8px 16px', marginBottom: '24px',
                             position: 'relative'
-                        }}>
+                        } as React.CSSProperties}>
                             <span style={{
                                 position: 'absolute', top: '-10px', left: '12px',
                                 backgroundColor: 'white', padding: '0 4px',
                                 fontSize: '12px', color: '#0284c7', fontWeight: 500
-                            }}>Subject *</span>
+                            } as React.CSSProperties}>Subject *</span>
                             <input
                                 type="text"
                                 defaultValue={`Update regarding ${shipmentId}`}
@@ -173,17 +181,17 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }) {
                         </div>
 
                         {/* Editor Toolbar */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px', color: '#111827' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px', color: '#111827' } as React.CSSProperties}>
                             <div style={{ display: 'flex', gap: '16px' }}>
                                 <button onMouseDown={(e) => handleAction(e, 'bold')} style={toolbarBtnStyle}><Bold size={18} /></button>
                                 <button onMouseDown={(e) => handleAction(e, 'italic')} style={toolbarBtnStyle}><Italic size={18} /></button>
                                 <button onMouseDown={(e) => handleAction(e, 'underline')} style={toolbarBtnStyle}><Underline size={18} /></button>
                             </div>
-                            <div style={{ display: 'flex', gap: '16px', color: '#4b5563' }}>
+                            <div style={{ display: 'flex', gap: '16px', color: '#4b5563' } as React.CSSProperties}>
                                 <button onMouseDown={(e) => handleAction(e, 'undo')} style={toolbarBtnStyle}><Undo size={18} /></button>
                                 <button onMouseDown={(e) => handleAction(e, 'redo')} style={toolbarBtnStyle}><Redo size={18} /></button>
                             </div>
-                            <div style={{ display: 'flex', gap: '16px', color: '#4b5563' }}>
+                            <div style={{ display: 'flex', gap: '16px', color: '#4b5563' } as React.CSSProperties}>
                                 <button onMouseDown={(e) => handleAction(e, 'insertUnorderedList')} style={toolbarBtnStyle}><List size={18} /></button>
                                 <button onMouseDown={(e) => handleAction(e, 'insertOrderedList')} style={toolbarBtnStyle}><ListOrdered size={18} /></button>
                             </div>
@@ -195,7 +203,7 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }) {
                         </div>
 
                         {/* Text Area */}
-                        <div style={{ flex: 1, position: 'relative' }}>
+                        <div style={{ flex: 1, position: 'relative' } as React.CSSProperties}>
                             <div
                                 className="rich-text-editor"
                                 contentEditable
@@ -205,7 +213,7 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }) {
                                     overflowY: 'auto', fontSize: '14px', lineHeight: '1.6',
                                     color: '#374151', fontFamily: 'inherit',
                                     paddingBottom: '20px'
-                                }}
+                                } as React.CSSProperties}
                                 dangerouslySetInnerHTML={{
                                     __html: `Dear ${clientName},<br><br>This is an automated update regarding your ${shipmentId.toLowerCase()}. The cargo has successfully cleared customs and is currently en route to the distribution center in Hamburg.<br>Estimated Time of Arrival: Nov 14, 2023 - 14:00 CET<br><br>Best Regards,<br>Logistics Team`
                                 }}
@@ -217,7 +225,7 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }) {
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             paddingTop: '16px', borderTop: '1px solid #f3f4f6',
                             color: '#6b7280', fontSize: '13px'
-                        }}>
+                        } as React.CSSProperties}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                                 <Paperclip size={16} />
                                 Attach files
@@ -230,7 +238,7 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }) {
                     <div style={{
                         width: '320px', borderLeft: '1px solid #e5e7eb',
                         backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column'
-                    }}>
+                    } as React.CSSProperties}>
 
                         {/* Template Select */}
                         <div style={{ padding: '20px', borderBottom: '1px solid #f3f4f6' }}>
@@ -240,7 +248,7 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }) {
                                 border: '1px solid #e5e7eb', borderRadius: '6px',
                                 padding: '8px 12px', fontSize: '13px', color: '#374151',
                                 cursor: 'pointer'
-                            }}>
+                            } as React.CSSProperties}>
                                 Status Update (standard )
                                 <ChevronDown size={14} color="#9ca3af" />
                             </div>
@@ -250,33 +258,33 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }) {
                         <div style={{
                             display: 'flex', borderBottom: '1px solid #f3f4f6',
                             padding: '0 20px'
-                        }}>
+                        } as React.CSSProperties}>
                             <div style={{
                                 display: 'flex', alignItems: 'center', gap: '6px',
                                 padding: '12px 16px', borderBottom: '2px solid #06b6d4',
                                 color: '#06b6d4', fontSize: '13px', fontWeight: 500,
                                 cursor: 'pointer'
-                            }}>
+                            } as React.CSSProperties}>
                                 <Sparkles size={14} /> AI Assistant
                             </div>
                             <div style={{
                                 display: 'flex', alignItems: 'center', gap: '6px',
                                 padding: '12px 16px', color: '#6b7280',
                                 fontSize: '13px', fontWeight: 500, cursor: 'pointer'
-                            }}>
+                            } as React.CSSProperties}>
                                 <Eye size={14} /> Preview
                             </div>
                         </div>
 
                         {/* AI Content */}
-                        <div style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
+                        <div style={{ padding: '20px', flex: 1, overflowY: 'auto' } as React.CSSProperties}>
 
                             {/* Suggestion Card */}
                             <div style={{
                                 border: '1px solid #f3f4f6', borderRadius: '8px',
                                 padding: '16px', marginBottom: '16px',
                                 boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-                            }}>
+                            } as React.CSSProperties}>
                                 <div style={{ display: 'flex', gap: '12px' }}>
                                     <div style={{
                                         width: '28px', height: '28px', borderRadius: '50%',
@@ -298,12 +306,12 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }) {
                                                 background: '#ecfeff', border: 'none',
                                                 color: '#0891b2', fontSize: '12px', fontWeight: 500,
                                                 padding: '4px 12px', borderRadius: '4px', cursor: 'pointer'
-                                            }}>Make Friendly</button>
+                                            } as React.CSSProperties}>Make Friendly</button>
                                             <button style={{
                                                 background: 'transparent', border: 'none',
                                                 color: '#9ca3af', fontSize: '12px', fontWeight: 500,
                                                 cursor: 'pointer'
-                                            }}>Dismiss</button>
+                                            } as React.CSSProperties}>Dismiss</button>
                                         </div>
                                     </div>
                                 </div>
@@ -326,7 +334,7 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }) {
                                     border: '1px solid #e5e7eb', borderRadius: '8px',
                                     padding: '12px', fontSize: '12.5px', color: '#6b7280',
                                     backgroundColor: '#f9fafb', lineHeight: '1.5'
-                                }}>
+                                } as React.CSSProperties}>
                                     I can help you draft this email. Try asking me to "Explain a weather delay" or "Request updated documents".
                                 </div>
                             </div>
@@ -340,7 +348,7 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }) {
     );
 }
 
-const toolbarBtnStyle = {
+const toolbarBtnStyle: React.CSSProperties = {
     background: 'none',
     border: 'none',
     padding: 0,

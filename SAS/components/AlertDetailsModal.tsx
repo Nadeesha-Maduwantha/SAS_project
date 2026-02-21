@@ -1,10 +1,30 @@
 'use client';
 
+import React from 'react';
 import {
     X, MapPin, Truck, AlertCircle, Clock, Package, CheckCircle2, Navigation, Anchor, Plane, Warehouse, User, FileText, Calendar, Mail
 } from 'lucide-react';
 
-function MilestoneIcon({ type }) {
+export interface AlertData {
+    id: string;
+    client: string;
+    clientInitial?: string;
+    clientColor?: string;
+    priority: 'Critical' | 'Medium' | 'Low';
+    milestone: string;
+    milestoneIcon: 'anchor' | 'truck' | 'warehouse' | 'plane' | 'navigation';
+    issue: string;
+    delay: string;
+    delayColor?: string;
+    status: 'Get Action' | 'Action Taken' | 'Resolved';
+    resolvedAt?: string;
+}
+
+interface MilestoneIconProps {
+    type: AlertData['milestoneIcon'];
+}
+
+function MilestoneIcon({ type }: MilestoneIconProps) {
     const props = { size: 16, color: '#6b7280' };
     const icons = {
         anchor: <Anchor {...props} />,
@@ -16,7 +36,12 @@ function MilestoneIcon({ type }) {
     return icons[type] || <Package {...props} />;
 }
 
-function PriorityBadge({ level }) {
+interface BadgeProps {
+    level?: AlertData['priority'];
+    status?: AlertData['status'];
+}
+
+function PriorityBadge({ level }: { level: AlertData['priority'] }) {
     const map = {
         Critical: { bg: '#fef2f2', color: '#dc2626', dot: '#dc2626' },
         Medium: { bg: '#fefce8', color: '#ca8a04', dot: '#eab308' },
@@ -36,7 +61,7 @@ function PriorityBadge({ level }) {
     );
 }
 
-function StatusBadge({ status }) {
+function StatusBadge({ status }: { status: AlertData['status'] }) {
     const map = {
         'Get Action': { bg: '#fff0f0', color: '#dc2626', border: '#fca5a5' },
         'Action Taken': { bg: '#eff6ff', color: '#2563eb', border: '#93c5fd' },
@@ -57,7 +82,14 @@ function StatusBadge({ status }) {
     );
 }
 
-export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailClick }) {
+interface AlertDetailsModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    alertData: AlertData | null;
+    onEmailClick?: (data: AlertData) => void;
+}
+
+export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailClick }: AlertDetailsModalProps) {
     if (!isOpen || !alertData) return null;
 
     return (
@@ -70,7 +102,7 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
             alignItems: 'center',
             justifyContent: 'center',
             padding: '24px'
-        }}>
+        } as React.CSSProperties}>
             <div style={{
                 width: '100%',
                 maxWidth: '650px',
@@ -81,13 +113,13 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
                 flexDirection: 'column',
                 overflow: 'hidden',
                 boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)'
-            }}>
+            } as React.CSSProperties}>
                 {/* Header */}
                 <header style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '20px 24px', borderBottom: '1px solid #e5e7eb',
                     backgroundColor: '#ffffff'
-                }}>
+                } as React.CSSProperties}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <div style={{
                             width: '40px', height: '40px', borderRadius: '8px',
@@ -110,20 +142,20 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
                     <button onClick={onClose} style={{
                         background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '50%', cursor: 'pointer',
                         color: '#6b7280', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
+                    } as React.CSSProperties}>
                         <X size={18} />
                     </button>
                 </header>
 
                 {/* Main Content */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '24px' } as React.CSSProperties}>
 
                     {/* Key Info Grid */}
                     <div style={{
                         display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px'
-                    }}>
-                        <div style={{ background: '#f9fafb', padding: '16px', borderRadius: '8px', border: '1px solid #f3f4f6' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: '#6b7280', fontSize: '12.5px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    } as React.CSSProperties}>
+                        <div style={{ background: '#f9fafb', padding: '16px', borderRadius: '8px', border: '1px solid #f3f4f6' } as React.CSSProperties}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: '#6b7280', fontSize: '12.5px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' } as React.CSSProperties}>
                                 <User size={14} /> Client Identity
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -132,7 +164,7 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
                                     background: alertData.clientColor || '#3b82f6', color: 'white',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     fontWeight: 700, fontSize: '12px'
-                                }}>
+                                } as React.CSSProperties}>
                                     {alertData.clientInitial || alertData.client?.charAt(0) || 'C'}
                                 </div>
                                 <div style={{ fontSize: '14px', fontWeight: 600, color: '#111827' }}>
@@ -141,8 +173,8 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
                             </div>
                         </div>
 
-                        <div style={{ background: '#f9fafb', padding: '16px', borderRadius: '8px', border: '1px solid #f3f4f6' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: '#6b7280', fontSize: '12.5px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        <div style={{ background: '#f9fafb', padding: '16px', borderRadius: '8px', border: '1px solid #f3f4f6' } as React.CSSProperties}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: '#6b7280', fontSize: '12.5px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' } as React.CSSProperties}>
                                 <Clock size={14} /> Current Delay
                             </div>
                             <div style={{ fontSize: '16px', fontWeight: 700, color: alertData.delayColor || '#dc2626' }}>
@@ -154,8 +186,8 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
                     {/* Issue Description */}
                     <div style={{
                         border: '1px solid #e5e7eb', borderRadius: '8px', padding: '20px', marginBottom: '24px'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: '#111827', fontSize: '14px', fontWeight: 700 }}>
+                    } as React.CSSProperties}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: '#111827', fontSize: '14px', fontWeight: 700 } as React.CSSProperties}>
                             <AlertCircle size={16} color="#dc2626" />
                             Issue Description
                         </div>
@@ -167,8 +199,8 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
                     {/* Milestone / Location */}
                     <div style={{
                         border: '1px solid #e5e7eb', borderRadius: '8px', padding: '20px', marginBottom: '24px'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: '#111827', fontSize: '14px', fontWeight: 700 }}>
+                    } as React.CSSProperties}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', color: '#111827', fontSize: '14px', fontWeight: 700 } as React.CSSProperties}>
                             <MapPin size={16} color="#2563eb" />
                             Location & Milestone
                         </div>
@@ -177,7 +209,7 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
                             <div style={{
                                 width: '48px', height: '48px', borderRadius: '50%', background: '#eff6ff', border: '1px solid #bfdbfe',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center'
-                            }}>
+                            } as React.CSSProperties}>
                                 <MilestoneIcon type={alertData.milestoneIcon} />
                             </div>
                             <div>
@@ -195,14 +227,14 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
                     <div style={{
                         background: '#f9fafb', borderRadius: '8px', padding: '16px',
                         display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', border: '1px solid #f3f4f6'
-                    }}>
+                    } as React.CSSProperties}>
                         <div>
-                            <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>Reported By</div>
-                            <div style={{ fontSize: '13px', color: '#111827', display: 'flex', alignItems: 'center', gap: '6px' }}><User size={12} /> System Auto-Alert</div>
+                            <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' } as React.CSSProperties}>Reported By</div>
+                            <div style={{ fontSize: '13px', color: '#111827', display: 'flex', alignItems: 'center', gap: '6px' } as React.CSSProperties}><User size={12} /> System Auto-Alert</div>
                         </div>
                         <div>
-                            <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>Date Time</div>
-                            <div style={{ fontSize: '13px', color: '#111827', display: 'flex', alignItems: 'center', gap: '6px' }}><Calendar size={12} /> {new Date().toLocaleDateString()} - 14:00</div>
+                            <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' } as React.CSSProperties}>Date Time</div>
+                            <div style={{ fontSize: '13px', color: '#111827', display: 'flex', alignItems: 'center', gap: '6px' } as React.CSSProperties}><Calendar size={12} /> {new Date().toLocaleDateString()} - 14:00</div>
                         </div>
                     </div>
 
@@ -212,13 +244,13 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
                 <div style={{
                     padding: '16px 24px', borderTop: '1px solid #e5e7eb',
                     backgroundColor: '#f9fafb', display: 'flex', justifyContent: 'flex-end', gap: '12px'
-                }}>
+                } as React.CSSProperties}>
                     <button onClick={onClose} style={{
                         padding: '8px 16px', borderRadius: '6px',
                         border: '1px solid #e5e7eb', backgroundColor: 'white',
                         color: '#374151', fontSize: '13px', fontWeight: 500,
                         cursor: 'pointer'
-                    }}>
+                    } as React.CSSProperties}>
                         Close
                     </button>
                     {onEmailClick && (
@@ -227,7 +259,7 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
                             border: '1px solid #e5e7eb', backgroundColor: 'white',
                             color: '#4b5563', fontSize: '13px', fontWeight: 500,
                             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
-                        }}>
+                        } as React.CSSProperties}>
                             <Mail size={14} /> Email Client
                         </button>
                     )}
@@ -237,7 +269,7 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
                             border: 'none', backgroundColor: '#2563eb',
                             color: 'white', fontSize: '13px', fontWeight: 500,
                             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
-                        }}>
+                        } as React.CSSProperties}>
                             <CheckCircle2 size={14} /> Mark as Resolved
                         </button>
                     )}
