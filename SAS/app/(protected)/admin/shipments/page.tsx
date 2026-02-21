@@ -8,6 +8,9 @@ import { ShipmentStatusBadge } from '@/components/shipments/ShipmentStatusBadge'
 import { ShipmentStatsCard } from '@/components/shipments/ShipmentStatsCard'
 import { ShipmentPagination } from '@/components/shipments/ShipmentPagination'
 import { Shipment } from '@/types'
+import { ShipmentFilter } from '@/components/shipments/ShipmentFilter'
+import { exportAllShipmentsPDF } from '@/lib/Utils/exportPDF'
+import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
 
 function formatDate(date: Date | null) {
   if (!date) return 'Pending'
@@ -27,6 +30,41 @@ export default function AllShipmentsPage() {
   const [stats, setStats] = useState({ total: 0, inTransit: 0, exceptions: 0, deliveredToday: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({
+  transportMode: '',
+  currentStage: '',
+})
+const [searchQuery, setSearchQuery] = useState('')
+const filteredShipments = shipments.filter((s) => {
+  if (activeFilters.transportMode && s.transportMode !== activeFilters.transportMode) return false
+  if (activeFilters.currentStage && s.currentStage !== activeFilters.currentStage) return false
+  if (searchQuery && !s.cargowiseId.toLowerCase().includes(searchQuery.toLowerCase())) return false
+  return true
+})
+const filterGroups = [
+  {
+    label: 'By Department',
+    key: 'transportMode',
+    options: [
+      { label: 'Air Freight', value: 'AIR' },
+      { label: 'Sea Freight', value: 'SEA' },
+      { label: 'Road Freight', value: 'ROAD' },
+    ],
+  },
+  {
+    label: 'By Current Stage',
+    key: 'currentStage',
+    options: [
+      { label: 'In Transit', value: 'in_transit' },
+      { label: 'Customs Hold', value: 'customs_hold' },
+      { label: 'Arrived at Port', value: 'arrived_at_port' },
+      { label: 'Processing', value: 'processing' },
+      { label: 'Delivered', value: 'delivered' },
+    ],
+  },
+]
+
+
 
   useEffect(() => {
     async function fetchData() {
@@ -38,7 +76,7 @@ export default function AllShipmentsPage() {
         ])
         setShipments(shipmentsData)
         setStats(statsData)
-      } catch (err) {
+      } catch {
         setError('Failed to load shipments')
       } finally {
         setLoading(false)
@@ -74,8 +112,27 @@ export default function AllShipmentsPage() {
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
         <div className="flex items-center gap-2 px-5 pt-5 pb-4">
-          <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Filter</button>
-          <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Export</button>
+           
+          <ShipmentSearch value={searchQuery} onChange={setSearchQuery} />
+          <ShipmentFilter
+            groups={filterGroups}
+            activeFilters={activeFilters}
+            onFilterChange={(key, value) =>
+              setActiveFilters((prev) => ({ ...prev, [key]: value }))
+           }
+           onClearAll={() =>
+              setActiveFilters({ transportMode: '', currentStage: '' })
+         }
+          />
+          <button
+  onClick={() => exportAllShipmentsPDF(filteredShipments)}
+  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+>
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+  </svg>
+  Export PDF
+</button>
         </div>
 
         <div className="overflow-x-auto">
@@ -91,7 +148,7 @@ export default function AllShipmentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {shipments.map((shipment) => {
+              {filteredShipments.map((shipment) => {
                 const action = getAction(shipment)
                 return (
                   <tr key={shipment.id} className="hover:bg-gray-50 transition-colors">
@@ -125,7 +182,7 @@ export default function AllShipmentsPage() {
             </tbody>
           </table>
         </div>
-        <ShipmentPagination currentPage={currentPage} totalPages={Math.ceil(shipments.length / 10)} totalResults={shipments.length} pageSize={10} onPageChange={setCurrentPage} />
+        <ShipmentPagination currentPage={currentPage} totalResults={filteredShipments.length} totalPages={Math.ceil(filteredShipments.length / 10)} pageSize={10} onPageChange={setCurrentPage} />
       </div>
     </div>
   )
