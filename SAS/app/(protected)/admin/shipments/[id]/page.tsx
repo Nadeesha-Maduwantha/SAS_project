@@ -10,6 +10,7 @@ import {
   MapPin, Package, User, Mail, Phone, Box
 } from 'lucide-react'
 import { exportShipmentDetailPDF } from '@/lib/Utils/exportPDF'
+import { ShipmentMap } from '@/components/shipments/ShipmentMap'
 
 function formatDate(date: Date | null | undefined) {
   if (!date) return '—'
@@ -284,16 +285,11 @@ export default function ShipmentDetailPage() {
               </div>
             </div>
 
-            {/* Map Placeholder */}
-            <div style={{
-              height: '160px', background: '#f9fafb', borderRadius: '10px',
-              border: '1.5px dashed #d1d5db', display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', gap: '6px'
-            }}>
-              <MapPin style={{ width: '24px', height: '24px', color: '#9ca3af' }} />
-              <p style={{ fontSize: '13px', fontWeight: 500, color: '#6b7280', margin: 0 }}>Interactive Map</p>
-              <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0 }}>Will show route when milestone data is available</p>
-            </div>
+            <ShipmentMap
+              originCity={shipment.originCity}
+              destinationCity={shipment.destinationCity}
+              progressPercent={progress}
+              />
           </div>
 
           {/* Cargo Timeline */}
