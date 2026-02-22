@@ -61,6 +61,9 @@ consigneeName?: string
 consigneeAddress?: string
 consigneeContact?: string
 consigneeEmail?: string
+salesUserStaffCode?: string
+salesUserName?: string
+salesUserEmail?: string
 }
 
 export interface ShipmentStats {

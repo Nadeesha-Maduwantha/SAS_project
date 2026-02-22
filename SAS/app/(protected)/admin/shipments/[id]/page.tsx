@@ -83,9 +83,12 @@ export default function ShipmentDetailPage() {
   const progress = getProgressPercent(shipment.currentStage)
 
   const backLabel =
-    from.includes('delayed') ? 'Delayed Shipments' :
-    from.includes('archive') ? 'Archived Shipments' :
-    'Shipments'
+  from.includes('delayed') ? 'Delayed Shipments' :
+  from.includes('archive') ? 'Archived Shipments' :
+  from.includes('operation_user') ? 'My Assigned Shipments' :
+  from.includes('sales_user') ? 'Assigned Shipments' :
+  from.includes('Super_user') ? 'Active Shipments' :
+  'Shipments'
 
   return (
     <div style={{ padding: '24px', maxWidth: '1400px', fontFamily: 'inherit' }}>
@@ -224,7 +227,7 @@ export default function ShipmentDetailPage() {
 
             {shipment.stNoteText && (
               <p style={{ fontSize: '12px', color: '#6b7280', background: '#f9fafb', borderRadius: '8px', padding: '8px 12px', margin: '12px 0 0' }}>
-                📝 {shipment.stNoteText}
+                Note: {shipment.stNoteText}
               </p>
             )}
           </div>
@@ -346,7 +349,7 @@ export default function ShipmentDetailPage() {
 
             <div style={{ marginTop: '14px', padding: '8px 12px', background: '#fefce8', border: '1px solid #fde68a', borderRadius: '8px' }}>
               <p style={{ fontSize: '11px', color: '#92400e', margin: 0, textAlign: 'center' }}>
-                ⏳ Milestone data will connect when module is ready
+                Milestone data will connect when module is ready
               </p>
             </div>
 
