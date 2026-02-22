@@ -167,7 +167,7 @@ const filterGroups = [
                   <td className="px-5 py-3.5 text-sm text-gray-700">{formatDate(shipment.estimatedArrival)}</td>
                   <td className="px-5 py-3.5 text-sm text-gray-600">{shipment.delayReason ?? '—'}</td>
                   <td className="px-5 py-3.5">
-                    <button className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Resolve</button>
+                    <button className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Take Action</button>
                   </td>
                   <td className="px-5 py-3.5">
                    <button

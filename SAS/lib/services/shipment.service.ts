@@ -48,6 +48,9 @@ interface ShipmentRow {
   consignee_address: string | null
   consignee_contact: string | null
   consignee_email: string | null
+  sales_user_staff_code: string | null
+  sales_user_name: string | null
+  sales_user_email: string | null
 }
 
 // Maps Supabase row → your Shipment type
@@ -106,6 +109,10 @@ function mapRow(row: ShipmentRow): Shipment {
     },
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
+
+    salesUserStaffCode: row.sales_user_staff_code ?? undefined,
+    salesUserName: row.sales_user_name ?? undefined,
+    salesUserEmail: row.sales_user_email ?? undefined,
   }
 }
 
@@ -245,4 +252,30 @@ export async function getDepartmentStats(transportMode: string) {
       new Date(s.delivery_date).toDateString() === today
     ).length,
   }
+}
+
+export async function getShipmentsByOperationUser(
+  staffCode: string
+): Promise<Shipment[]> {
+  const { data, error } = await supabase
+    .from('shipments')
+    .select('*')
+    .eq('created_by_staff_code', staffCode)
+    .order('estimated_arrival', { ascending: true })
+
+  if (error) throw new Error(error.message)
+  return data.map(mapRow)
+}
+
+export async function getShipmentsBySalesUser(
+  staffCode: string
+): Promise<Shipment[]> {
+  const { data, error } = await supabase
+    .from('shipments')
+    .select('*')
+    .eq('sales_user_staff_code', staffCode)
+    .order('estimated_arrival', { ascending: true })
+
+  if (error) throw new Error(error.message)
+  return data.map(mapRow)
 }

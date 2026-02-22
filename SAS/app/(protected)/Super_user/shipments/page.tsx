@@ -27,27 +27,7 @@ function formatDate(date: Date | null | undefined) {
   })
 }
 
-function getProgressPercent(stage: string): number {
-  const map: Record<string, number> = {
-    processing: 10,
-    in_transit: 50,
-    arrived_at_port: 75,
-    customs_hold: 60,
-    port_congestion: 55,
-    weather_delay: 50,
-    equipment_issue: 45,
-    documentation_issue: 40,
-    vessel_delay: 50,
-    delivered: 100,
-  }
-  return map[stage] ?? 30
-}
 
-function getProgressColor(stage: string): string {
-  if (['customs_hold', 'port_congestion', 'weather_delay', 'equipment_issue', 'documentation_issue', 'vessel_delay'].includes(stage)) return '#ef4444'
-  if (stage === 'delivered') return '#10b981'
-  return '#2563eb'
-}
 
 export default function SuperUserActiveShipmentsPage() {
   const router = useRouter()
@@ -228,10 +208,10 @@ export default function SuperUserActiveShipmentsPage() {
                 <th className="text-left px-5 py-3">Shipment ID</th>
                 <th className="text-left px-5 py-3">Destination</th>
                 <th className="text-left px-5 py-3">Status</th>
-                <th className="text-left px-5 py-3">Current Phase</th>
                 <th className="text-left px-5 py-3">ETA</th>
                 <th className="text-left px-5 py-3">Priority</th>
                 <th className="text-left px-5 py-3">Actions</th>
+                <th className="text-left px-5 py-3">Detail</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -260,20 +240,7 @@ export default function SuperUserActiveShipmentsPage() {
                     <ShipmentStatusBadge status={shipment.currentStage} />
                   </td>
 
-                  {/* Current Phase Progress */}
-                  <td className="px-5 py-3.5">
-                    <p className="text-xs text-gray-600 mb-1.5 capitalize">
-                      {shipment.currentStage.replace(/_/g, ' ')}
-                    </p>
-                    <div style={{ width: '120px', height: '4px', background: '#e5e7eb', borderRadius: '9999px' }}>
-                      <div style={{
-                        height: '100%',
-                        width: `${getProgressPercent(shipment.currentStage)}%`,
-                        background: getProgressColor(shipment.currentStage),
-                        borderRadius: '9999px',
-                      }} />
-                    </div>
-                  </td>
+                 
 
                   {/* ETA */}
                   <td className="px-5 py-3.5 text-sm text-gray-700">
@@ -291,15 +258,24 @@ export default function SuperUserActiveShipmentsPage() {
                     </span>
                   </td>
 
-                  {/* Actions */}
-                  <td className="px-5 py-3.5">
-                    <button
-                      onClick={() => router.push(`/admin/shipments/${shipment.id}?from=/Super_user/shipments`)}
-                      className="text-xs font-medium text-blue-600 hover:underline"
-                    >
-                      View Details
-                    </button>
-                  </td>
+                  {/* Action Column */}
+<td className="px-5 py-3.5">
+  {shipment.currentStage !== 'delivered' && (
+    <button className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+      Take Action
+    </button>
+  )}
+</td>
+
+{/* Detail Column */}
+<td className="px-5 py-3.5">
+  <button
+    onClick={() => router.push(`/admin/shipments/${shipment.id}?from=/Super_user/shipments`)}
+    className="text-xs font-medium text-blue-600 hover:underline"
+  >
+    View Details
+  </button>
+</td>
                 </tr>
               ))}
             </tbody>
