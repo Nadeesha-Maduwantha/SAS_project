@@ -1,0 +1,97 @@
+@reference "tailwindcss";
+
+.op-tableCard {
+  @apply mt-10 bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden;
+}
+
+.op-tableHead {
+  @apply p-7 flex items-start justify-between gap-4;
+}
+
+.op-tableTitle {
+  @apply text-2xl font-black text-slate-900;
+}
+
+.op-tableSub {
+  @apply mt-1 text-base text-slate-500;
+}
+
+.op-tableSearch {
+  @apply flex items-center gap-2 px-4 py-3 rounded-xl border border-slate-200 bg-white;
+}
+
+.op-tableSearch__icon {
+  @apply w-4 h-4 text-slate-400;
+}
+
+.op-tableSearch__input {
+  @apply outline-none border-0 text-sm text-slate-700 w-48;
+}
+
+.op-tableWrap {
+  @apply overflow-x-auto;
+}
+
+.op-table {
+  @apply w-full text-base;
+}
+
+.op-table thead th {
+  @apply text-left text-xs uppercase tracking-wide text-slate-500 bg-slate-50 px-7 py-4 border-t border-slate-200;
+}
+
+.op-table tbody td {
+  @apply px-7 py-6 border-t border-slate-100 align-middle;
+}
+
+.op-table tbody tr:hover {
+  @apply bg-slate-50;
+}
+
+.op-strong {
+  @apply text-slate-900 font-black;
+}
+
+.op-muted {
+  @apply mt-1 text-sm text-slate-400 font-semibold;
+}
+
+.op-pill {
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black border;
+}
+
+.op-pillDot {
+  @apply w-2 h-2 rounded-full;
+}
+
+.op-pill--red { @apply bg-red-50 border-red-200 text-red-700; }
+.op-pillDot--red { @apply bg-red-500; }
+
+.op-pill--blue { @apply bg-blue-50 border-blue-200 text-blue-700; }
+.op-pillDot--blue { @apply bg-blue-600; }
+
+.op-pill--purple { @apply bg-purple-50 border-purple-200 text-purple-700; }
+.op-pillDot--purple { @apply bg-purple-600; }
+
+.op-pill--green { @apply bg-green-50 border-green-200 text-green-700; }
+.op-pillDot--green { @apply bg-green-600; }
+
+.op-action {
+  @apply text-right;
+}
+
+.op-linkBtn {
+  @apply text-blue-600 font-black hover:text-blue-700;
+}
+
+.op-tableFooter {
+  @apply p-7 flex items-center justify-between gap-4 border-t border-slate-100;
+}
+
+.op-pager {
+  @apply flex items-center gap-2;
+}
+
+.op-pageBtn {
+  @apply px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 transition;
+}
