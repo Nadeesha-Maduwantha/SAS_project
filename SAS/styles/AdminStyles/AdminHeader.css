@@ -1,23 +1,13 @@
+@reference "tailwindcss";
+
 .admin-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  @apply flex items-center gap-2.5;
 }
 
 .admin-header__title {
-  font-size: 18px;
-  font-weight: 900;
-  color: #0f172a;
+  @apply text-[18px] font-black text-slate-900;
 }
 
 .admin-header__badge {
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.8px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid #bfdbfe;
-  background: #eff6ff;
-  color: #1d4ed8;
-  text-transform: uppercase;
+  @apply text-[10px] font-black tracking-[0.8px] px-[10px] py-[6px] rounded-full border border-blue-200 bg-blue-50 text-blue-700 uppercase;
 }
