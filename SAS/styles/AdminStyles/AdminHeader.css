@@ -1,0 +1,23 @@
+.admin-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-header__title {
+  font-size: 18px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.admin-header__badge {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  text-transform: uppercase;
+}
