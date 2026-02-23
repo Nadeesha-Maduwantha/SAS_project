@@ -97,7 +97,6 @@
   font-size: 13px;
   font-weight: 600;
   color: #1f2937;
-  text-transform: uppercase;
   letter-spacing: 0.5px;
   transition: all 0.2s ease;
   position: relative;
@@ -201,7 +200,6 @@
   font-size: 13px;
   font-weight: 600;
   color: #6b7280;
-  text-transform: uppercase;
   letter-spacing: 0.5px;
   transition: all 0.2s ease;
   margin: 12px 0;
