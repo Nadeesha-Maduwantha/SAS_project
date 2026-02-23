@@ -1,0 +1,60 @@
+.admin-banner {
+  width: 100%;
+  border-radius: 14px;
+  background: #0b2545;
+  color: white;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-banner__left {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.admin-banner__iconWrap {
+  height: 36px;
+  width: 36px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-banner__icon {
+  width: 18px;
+  height: 18px;
+}
+
+.admin-banner__title {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.admin-banner__desc {
+  margin-top: 3px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.admin-banner__status {
+  display: none;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.admin-banner__statusGood {
+  color: #6ee7b7;
+  font-weight: 800;
+}
+
+@media (min-width: 768px) {
+  .admin-banner__status {
+    display: block;
+  }
+}
