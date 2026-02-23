@@ -1,60 +1,43 @@
+@reference "tailwindcss";
+
 .admin-banner {
-  width: 100%;
-  border-radius: 14px;
-  background: #0b2545;
-  color: white;
-  padding: 14px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  @apply w-full rounded-[14px] bg-[#0b2545] text-white px-4 py-[14px] flex items-center justify-between gap-3;
 }
 
 .admin-banner__left {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  @apply flex items-start gap-3;
 }
 
 .admin-banner__iconWrap {
-  height: 36px;
-  width: 36px;
-  border-radius: 10px;
+  @apply h-9 w-9 rounded-[10px] flex items-center justify-center;
   background: rgba(255, 255, 255, 0.12);
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .admin-banner__icon {
-  width: 18px;
-  height: 18px;
+  @apply w-[18px] h-[18px];
 }
 
 .admin-banner__title {
-  font-size: 13px;
-  font-weight: 800;
+  @apply text-[13px] font-extrabold;
 }
 
 .admin-banner__desc {
-  margin-top: 3px;
-  font-size: 12px;
+  @apply mt-[3px] text-xs;
   color: rgba(255, 255, 255, 0.75);
 }
 
 .admin-banner__status {
-  display: none;
-  font-size: 12px;
+  @apply hidden text-xs;
   color: rgba(255, 255, 255, 0.75);
 }
 
 .admin-banner__statusGood {
+  @apply font-extrabold;
   color: #6ee7b7;
-  font-weight: 800;
 }
 
 @media (min-width: 768px) {
   .admin-banner__status {
-    display: block;
+    @apply block;
   }
 }

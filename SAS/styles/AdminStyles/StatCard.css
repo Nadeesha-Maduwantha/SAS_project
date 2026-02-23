@@ -1,63 +1,33 @@
+@reference "tailwindcss";
+
 .stat-card {
-  background: #ffffff;
-  border: 1px solid #eef2f7;
-  border-radius: 14px;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
-  padding: 16px;
+  @apply bg-white border border-slate-100 rounded-[14px] shadow-[0_10px_24px_rgba(15,23,42,0.04)] p-4;
 }
 
 .stat-card__top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
+  @apply flex items-start justify-between gap-[10px];
 }
 
 .stat-card__left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  @apply flex items-center gap-[10px];
 }
 
 .stat-card__iconWrap {
-  height: 36px;
-  width: 36px;
-  border-radius: 10px;
-  background: #f8fafc;
-  border: 1px solid #eef2f7;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  @apply h-9 w-9 rounded-[10px] bg-slate-50 border border-slate-100 flex items-center justify-center;
 }
 
 .stat-card__title {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.8px;
-  color: #64748b;
-  text-transform: uppercase;
+  @apply text-[11px] font-extrabold tracking-[0.8px] text-slate-500 uppercase;
 }
 
 .stat-card__tag {
-  font-size: 10px;
-  font-weight: 900;
-  text-transform: uppercase;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #f8fafc;
-  border: 1px solid #eef2f7;
-  color: #475569;
+  @apply text-[10px] font-black uppercase px-[10px] py-[6px] rounded-full bg-slate-50 border border-slate-100 text-slate-600;
 }
 
 .stat-card__value {
-  margin-top: 12px;
-  font-size: 26px;
-  font-weight: 900;
-  color: #0f172a;
+  @apply mt-3 text-[26px] font-black text-slate-900;
 }
 
 .stat-card__hint {
-  margin-top: 4px;
-  font-size: 12px;
-  color: #64748b;
+  @apply mt-1 text-xs text-slate-500;
 }

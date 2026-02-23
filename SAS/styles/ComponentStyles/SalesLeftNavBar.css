@@ -1,25 +1,16 @@
+@reference "tailwindcss";
+
 /* Sales User Left Navigation Bar Styles (Admin theme based) */
 
 .sales-nav-container {
-  width: 100%;
-  max-width: 300px;
-  height: 100vh;
-  background-color: #eef1f5;
-  padding: 20px;
-  box-sizing: border-box;
-  border-right: 1px solid #e5e5e7;
-  display: flex;
-  flex-direction: column;
+  @apply w-full max-w-[300px] h-screen bg-[#eef1f5] p-5 box-border border-r border-[#e5e5e7] flex flex-col;
 }
 
 .sales-nav-top {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  overflow-y: auto;
-  padding-bottom: 16px;
+  @apply flex flex-col gap-2.5 overflow-y-auto pb-4;
 }
 
+/* Scrollbar */
 .sales-nav-top::-webkit-scrollbar {
   width: 6px;
 }
@@ -36,190 +27,99 @@
 
 /* Header */
 .nav-header {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  margin-bottom: 10px;
-  padding: 12px 6px;
+  @apply flex items-center justify-start mb-2.5 py-3 px-[6px];
 }
 
 .nav-logo {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-  user-select: none;
+  @apply flex items-center gap-3 cursor-pointer select-none;
 }
 
 .logo-icon {
-  width: 40px;
-  height: 40px;
+  @apply w-10 h-10 rounded-2xl p-2 text-white shrink-0;
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  border-radius: 16px;
-  padding: 8px;
-  color: white;
-  flex-shrink: 0;
   box-shadow: 0 12px 30px rgba(37, 99, 235, 0.22);
 }
 
 .logo-text {
-  font-size: 22px;
-  font-weight: 800;
-  color: #0f172a;
-  letter-spacing: -0.5px;
+  @apply text-[22px] font-extrabold text-slate-900 tracking-[-0.5px];
 }
 
 /* Dashboard Button */
 .nav-dashboard-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 16px 18px;
-  background-color: #dbeafe;
-  border: none;
-  border-radius: 18px;
-  cursor: pointer;
-  font-size: 20px;
-  font-weight: 800;
-  color: #1e40af;
-  transition: all 0.2s ease;
-  margin: 8px 0 6px;
+  @apply flex items-center gap-3 w-full px-[18px] py-4 bg-blue-100 border-0 rounded-[18px] cursor-pointer text-[20px] font-extrabold text-blue-900 transition-all duration-200 ease-in-out my-2 mb-1.5;
 }
 
 .nav-dashboard-btn:hover {
-  background-color: #bfdbfe;
+  @apply bg-blue-200;
   transform: translateX(2px);
 }
 
 .nav-dashboard-btn.active {
-  background-color: #3b82f6;
-  color: white;
+  @apply bg-blue-500 text-white;
 }
 
 .nav-icon {
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-  color: #6b7280;
+  @apply w-[22px] h-[22px] shrink-0 text-gray-500;
 }
 
 .nav-dashboard-btn.active .nav-icon {
-  color: white;
+  @apply text-white;
 }
 
 /* Single buttons */
 .nav-single-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 14px 18px;
-  background-color: transparent;
-  border: none;
-  border-radius: 16px;
-  cursor: pointer;
-  font-size: 22px;
-  color: #6b7280;
-  text-align: left;
-  transition: all 0.2s ease;
-  font-weight: 700;
+  @apply flex items-center gap-3 w-full px-[18px] py-[14px] bg-transparent border-0 rounded-2xl cursor-pointer text-[22px] text-gray-500 text-left transition-all duration-200 ease-in-out font-bold;
 }
 
 .nav-single-btn:hover {
-  background-color: rgba(0, 0, 0, 0.04);
-  color: #374151;
+  @apply bg-black/5 text-gray-700;
 }
 
 .nav-single-btn.active {
-  background-color: #dbeafe;
-  color: #1e40af;
-  border-left: 3px solid #3b82f6;
+  @apply bg-blue-100 text-blue-900 border-l-[3px] border-blue-500;
   padding-left: 15px;
 }
 
 /* History button (label look) */
 .nav-history-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 16px 18px;
-  background-color: transparent;
-  border: none;
-  border-radius: 16px;
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.2s ease;
+  @apply flex items-center gap-3 w-full px-[18px] py-4 bg-transparent border-0 rounded-2xl cursor-pointer text-left transition-all duration-200 ease-in-out;
 }
 
 .nav-history-btn:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  @apply bg-black/5;
 }
 
 .nav-history-text {
-  font-size: 20px;
-  font-weight: 900;
-  letter-spacing: 1px;
-  color: #0f172a;
-  text-transform: uppercase;
+  @apply text-[20px] font-black tracking-[1px] text-slate-900 uppercase;
 }
 
 .nav-history-btn .nav-icon {
-  width: 24px;
-  height: 24px;
+  @apply w-6 h-6;
 }
 
 /* Dropdown section (Settings) */
 .nav-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  margin-top: 6px;
+  @apply flex flex-col gap-0 mt-[6px];
 }
 
 .nav-section-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 16px 18px;
-  background-color: transparent;
-  border: none;
-  border-radius: 16px;
-  cursor: pointer;
-  font-size: 20px;
-  font-weight: 900;
-  color: #0f172a;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  transition: all 0.2s ease;
+  @apply flex items-center gap-3 w-full px-[18px] py-4 bg-transparent border-0 rounded-2xl cursor-pointer text-[20px] font-black text-slate-900 uppercase tracking-[1px] transition-all duration-200 ease-in-out;
 }
 
 .nav-section-header:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  @apply bg-black/5;
 }
 
 .chevron-icon {
-  width: 22px;
-  height: 22px;
-  margin-left: auto;
-  color: #9ca3af;
-  transition: transform 0.3s ease;
+  @apply w-[22px] h-[22px] ml-auto text-gray-400 transition-transform duration-300 ease-in-out;
 }
 
 .chevron-icon.expanded {
-  transform: rotate(180deg);
+  @apply rotate-180;
 }
 
 .nav-section-content {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  padding-left: 12px;
-  border-left: 2px solid rgba(148, 163, 184, 0.6);
-  margin-left: 16px;
-  margin-top: 2px;
+  @apply flex flex-col gap-0 pl-3 border-l-2 border-slate-300/60 ml-4 mt-0.5;
   animation: slideDown 0.2s ease;
 }
 
@@ -237,98 +137,55 @@
 
 /* Dropdown items */
 .nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 12px 16px;
-  background-color: transparent;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  font-size: 18px;
-  color: #64748b;
-  text-align: left;
-  transition: all 0.2s ease;
-  font-weight: 800;
+  @apply flex items-center gap-2.5 w-full px-4 py-3 bg-transparent border-0 rounded-xl cursor-pointer text-[18px] text-slate-500 text-left transition-all duration-200 ease-in-out font-extrabold;
 }
 
 .nav-item:hover {
-  background-color: rgba(0, 0, 0, 0.04);
-  color: #0f172a;
+  @apply bg-black/5 text-slate-900;
   padding-left: 20px;
 }
 
 .nav-item.active {
-  background-color: #dbeafe;
-  color: #1e40af;
-  border-left: 3px solid #3b82f6;
+  @apply bg-blue-100 text-blue-900 border-l-[3px] border-blue-500;
   padding-left: 13px;
 }
 
 .nav-item-icon {
-  width: 18px;
-  height: 18px;
-  color: #6b7280;
+  @apply w-[18px] h-[18px] text-gray-500;
 }
 
 /* Bottom profile card */
 .sales-nav-bottom {
-  margin-top: auto;
-  padding-top: 10px;
+  @apply mt-auto pt-2.5;
 }
 
 .profile-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 14px;
+  @apply flex items-center justify-between p-[14px] rounded-[22px];
   background: rgba(255, 255, 255, 0.35);
-  border-radius: 22px;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
 }
 
 .profile-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  @apply flex items-center gap-3;
 }
 
 .profile-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+  @apply w-11 h-11 rounded-full;
   background: radial-gradient(circle at 30% 30%, #f59e0b, #ef4444);
   border: 3px solid rgba(255, 255, 255, 0.9);
 }
 
 .profile-name {
-  font-size: 20px;
-  font-weight: 900;
-  color: #0f172a;
-  line-height: 1.1;
+  @apply text-[20px] font-black text-slate-900 leading-[1.1];
 }
 
 .profile-role {
-  font-size: 14px;
-  font-weight: 900;
-  letter-spacing: 1px;
-  color: #64748b;
-  text-transform: uppercase;
-  margin-top: 4px;
+  @apply text-sm font-black tracking-[1px] text-slate-500 uppercase mt-1;
 }
 
 .logout-btn {
-  width: 44px;
-  height: 44px;
-  border: none;
-  border-radius: 14px;
+  @apply w-11 h-11 border-0 rounded-[14px] cursor-pointer flex items-center justify-center transition-all duration-200 ease-in-out;
   background: rgba(239, 68, 68, 0.08);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
 }
 
 .logout-btn:hover {
@@ -337,31 +194,27 @@
 }
 
 .logout-icon {
-  width: 22px;
-  height: 22px;
-  color: #ef4444;
+  @apply w-[22px] h-[22px] text-red-500;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
   .sales-nav-container {
-    max-width: 250px;
-    padding: 16px;
+    @apply max-w-[250px] p-4;
   }
 
   .logo-text {
-    font-size: 18px;
+    @apply text-[18px];
   }
 
   .nav-dashboard-btn,
   .nav-single-btn,
   .nav-history-btn,
   .nav-section-header {
-    font-size: 16px;
-    padding: 12px 14px;
+    @apply text-base px-[14px] py-3;
   }
 
   .nav-item {
-    font-size: 15px;
+    @apply text-[15px];
   }
 }
