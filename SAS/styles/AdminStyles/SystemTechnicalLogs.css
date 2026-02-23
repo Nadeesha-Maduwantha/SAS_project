@@ -1,0 +1,70 @@
+.sys-card {
+  background: #ffffff;
+  border: 1px solid #eef2f7;
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  padding: 16px;
+}
+
+.sys-card__title {
+  font-size: 14px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.sys-card__sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.sys-terminal {
+  margin-top: 12px;
+  border-radius: 14px;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.sys-line {
+  opacity: 0.92;
+}
+
+.sys-metrics {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.sys-metric {
+  border-radius: 14px;
+  border: 1px solid #eef2f7;
+  background: #f8fafc;
+  padding: 14px;
+}
+
+.sys-metric__label {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.sys-metric__value {
+  margin-top: 8px;
+  font-size: 22px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.sys-metric__hint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #64748b;
+}
