@@ -13,7 +13,8 @@ export interface UserProfile {
   status: "Active" | "Inactive";
   isVerified: boolean;
   avatarUrl?: string;
-  lastLogin?: string;
+  lastLogin: string;
+  memberSince: string; // Add this line
   createdAt?: string;
 }
 
