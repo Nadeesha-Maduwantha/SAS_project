@@ -20,8 +20,79 @@ import {
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import EmailComposeModal from '@/components/EmailComposeModal';
-import AlertDetailsModal, { AlertData } from '@/components/AlertDetailsModal';
 
+type AlertData = {
+    id: string;
+    client: string;
+    clientInitial: string;
+    clientColor: string;
+    priority: string;
+    milestone: string;
+    milestoneIcon: string;
+    issue: string;
+    delay: string;
+    status: string;
+    resolvedAt?: string;
+};
+
+type AlertDetailsModalProps = {
+    alert: AlertData | null;
+    isOpen: boolean;
+    onClose: () => void;
+};
+
+const AlertDetailsModal: React.FC<AlertDetailsModalProps> = ({
+    alert,
+    isOpen,
+    onClose,
+}) => {
+    if (!isOpen || !alert) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-lg">
+                <div className="mb-4 flex items-center justify-between">
+                    <h2 className="text-lg font-semibold">Alert Details</h2>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="text-sm text-gray-500 hover:text-gray-700"
+                    >
+                        Close
+                    </button>
+                </div>
+                <div className="space-y-2 text-sm text-gray-700">
+                    <div>
+                        <span className="font-medium">Shipment ID:</span> {alert.id}
+                    </div>
+                    <div>
+                        <span className="font-medium">Client:</span> {alert.client}
+                    </div>
+                    <div>
+                        <span className="font-medium">Priority:</span> {alert.priority}
+                    </div>
+                    <div>
+                        <span className="font-medium">Milestone:</span> {alert.milestone}
+                    </div>
+                    <div>
+                        <span className="font-medium">Issue:</span> {alert.issue}
+                    </div>
+                    <div>
+                        <span className="font-medium">Delay:</span> {alert.delay}
+                    </div>
+                    {alert.resolvedAt && (
+                        <div>
+                            <span className="font-medium">Resolved:</span> {alert.resolvedAt}
+                        </div>
+                    )}
+                    <div>
+                        <span className="font-medium">Status:</span> {alert.status}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 // ─── All alerts — only Resolved ones shown ────────────────────────────────────
 const ALL_ALERTS: AlertData[] = [
     {
