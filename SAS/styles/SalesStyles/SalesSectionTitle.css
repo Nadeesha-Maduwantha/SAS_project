@@ -1,0 +1,21 @@
+@reference "tailwindcss";
+
+.sales-section {
+  @apply flex items-center justify-between gap-4 mt-8 mb-4;
+}
+
+.sales-section__left {
+  @apply flex items-center gap-3;
+}
+
+.sales-section__iconWrap {
+  @apply w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600;
+}
+
+.sales-section__title {
+  @apply text-xl font-black text-slate-900;
+}
+
+.sales-section__right {
+  @apply ml-auto;
+}
