@@ -37,11 +37,9 @@ export default function ShipmentFeed() {
   const [showAll, setShowAll] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  const [filterType, setFilterType] =
-    useState<FilterType>('department');
+  const [filterType, setFilterType] = useState<FilterType>('department');
   const [deptValue, setDeptValue] = useState<string>('All');
-  const [statusValue, setStatusValue] =
-    useState<string>('All');
+  const [statusValue, setStatusValue] = useState<string>('All');
 
   const rows: ShipmentRow[] = [
     { id: '#DGL-82910', origin: 'Colombo (CMB)', dest: 'Singapore (SIN)', dept: 'Sea Freight', status: 'In Transit', lead: 'S. Perera' },
@@ -56,21 +54,16 @@ export default function ShipmentFeed() {
     { id: '#DGL-82919', origin: 'Busan (PUS)', dest: 'Rotterdam (RTM)', dept: 'Sea Freight', status: 'Arrived at Port', lead: 'D. Tanaka' },
   ];
 
-  const isFiltering =
-    deptValue !== 'All' || statusValue !== 'All';
+  const isFiltering = deptValue !== 'All' || statusValue !== 'All';
 
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
       if (filterType === 'department') {
-        return deptValue === 'All'
-          ? true
-          : r.dept === deptValue;
+        return deptValue === 'All' ? true : r.dept === deptValue;
       }
-      return statusValue === 'All'
-        ? true
-        : r.status === statusValue;
+      return statusValue === 'All' ? true : r.status === statusValue;
     });
-  }, [filterType, deptValue, statusValue]);
+  }, [rows, filterType, deptValue, statusValue]);
 
   const displayedRows =
     isFiltering || showAll
@@ -80,15 +73,9 @@ export default function ShipmentFeed() {
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) =>
       prev.includes(id)
-        ? prev.filter((i) => i !== id)
+        ? prev.filter((item) => item !== id)
         : [...prev, id]
     );
-  };
-
-  const onChangeType = (t: FilterType) => {
-    setFilterType(t);
-    if (t === 'department') setStatusValue('All');
-    if (t === 'status') setDeptValue('All');
   };
 
   const clearFilter = () => {
@@ -98,6 +85,7 @@ export default function ShipmentFeed() {
     setShowAll(false);
   };
 
+  // ✅ SMART EXPORT
   const exportToCSV = () => {
     let dataToExport: ShipmentRow[] = [];
 
@@ -161,109 +149,16 @@ export default function ShipmentFeed() {
 
         <div className="shipment-card__actions">
           <button
-            className="shipment-btn shipment-btn--ghost"
-            onClick={() =>
-              setOpenFilter((prev) => !prev)
-            }
-            type="button"
-          >
-            Filter
-          </button>
-
-          {openFilter && (
-            <div className="shipment-filterPop">
-              <div className="shipment-filterPop__top">
-                <div className="shipment-filterPop__title">
-                  Filter by
-                </div>
-                <button
-                  className="shipment-filterPop__clear"
-                  onClick={clearFilter}
-                  type="button"
-                >
-                  Clear
-                </button>
-              </div>
-
-              <div className="shipment-filterPop__chips">
-                <button
-                  type="button"
-                  className={`shipment-filterChip ${
-                    filterType === 'department'
-                      ? 'active'
-                      : ''
-                  }`}
-                  onClick={() =>
-                    onChangeType('department')
-                  }
-                >
-                  Department
-                </button>
-                <button
-                  type="button"
-                  className={`shipment-filterChip ${
-                    filterType === 'status'
-                      ? 'active'
-                      : ''
-                  }`}
-                  onClick={() =>
-                    onChangeType('status')
-                  }
-                >
-                  Current Status
-                </button>
-              </div>
-
-              {filterType === 'department' ? (
-                <div className="shipment-filterPop__group">
-                  <label>Department</label>
-                  <select
-                    value={deptValue}
-                    onChange={(e) =>
-                      setDeptValue(e.target.value)
-                    }
-                  >
-                    <option>All</option>
-                    <option>Air Freight</option>
-                    <option>Sea Freight</option>
-                    <option>Road Freight</option>
-                  </select>
-                </div>
-              ) : (
-                <div className="shipment-filterPop__group">
-                  <label>Status</label>
-                  <select
-                    value={statusValue}
-                    onChange={(e) =>
-                      setStatusValue(e.target.value)
-                    }
-                  >
-                    <option>All</option>
-                    <option>In Transit</option>
-                    <option>Customs Hold</option>
-                    <option>Arrived at Port</option>
-                    <option>Processing</option>
-                    <option>Delivered</option>
-                  </select>
-                </div>
-              )}
-
-              <button
-                className="shipment-filterPop__done"
-                onClick={() =>
-                  setOpenFilter(false)
-                }
-                type="button"
-              >
-                Done
-              </button>
-            </div>
-          )}
+  className="shipment-btn shipment-btn--ghost"
+  onClick={() => setOpenFilter((prev) => !prev)}
+  type="button"
+>
+  Filter
+</button>
 
           <button
             className="shipment-btn shipment-btn--primary"
             onClick={exportToCSV}
-            type="button"
           >
             {selectedIds.length > 0
               ? `Export Selected (${selectedIds.length})`
@@ -292,17 +187,11 @@ export default function ShipmentFeed() {
                 <td>
                   <input
                     type="checkbox"
-                    checked={selectedIds.includes(
-                      r.id
-                    )}
-                    onChange={() =>
-                      toggleSelect(r.id)
-                    }
+                    checked={selectedIds.includes(r.id)}
+                    onChange={() => toggleSelect(r.id)}
                   />
                 </td>
-                <td className="shipment-id">
-                  {r.id}
-                </td>
+                <td className="shipment-id">{r.id}</td>
                 <td>
                   <div className="shipment-od__main">
                     {r.origin}
@@ -317,9 +206,7 @@ export default function ShipmentFeed() {
                 </td>
                 <td>
                   <span
-                    className={`status-pill ${
-                      statusClass[r.status]
-                    }`}
+                    className={`status-pill ${statusClass[r.status]}`}
                   >
                     {r.status}
                   </span>
@@ -337,9 +224,7 @@ export default function ShipmentFeed() {
         <div className="shipment-card__footer">
           <button
             className="shipment-viewAll"
-            onClick={() =>
-              setShowAll((prev) => !prev)
-            }
+            onClick={() => setShowAll((p) => !p)}
           >
             {showAll ? 'Show Less' : 'View All'}
           </button>
