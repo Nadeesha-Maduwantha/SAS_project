@@ -11,3 +11,4 @@
 .op-inner {
   @apply max-w-[1200px] mx-auto px-8 py-8;
 }
+.op-content { @apply ml-[260px] min-h-screen; }

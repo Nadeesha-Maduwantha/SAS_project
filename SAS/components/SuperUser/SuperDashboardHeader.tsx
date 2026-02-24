@@ -5,10 +5,8 @@ export default function SuperDashboardHeader() {
   return (
     <div className="super-header">
       <div>
-        <h1 className="super-header__title">Department Overview</h1>
-        <p className="super-header__sub">
-          Super User Dashboard • Tracking 128 active operations
-        </p>
+        <h1 className="super-header__title">Super User Dashboard</h1>
+        
       </div>
 
       <button className="super-header__dateBtn">

@@ -1,13 +1,19 @@
 @reference "tailwindcss";
 
-/* Sales User Left Navigation Bar Styles (Admin theme based) */
+/* ============================= */
+/* Sales Left Navigation Bar (Admin Theme) */
+/* ============================= */
 
 .sales-nav-container {
-  @apply w-full max-w-[300px] h-screen bg-[#eef1f5] p-5 box-border border-r border-[#e5e5e7] flex flex-col;
+  /* ✅ fixed sidebar (same as admin) */
+  @apply fixed top-0 left-0 h-screen w-[260px]
+  bg-[#f5f5f7] p-5 box-border overflow-y-auto
+  flex flex-col border-r border-[#e5e5e7];
 }
 
+/* Top content wrapper */
 .sales-nav-top {
-  @apply flex flex-col gap-2.5 overflow-y-auto pb-4;
+  @apply flex flex-col gap-2 overflow-y-auto pb-4;
 }
 
 /* Scrollbar */
@@ -25,9 +31,12 @@
   background: #9ca3af;
 }
 
+/* ============================= */
 /* Header */
+/* ============================= */
+
 .nav-header {
-  @apply flex items-center justify-start mb-2.5 py-3 px-[6px];
+  @apply flex items-center justify-center mb-5 p-3;
 }
 
 .nav-logo {
@@ -35,18 +44,23 @@
 }
 
 .logo-icon {
-  @apply w-10 h-10 rounded-2xl p-2 text-white shrink-0;
+  @apply w-10 h-10 rounded-2xl p-2 text-white shrink-0 shadow-[0_12px_30px_rgba(37,99,235,0.22)];
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.22);
 }
 
 .logo-text {
-  @apply text-[22px] font-extrabold text-slate-900 tracking-[-0.5px];
+  @apply text-[16px] font-black text-slate-900 tracking-[-0.5px];
 }
 
+/* ============================= */
 /* Dashboard Button */
+/* ============================= */
+
 .nav-dashboard-btn {
-  @apply flex items-center gap-3 w-full px-[18px] py-4 bg-blue-100 border-0 rounded-[18px] cursor-pointer text-[20px] font-extrabold text-blue-900 transition-all duration-200 ease-in-out my-2 mb-1.5;
+  @apply flex items-center gap-3 w-full px-5 py-4
+  bg-blue-100 border-0 rounded-2xl cursor-pointer
+  text-[14px] font-black text-blue-900
+  transition-all duration-200 ease-in-out mb-3;
 }
 
 .nav-dashboard-btn:hover {
@@ -55,34 +69,45 @@
 }
 
 .nav-dashboard-btn.active {
-  @apply bg-blue-500 text-white;
+  @apply bg-blue-600 text-white;
 }
 
 .nav-icon {
-  @apply w-[22px] h-[22px] shrink-0 text-gray-500;
+  @apply w-5 h-5 shrink-0 text-slate-500;
 }
 
 .nav-dashboard-btn.active .nav-icon {
   @apply text-white;
 }
 
-/* Single buttons */
+/* ============================= */
+/* Single Buttons (My Shipments / My Alerts) */
+/* ============================= */
+
 .nav-single-btn {
-  @apply flex items-center gap-3 w-full px-[18px] py-[14px] bg-transparent border-0 rounded-2xl cursor-pointer text-[22px] text-gray-500 text-left transition-all duration-200 ease-in-out font-bold;
+  @apply flex items-center gap-3 w-full px-5 py-4
+  bg-transparent border-0 rounded-2xl cursor-pointer
+  text-[14px] font-bold text-slate-800 text-left
+  transition-all duration-200 ease-in-out;
 }
 
 .nav-single-btn:hover {
-  @apply bg-black/5 text-gray-700;
+  @apply bg-black/5;
 }
 
 .nav-single-btn.active {
-  @apply bg-blue-100 text-blue-900 border-l-[3px] border-blue-500;
-  padding-left: 15px;
+  @apply bg-blue-100 text-blue-800 border-l-[3px] border-blue-600;
+  padding-left: 13px;
 }
 
-/* History button (label look) */
+/* ============================= */
+/* History label */
+/* ============================= */
+
 .nav-history-btn {
-  @apply flex items-center gap-3 w-full px-[18px] py-4 bg-transparent border-0 rounded-2xl cursor-pointer text-left transition-all duration-200 ease-in-out;
+  @apply flex items-center gap-3 w-full px-5 py-4
+  bg-transparent border-0 rounded-2xl cursor-pointer text-left
+  transition-all duration-200 ease-in-out;
 }
 
 .nav-history-btn:hover {
@@ -90,20 +115,26 @@
 }
 
 .nav-history-text {
-  @apply text-[20px] font-black tracking-[1px] text-slate-900 uppercase;
+  @apply text-[14px] font-black tracking-[1px] text-slate-900 uppercase;
 }
 
 .nav-history-btn .nav-icon {
-  @apply w-6 h-6;
+  @apply w-5 h-5;
 }
 
+/* ============================= */
 /* Dropdown section (Settings) */
+/* ============================= */
+
 .nav-section {
-  @apply flex flex-col gap-0 mt-[6px];
+  @apply flex flex-col gap-0 mt-2;
 }
 
 .nav-section-header {
-  @apply flex items-center gap-3 w-full px-[18px] py-4 bg-transparent border-0 rounded-2xl cursor-pointer text-[20px] font-black text-slate-900 uppercase tracking-[1px] transition-all duration-200 ease-in-out;
+  @apply flex items-center gap-3 w-full px-5 py-4
+  bg-transparent border-0 rounded-2xl cursor-pointer
+  text-[14px] font-black text-slate-900 uppercase tracking-[1px]
+  transition-all duration-200 ease-in-out text-left;
 }
 
 .nav-section-header:hover {
@@ -111,7 +142,7 @@
 }
 
 .chevron-icon {
-  @apply w-[22px] h-[22px] ml-auto text-gray-400 transition-transform duration-300 ease-in-out;
+  @apply w-5 h-5 ml-auto text-slate-400 transition-transform duration-300 ease-in-out;
 }
 
 .chevron-icon.expanded {
@@ -119,7 +150,7 @@
 }
 
 .nav-section-content {
-  @apply flex flex-col gap-0 pl-3 border-l-2 border-slate-300/60 ml-4 mt-0.5;
+  @apply flex flex-col gap-0 pl-3 border-l-2 border-slate-300 ml-4 mt-1;
   animation: slideDown 0.2s ease;
 }
 
@@ -137,84 +168,54 @@
 
 /* Dropdown items */
 .nav-item {
-  @apply flex items-center gap-2.5 w-full px-4 py-3 bg-transparent border-0 rounded-xl cursor-pointer text-[18px] text-slate-500 text-left transition-all duration-200 ease-in-out font-extrabold;
+  @apply flex items-center gap-3 w-full px-4 py-3
+  bg-transparent border-0 rounded-xl cursor-pointer
+  text-[14px] font-bold text-slate-500 text-left
+  transition-all duration-200 ease-in-out;
 }
 
 .nav-item:hover {
-  @apply bg-black/5 text-slate-900;
+  @apply bg-black/5 text-slate-800;
   padding-left: 20px;
 }
 
 .nav-item.active {
-  @apply bg-blue-100 text-blue-900 border-l-[3px] border-blue-500;
+  @apply bg-blue-100 text-blue-800 border-l-[3px] border-blue-600;
   padding-left: 13px;
 }
 
 .nav-item-icon {
-  @apply w-[18px] h-[18px] text-gray-500;
+  @apply w-4 h-4 text-slate-500;
 }
 
-/* Bottom profile card */
+/* ============================= */
+/* Bottom profile card stays (no change in class names) */
+/* ============================= */
+
 .sales-nav-bottom {
-  @apply mt-auto pt-2.5;
-}
-
-.profile-card {
-  @apply flex items-center justify-between p-[14px] rounded-[22px];
-  background: rgba(255, 255, 255, 0.35);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
-}
-
-.profile-left {
-  @apply flex items-center gap-3;
-}
-
-.profile-avatar {
-  @apply w-11 h-11 rounded-full;
-  background: radial-gradient(circle at 30% 30%, #f59e0b, #ef4444);
-  border: 3px solid rgba(255, 255, 255, 0.9);
-}
-
-.profile-name {
-  @apply text-[20px] font-black text-slate-900 leading-[1.1];
-}
-
-.profile-role {
-  @apply text-sm font-black tracking-[1px] text-slate-500 uppercase mt-1;
-}
-
-.logout-btn {
-  @apply w-11 h-11 border-0 rounded-[14px] cursor-pointer flex items-center justify-center transition-all duration-200 ease-in-out;
-  background: rgba(239, 68, 68, 0.08);
-}
-
-.logout-btn:hover {
-  background: rgba(239, 68, 68, 0.16);
-  transform: translateY(-1px);
-}
-
-.logout-icon {
-  @apply w-[22px] h-[22px] text-red-500;
+  @apply mt-auto pt-3;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
   .sales-nav-container {
-    @apply max-w-[250px] p-4;
-  }
-
-  .logo-text {
-    @apply text-[18px];
+    @apply w-[250px] p-4;
   }
 
   .nav-dashboard-btn,
   .nav-single-btn,
   .nav-history-btn,
-  .nav-section-header {
-    @apply text-base px-[14px] py-3;
+  .nav-section-header,
+  .nav-item {
+    @apply px-4 py-3 text-[13px];
   }
 
-  .nav-item {
-    @apply text-[15px];
+  .logo-text {
+    @apply text-sm;
+  }
+
+  .nav-icon,
+  .chevron-icon {
+    @apply w-4 h-4;
   }
 }
