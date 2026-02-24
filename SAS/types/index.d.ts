@@ -61,6 +61,7 @@ consigneeName?: string
 consigneeAddress?: string
 consigneeContact?: string
 consigneeEmail?: string
+
 }
 
 export interface ShipmentStats {
@@ -75,6 +76,8 @@ export interface DelayedStats {
   highPriority: number
   avgDelayDays: number
   customsIssues: number
+
+}
 }
 export interface User {
   id: string;
@@ -119,4 +122,3 @@ export interface PasswordChange {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
-}

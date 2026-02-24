@@ -1,0 +1,121 @@
+@reference "tailwindcss";
+
+.shipment-card {
+  @apply bg-white border border-slate-100 rounded-[14px] shadow-[0_10px_24px_rgba(15,23,42,0.04)] overflow-hidden;
+}
+
+.shipment-card__head {
+  @apply p-4 flex items-start justify-between gap-[10px];
+}
+
+.shipment-card__titleRow {
+  @apply flex items-center gap-2;
+}
+
+.shipment-card__title {
+  @apply text-sm font-black text-slate-900;
+}
+
+.shipment-card__pill {
+  @apply text-[10px] font-black uppercase px-[10px] py-[6px] rounded-full bg-blue-50 border border-blue-200 text-blue-700;
+}
+
+.shipment-card__sub {
+  @apply mt-1 text-xs text-slate-500;
+}
+
+.shipment-card__actions {
+  @apply flex items-center gap-2;
+}
+
+.shipment-btn {
+  @apply text-xs font-extrabold rounded-[10px] px-[10px] py-2 cursor-pointer transition-colors duration-200;
+}
+
+.shipment-btn--ghost {
+  @apply bg-white border border-slate-200 text-slate-700;
+}
+
+.shipment-btn--ghost:hover {
+  @apply bg-slate-50;
+}
+
+.shipment-btn--primary {
+  @apply bg-blue-600 border border-blue-600 text-white;
+}
+
+.shipment-btn--primary:hover {
+  @apply bg-blue-700;
+}
+
+.shipment-tableWrap {
+  @apply overflow-x-auto;
+}
+
+.shipment-table {
+  @apply w-full text-[13px] border-collapse;
+}
+
+.shipment-table thead th {
+  @apply text-left text-[11px] uppercase tracking-[0.7px] text-slate-500 bg-slate-50 border-y border-slate-100 px-4 py-3;
+}
+
+.shipment-table tbody td {
+  @apply px-4 py-[14px] border-b border-slate-100 align-top;
+}
+
+.shipment-table tbody tr:hover {
+  background: rgba(15, 23, 42, 0.02);
+}
+
+.shipment-id {
+  @apply font-black text-blue-600;
+}
+
+.shipment-muted {
+  @apply text-slate-600 font-semibold;
+}
+
+.shipment-od__main {
+  @apply font-bold text-slate-900;
+}
+
+.shipment-od__sub {
+  @apply mt-1 flex items-center gap-1.5 text-[11px] text-slate-400;
+}
+
+.shipment-od__icon {
+  @apply w-[14px] h-[14px];
+}
+
+.status-pill {
+  @apply text-[11px] font-black px-[10px] py-[6px] rounded-full border inline-block;
+}
+
+.status--green {
+  @apply bg-green-50 border-green-200 text-emerald-700;
+}
+
+.status--amber {
+  @apply bg-amber-50 border-amber-200 text-amber-700;
+}
+
+.status--red {
+  @apply bg-rose-50 border-rose-200 text-rose-700;
+}
+
+.status--blue {
+  @apply bg-blue-50 border-blue-200 text-blue-700;
+}
+
+.shipment-card__footer {
+  @apply px-4 py-3 flex justify-center;
+}
+
+.shipment-viewAll {
+  @apply bg-transparent border-0 cursor-pointer text-xs font-extrabold text-blue-600;
+}
+
+.shipment-viewAll:hover {
+  @apply text-blue-700;
+}
