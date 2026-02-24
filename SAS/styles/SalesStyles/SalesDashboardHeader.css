@@ -1,0 +1,13 @@
+@reference "tailwindcss";
+
+.sales-header__title {
+  @apply text-4xl font-black text-slate-900;
+}
+
+.sales-header__sub {
+  @apply mt-2 text-lg text-slate-500;
+}
+
+.sales-header {
+  @apply mb-8;
+}
