@@ -1,71 +1,107 @@
+/* SuperLeftNavBar.css (Admin-like theme, scoped) */
 @reference "tailwindcss";
 
-/* Super User Left Navigation Bar Styles (Admin theme) */
-
+/* ✅ fixed sidebar */
 .super-nav-container {
-  @apply w-full max-w-[300px] h-screen bg-[#f5f5f7] p-5 box-border overflow-y-auto flex flex-col gap-2 border-r border-[#e5e5e7];
+  @apply fixed top-0 left-0 h-screen w-[260px]
+  bg-[#f5f5f7] p-5 box-border overflow-y-auto
+  flex flex-col gap-2 border-r border-[#e5e5e7];
 }
 
-/* Header Styles */
-.nav-header {
-  @apply flex items-center justify-center gap-2 mb-5 p-3;
+/* scrollbar */
+.super-nav-container::-webkit-scrollbar {
+  width: 6px;
+}
+.super-nav-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.super-nav-container::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+.super-nav-container::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
 }
 
-.nav-logo {
-  @apply flex items-center gap-2.5 cursor-pointer select-none;
+/* ============================= */
+/* Header */
+/* ============================= */
+.super-nav-container .nav-header {
+  @apply flex items-center justify-center mb-5 p-3;
 }
 
-.logo-icon {
-  @apply w-8 h-8 rounded-lg p-1 text-white shrink-0;
+.super-nav-container .nav-logo {
+  @apply flex items-center gap-3 cursor-pointer select-none;
+}
+
+.super-nav-container .logo-icon {
+  @apply w-10 h-10 rounded-2xl p-2 text-white shrink-0
+  shadow-[0_12px_30px_rgba(37,99,235,0.22)];
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }
 
-.logo-text {
-  @apply text-base font-bold text-black tracking-[-0.5px];
+.super-nav-container .logo-text {
+  @apply text-[16px] font-black text-slate-900 tracking-[-0.5px];
 }
 
+/* ============================= */
 /* Dashboard Button */
-.nav-dashboard-btn {
-  @apply flex items-center gap-3 w-full px-4 py-3 bg-blue-100 border-0 rounded-xl cursor-pointer text-sm font-semibold text-blue-900 transition-all duration-200 ease-in-out mb-3;
+/* ============================= */
+.super-nav-container .nav-dashboard-btn {
+  @apply flex items-center gap-3 w-full px-5 py-4
+  bg-blue-100 border-0 rounded-2xl cursor-pointer
+  text-[14px] font-black text-blue-900
+  transition-all duration-200 mb-3;
 }
 
-.nav-dashboard-btn:hover {
+.super-nav-container .nav-dashboard-btn:hover {
   @apply bg-blue-200;
   transform: translateX(2px);
 }
 
-.nav-dashboard-btn.active {
-  @apply bg-blue-500 text-white;
+.super-nav-container .nav-dashboard-btn.active {
+  @apply bg-blue-600 text-white;
 }
 
-/* Navigation Sections */
-.nav-section {
+.super-nav-container .nav-icon {
+  @apply w-5 h-5 shrink-0 text-slate-500;
+}
+
+.super-nav-container .nav-dashboard-btn.active .nav-icon {
+  @apply text-white;
+}
+
+/* ============================= */
+/* Sections */
+/* ============================= */
+.super-nav-container .nav-section {
   @apply flex flex-col gap-0 mb-2;
 }
 
-.nav-section-header {
-  @apply flex items-center gap-3 w-full px-4 py-3 bg-transparent border-0 rounded-lg cursor-pointer text-[13px] font-semibold text-gray-800 uppercase tracking-[0.5px] transition-all duration-200 ease-in-out relative;
+.super-nav-container .nav-section-header {
+  @apply flex items-center gap-3 w-full px-5 py-4
+  bg-transparent border-0 rounded-2xl cursor-pointer
+  text-[14px] font-bold text-slate-800
+  transition-all duration-200 text-left;
 }
 
-.nav-section-header:hover {
-  @apply bg-[#efefef];
+.super-nav-container .nav-section-header:hover {
+  @apply bg-black/5;
 }
 
-.nav-icon {
-  @apply w-[18px] h-[18px] shrink-0 text-gray-500;
+.super-nav-container .chevron-icon {
+  @apply w-5 h-5 ml-auto shrink-0 text-slate-400
+  transition-transform duration-300;
 }
 
-.chevron-icon {
-  @apply w-[18px] h-[18px] ml-auto shrink-0 text-gray-400 transition-transform duration-300 ease-in-out;
-}
-
-.chevron-icon.expanded {
+.super-nav-container .chevron-icon.expanded {
   @apply rotate-180;
 }
 
-/* Section Content */
-.nav-section-content {
-  @apply flex flex-col gap-0 pl-3 border-l-2 border-gray-300 ml-[9px];
+/* dropdown content */
+.super-nav-container .nav-section-content {
+  @apply flex flex-col gap-0 pl-3 border-l-2 border-slate-300
+  ml-4 mt-1;
   animation: slideDown 0.2s ease;
 }
 
@@ -81,69 +117,58 @@
   }
 }
 
-/* Navigation Items */
-.nav-item {
-  @apply flex items-center gap-3 w-full px-4 py-[10px] bg-transparent border-0 rounded-md cursor-pointer text-sm text-gray-700 text-left transition-all duration-200 ease-in-out font-medium;
+/* ============================= */
+/* Items */
+/* ============================= */
+.super-nav-container .nav-item {
+  @apply w-full px-4 py-3 bg-transparent border-0 rounded-xl cursor-pointer
+  text-[14px] font-extrabold text-slate-500 text-left
+  transition-all duration-200;
 }
 
-.nav-item:hover {
-  @apply bg-gray-200 text-gray-800;
+.super-nav-container .nav-item:hover {
+  @apply bg-black/5 text-slate-800;
   padding-left: 20px;
 }
 
-.nav-item.active {
-  @apply bg-blue-100 text-blue-900 font-semibold border-l-[3px] border-blue-500;
+.super-nav-container .nav-item.active {
+  @apply bg-blue-100 text-blue-800 border-l-[3px] border-blue-600;
   padding-left: 13px;
 }
 
-/* Scrollbar Styling */
-.super-nav-container::-webkit-scrollbar {
-  width: 6px;
+/* ============================= */
+/* Create Button (if used) */
+/* ============================= */
+.super-nav-container .nav-create-btn {
+  @apply flex items-center justify-center gap-2 w-full px-5 py-4
+  bg-transparent border-0 rounded-2xl cursor-pointer
+  text-[13px] font-black text-slate-500 tracking-[1px]
+  transition-all duration-200 my-3;
 }
 
-.super-nav-container::-webkit-scrollbar-track {
-  background: transparent;
+.super-nav-container .nav-create-btn:hover {
+  @apply bg-black/5 text-slate-800;
 }
 
-.super-nav-container::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
-}
-
-.super-nav-container::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
-}
-
-/* Responsive Design */
+/* Responsive */
 @media (max-width: 768px) {
   .super-nav-container {
-    @apply max-w-[250px] p-4 gap-1.5;
+    @apply w-[250px] p-4;
   }
 
-  .nav-dashboard-btn,
-  .nav-section-header,
-  .nav-item {
-    @apply text-[13px] px-3 py-2.5;
+  .super-nav-container .nav-dashboard-btn,
+  .super-nav-container .nav-section-header,
+  .super-nav-container .nav-item,
+  .super-nav-container .nav-create-btn {
+    @apply px-4 py-3;
   }
 
-  .nav-icon {
-    @apply w-4 h-4;
-  }
-
-  .chevron-icon {
-    @apply w-4 h-4;
-  }
-
-  .logo-text {
+  .super-nav-container .logo-text {
     @apply text-sm;
   }
-}
 
-/* Create Button */
-.nav-create-btn {
-  @apply flex items-center justify-center gap-2 w-full px-4 py-3 bg-transparent border-0 rounded-lg cursor-pointer text-[13px] font-semibold text-gray-500 uppercase tracking-[0.5px] transition-all duration-200 ease-in-out my-3;
-}
-
-.nav-create-btn:hover {
-  @apply bg-gray-100 text-gray-700;
+  .super-nav-container .nav-icon,
+  .super-nav-container .chevron-icon {
+    @apply w-4 h-4;
+  }
 }
