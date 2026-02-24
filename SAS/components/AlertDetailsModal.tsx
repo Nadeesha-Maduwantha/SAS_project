@@ -263,16 +263,7 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
                             <Mail size={14} /> Email Client
                         </button>
                     )}
-                    {alertData.status !== 'Resolved' && (
-                        <button style={{
-                            padding: '8px 16px', borderRadius: '6px',
-                            border: 'none', backgroundColor: '#2563eb',
-                            color: 'white', fontSize: '13px', fontWeight: 500,
-                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
-                        } as React.CSSProperties}>
-                            <CheckCircle2 size={14} /> Mark as Resolved
-                        </button>
-                    )}
+
                 </div>
             </div>
         </div>
