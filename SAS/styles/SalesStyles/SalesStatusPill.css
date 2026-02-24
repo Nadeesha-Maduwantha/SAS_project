@@ -1,0 +1,18 @@
+@reference "tailwindcss";
+
+.sales-pill {
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black border;
+}
+
+.sales-pill__dot {
+  @apply w-2 h-2 rounded-full;
+}
+
+.sales-pill--blue { @apply bg-blue-50 border-blue-200 text-blue-700; }
+.sales-pill__dot--blue { @apply bg-blue-600; }
+
+.sales-pill--purple { @apply bg-indigo-50 border-indigo-200 text-indigo-700; }
+.sales-pill__dot--purple { @apply bg-indigo-600; }
+
+.sales-pill--amber { @apply bg-amber-50 border-amber-200 text-amber-700; }
+.sales-pill__dot--amber { @apply bg-amber-500; }
