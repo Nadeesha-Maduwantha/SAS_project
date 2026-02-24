@@ -85,7 +85,7 @@ export default function CreateTemplatePage() {
     //   const { id: newId } = await api.createTemplate({ name: tmplName, shipmentType, description, milestones });
     const newId = `TPL-${Date.now()}`;
 
-    router.push(`/Super_user/milestone_template/${newId}`);
+    router.push(`/Super_user/milestone_template?id=${newId}`);
   };
 
   const handleDiscard = () => {

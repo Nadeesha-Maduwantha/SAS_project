@@ -346,7 +346,7 @@ export default function MilestoneTemplatePage() {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
                     <button
-                      onClick={() => router.push(`/Super_user/milestone_template/${newCopyId}`)}
+                      onClick={() => router.push(`/Super_user/milestone_template?id=${newCopyId}`)}
                       style={{
                         ...solidBtn(T.green, "#fff"),
                         padding:      "8px 16px",

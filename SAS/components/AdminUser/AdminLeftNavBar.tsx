@@ -55,8 +55,8 @@ export default function AdminLeftNavBar() {
 
       {/* My Dashboard */}
       <button
-        className={`nav-dashboard-btn ${isActiveRoute('/admin') && pathname === '/admin/dashboard' ? 'active' : ''}`}
-        onClick={() => handleNavigation('/admin/dashboard')}
+        className={`nav-dashboard-btn ${pathname === '/admin' ? 'active' : ''}`}
+        onClick={() => handleNavigation('/admin')}
       >
         <LayoutGrid className="nav-icon" />
         <span>My Dashboard</span>
@@ -101,7 +101,7 @@ export default function AdminLeftNavBar() {
       {/* Create Template */}
       <button
         className="nav-create-btn"
-        onClick={() => handleNavigation('/admin/templates')}
+        onClick={() => handleNavigation('/admin/milestone_templates_list')}
       >
         <Plus className="nav-icon" />
         <span>Create Template</span>

@@ -207,7 +207,7 @@ function FilterDropdown({ statusFilter, setStatusFilter, sortOrder, setSortOrder
 
 // ── Milestone Row ─────────────────────────────────────────────
 
-function MilestoneRow({ milestone, isCurrent, role, shipment, contacts, onTakeAction }) {
+function MilestoneRow({ milestone, isCurrent, role, shipment, contacts, onTakeAction, router }) {
   const [hov, setHov] = useState(false);
   const action = ROLE_ACTION[role] || ROLE_ACTION.admin;
 
@@ -219,7 +219,8 @@ function MilestoneRow({ milestone, isCurrent, role, shipment, contacts, onTakeAc
     <tr
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
-      style={{ background: rowBg, borderLeft: `3px solid ${isCurrent ? T.green : "transparent"}`, transition: "background 0.15s" }}
+      onClick={() => router.push(`/sales_user/milestone_detail?milestoneId=${milestone.id}&shipmentId=${shipment.id}`)}
+      style={{ background: rowBg, borderLeft: `3px solid ${isCurrent ? T.green : "transparent"}`, transition: "background 0.15s", cursor: "pointer" }}
     >
       {/* Seq */}
       <td style={{ ...td, width: "56px" }}>
@@ -396,8 +397,8 @@ export default function MilestonesTable({ role, shipment, milestones, contacts }
       role,
     });
 
-    // ── Change this path to match where your team's mail creation page lives ──
-    router.push(`/admin/mail_create?${params.toString()}`);
+    // ── Navigate to milestone detail page where the alert can be sent ──
+    router.push(`/sales_user/milestone_detail?milestoneId=${milestone.id}&shipmentId=${shipment.id}`);
   };
 
   const completedCount = milestones.filter(m => m.status === "completed").length;
@@ -632,6 +633,7 @@ export default function MilestonesTable({ role, shipment, milestones, contacts }
                     shipment={shipment}
                     contacts={contacts}
                     onTakeAction={handleTakeAction}
+                    router={router}
                   />
                 ))
               )}

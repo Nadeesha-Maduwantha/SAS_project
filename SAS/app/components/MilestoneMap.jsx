@@ -26,7 +26,11 @@ export default function MilestoneMap({ milestone, allMilestones, currentIndex })
   useEffect(() => {
     if (mapInstance.current) return; // already initialized
 
-    // Dynamically import Leaflet to avoid SSR issues
+    // Also guard against leftover _leaflet_id from Strict Mode's first unmount
+    if (mapRef.current && mapRef.current._leaflet_id) {
+      delete mapRef.current._leaflet_id;
+    }
+
     import("leaflet").then((L) => {
       // Fix default marker icon paths broken by webpack
       delete L.Icon.Default.prototype._getIconUrl;
@@ -55,8 +59,6 @@ export default function MilestoneMap({ milestone, allMilestones, currentIndex })
         .addTo(map);
 
       mapInstance.current = map;
-
-      // Draw initial markers + polyline
       drawAll(L, map, allMilestones, currentIndex);
     });
 
@@ -65,6 +67,13 @@ export default function MilestoneMap({ milestone, allMilestones, currentIndex })
         mapInstance.current.remove();
         mapInstance.current = null;
       }
+      if (mapRef.current) {
+        delete mapRef.current._leaflet_id;
+      }
+      // Also clear markers/polyline refs
+      markersRef.current = [];
+      polylineRef.current = null;
+      pulseRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

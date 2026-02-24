@@ -10,8 +10,8 @@ import {
   PAGE_KEYFRAMES,
 } from "@/app/(protected)/admin/milestone_templates_list/components/templateComponents";
 // =============================================================
-//  File path: src/app/templates/create/page.jsx
-//  Route:     /templates/create
+//  File path: app/(protected)/admin/milestone_template_create/page.jsx
+//  Route:     /admin/milestone_template_create
 // =============================================================
 
 // Shipment type options for the dropdown

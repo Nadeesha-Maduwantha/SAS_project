@@ -83,7 +83,7 @@ export default function MilestoneTemplatesPage() {
             <p className="mt-1 text-sm text-gray-500">Manage shipment milestone templates and their timing rules.</p>
           </div>
           <Link
-            href="/admin/milestone_template/create"
+            href="/admin/milestone_template_create"
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
           >
             <PlusIcon />
