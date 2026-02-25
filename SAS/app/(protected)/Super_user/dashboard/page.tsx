@@ -1,3 +1,7 @@
+'use client';
+
+import { useState } from 'react';
+
 import SuperLeftNavBar from '@/components/SuperUser/SuperLeftNavBar';
 
 import SuperDashboardHeader from '@/components/SuperUser/SuperDashboardHeader';
@@ -9,14 +13,22 @@ import SuperRecentActivityTable from '@/components/SuperUser/SuperRecentActivity
 import '@/styles/SuperStyles/SuperDashboardLayout.css';
 
 export default function SuperUserDashboardPage() {
+  const [range, setRange] = useState<{ from: string; to: string }>({
+    from: '2023-10-24',
+    to: '2023-10-30',
+  });
+
   return (
     <div className="super-layout">
       <SuperLeftNavBar />
 
       <div className="super-content">
         <div className="super-inner">
-          <SuperDashboardHeader />
+          <SuperDashboardHeader onDateRangeChange={setRange} />
+
           <SuperStatsGrid />
+
+          <SuperRecentActivityTable dateRange={range} />
 
           <div className="super-grid-2">
             <div className="super-grid-2__left">
@@ -24,8 +36,6 @@ export default function SuperUserDashboardPage() {
             </div>
             <SuperCriticalAlertsCard />
           </div>
-
-          <SuperRecentActivityTable />
         </div>
       </div>
     </div>
