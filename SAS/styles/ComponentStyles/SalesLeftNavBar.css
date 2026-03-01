@@ -1,40 +1,16 @@
 @reference "tailwindcss";
 
 /* ============================= */
-/* Sales Left Navigation Bar (Admin Theme) */
+/* Sales Left Navigation Bar (Make it SAME as Admin) */
 /* ============================= */
 
 .sales-nav-container {
-  /* ✅ fixed sidebar (same as admin) */
   @apply fixed top-0 left-0 h-screen w-[260px]
   bg-[#f5f5f7] p-5 box-border overflow-y-auto
   flex flex-col border-r border-[#e5e5e7];
 }
 
-/* Top content wrapper */
-.sales-nav-top {
-  @apply flex flex-col gap-2 overflow-y-auto pb-4;
-}
-
-/* Scrollbar */
-.sales-nav-top::-webkit-scrollbar {
-  width: 6px;
-}
-.sales-nav-top::-webkit-scrollbar-track {
-  background: transparent;
-}
-.sales-nav-top::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
-}
-.sales-nav-top::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
-}
-
-/* ============================= */
 /* Header */
-/* ============================= */
-
 .nav-header {
   @apply flex items-center justify-center mb-5 p-3;
 }
@@ -48,18 +24,17 @@
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }
 
+/* ✅ Admin-like logo text (wrap + tighter line height) */
 .logo-text {
-  @apply text-[16px] font-black text-slate-900 tracking-[-0.5px];
+  @apply text-[18px] font-black text-slate-900 tracking-[-0.5px] leading-[1.05];
+  white-space: normal;
 }
 
-/* ============================= */
-/* Dashboard Button */
-/* ============================= */
-
+/* Dashboard Button (keep same) */
 .nav-dashboard-btn {
   @apply flex items-center gap-3 w-full px-5 py-4
   bg-blue-100 border-0 rounded-2xl cursor-pointer
-  text-[14px] font-black text-blue-900
+  text-[15px] font-black text-blue-900
   transition-all duration-200 ease-in-out mb-3;
 }
 
@@ -73,21 +48,18 @@
 }
 
 .nav-icon {
-  @apply w-5 h-5 shrink-0 text-slate-500;
+  @apply w-7 h-7 shrink-0 text-slate-500;
 }
 
 .nav-dashboard-btn.active .nav-icon {
   @apply text-white;
 }
 
-/* ============================= */
-/* Single Buttons (My Shipments / My Alerts) */
-/* ============================= */
-
+/* ✅ Single Buttons (Admin style: bigger + normal case) */
 .nav-single-btn {
   @apply flex items-center gap-3 w-full px-5 py-4
   bg-transparent border-0 rounded-2xl cursor-pointer
-  text-[14px] font-bold text-slate-800 text-left
+  text-[15px] font-black text-slate-900 text-left
   transition-all duration-200 ease-in-out;
 }
 
@@ -100,10 +72,7 @@
   padding-left: 13px;
 }
 
-/* ============================= */
-/* History label */
-/* ============================= */
-
+/* ✅ HISTORY label (make it same as Admin — NOT uppercase) */
 .nav-history-btn {
   @apply flex items-center gap-3 w-full px-5 py-4
   bg-transparent border-0 rounded-2xl cursor-pointer text-left
@@ -115,17 +84,12 @@
 }
 
 .nav-history-text {
-  @apply text-[14px] font-black tracking-[1px] text-slate-900 uppercase;
+  @apply text-[14px] font-black text-slate-900;
+  text-transform: none;
+  letter-spacing: normal;
 }
 
-.nav-history-btn .nav-icon {
-  @apply w-5 h-5;
-}
-
-/* ============================= */
-/* Dropdown section (Settings) */
-/* ============================= */
-
+/* ✅ Dropdown Section Header (Settings) — Admin style */
 .nav-section {
   @apply flex flex-col gap-0 mt-2;
 }
@@ -133,8 +97,10 @@
 .nav-section-header {
   @apply flex items-center gap-3 w-full px-5 py-4
   bg-transparent border-0 rounded-2xl cursor-pointer
-  text-[14px] font-black text-slate-900 uppercase tracking-[1px]
+  text-[15px] font-black text-slate-900
   transition-all duration-200 ease-in-out text-left;
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .nav-section-header:hover {
@@ -142,15 +108,16 @@
 }
 
 .chevron-icon {
-  @apply w-5 h-5 ml-auto text-slate-400 transition-transform duration-300 ease-in-out;
+  @apply w-6 h-6 ml-auto text-slate-400 transition-transform duration-300 ease-in-out;
 }
 
 .chevron-icon.expanded {
   @apply rotate-180;
 }
 
+/* ✅ Dropdown content (Admin look) */
 .nav-section-content {
-  @apply flex flex-col gap-0 pl-3 border-l-2 border-slate-300 ml-4 mt-1;
+  @apply flex flex-col gap-0 pl-4 border-l-4 border-slate-200 ml-4 mt-2;
   animation: slideDown 0.2s ease;
 }
 
@@ -166,17 +133,16 @@
   }
 }
 
-/* Dropdown items */
+/* ✅ Dropdown items (Admin style: larger grey text) */
 .nav-item {
-  @apply flex items-center gap-3 w-full px-4 py-3
+  @apply flex items-center gap-3 w-full px-4 py-4
   bg-transparent border-0 rounded-xl cursor-pointer
-  text-[14px] font-bold text-slate-500 text-left
+  text-[15px] font-black text-slate-500 text-left
   transition-all duration-200 ease-in-out;
 }
 
 .nav-item:hover {
-  @apply bg-black/5 text-slate-800;
-  padding-left: 20px;
+  @apply bg-black/5 text-slate-700;
 }
 
 .nav-item.active {
@@ -185,13 +151,10 @@
 }
 
 .nav-item-icon {
-  @apply w-4 h-4 text-slate-500;
+  @apply w-5 h-5 text-slate-500;
 }
 
-/* ============================= */
-/* Bottom profile card stays (no change in class names) */
-/* ============================= */
-
+/* Bottom profile */
 .sales-nav-bottom {
   @apply mt-auto pt-3;
 }
@@ -207,15 +170,15 @@
   .nav-history-btn,
   .nav-section-header,
   .nav-item {
-    @apply px-4 py-3 text-[13px];
+    @apply px-4 py-3 text-[14px];
   }
 
   .logo-text {
-    @apply text-sm;
+    @apply text-[18px];
   }
 
   .nav-icon,
   .chevron-icon {
-    @apply w-4 h-4;
+    @apply w-5 h-5;
   }
 }

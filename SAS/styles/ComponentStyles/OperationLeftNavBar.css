@@ -63,8 +63,8 @@
 }
 
 .nav-history-label {
-  @apply text-[13px] font-bold tracking-[1px] text-gray-500;
-  margin-left: 30px; /* aligns like “HISTORY” look */
+  @apply text-[12px] font-bold tracking-[1px] text-gray-700;
+   /* aligns like “HISTORY” look */
 }
 
 /* Dropdown Sections (Only settings) */
