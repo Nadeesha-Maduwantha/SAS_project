@@ -1,4 +1,4 @@
-'use client'
+{/*'use client'
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
@@ -134,7 +134,7 @@ export default function SalesUserShipmentsPage() {
   return (
     <div className="p-6">
 
-      {/* Header */}
+      {/* Header 
       <div className="mb-5">
         <h1 className="text-xl font-semibold text-gray-900">Assigned Shipments</h1>
         <p className="text-sm text-gray-500 mt-0.5">
@@ -142,7 +142,7 @@ export default function SalesUserShipmentsPage() {
         </p>
       </div>
 
-      {/* Stats */}
+      {/* Stats *
       <div className="grid grid-cols-4 gap-4 mb-6">
         <ShipmentStatsCard
           icon={<Package className="w-5 h-5" />}
@@ -174,10 +174,10 @@ export default function SalesUserShipmentsPage() {
         />
       </div>
 
-      {/* Table Card */}
+      {/* Table Card *
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
 
-        {/* Toolbar */}
+        {/* Toolbar *
         <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100">
           <ShipmentSearch
             value={searchQuery}
@@ -207,9 +207,8 @@ export default function SalesUserShipmentsPage() {
             </svg>
             Export PDF
           </button>
-        </div>
-
-        {/* Table */}
+        </div
+        {/* Table *
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -238,7 +237,7 @@ export default function SalesUserShipmentsPage() {
                 return (
                   <tr key={shipment.id} className="hover:bg-gray-50 transition-colors">
 
-                    {/* Shipment ID */}
+                    {/* Shipment ID 
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2">
                         <div style={{
@@ -259,7 +258,7 @@ export default function SalesUserShipmentsPage() {
                       </div>
                     </td>
 
-                    {/* Client Name */}
+                    {/* Client Name *
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2">
                         <div style={{
@@ -282,7 +281,7 @@ export default function SalesUserShipmentsPage() {
                       </div>
                     </td>
 
-                    {/* Destination */}
+                    {/* Destination *
                     <td className="px-5 py-3.5">
                       <p className="text-sm text-gray-900">
                         {shipment.destinationCity}, {shipment.destinationCountryCode}
@@ -293,7 +292,7 @@ export default function SalesUserShipmentsPage() {
                     </td>
 
 
-                    {/* ETA */}
+                    {/* ETA *
                     <td className="px-5 py-3.5">
                       <p className="text-sm font-medium text-gray-900">
                         {formatDate(shipment.estimatedArrival)}
@@ -303,12 +302,12 @@ export default function SalesUserShipmentsPage() {
                       </p>
                     </td>
 
-                    {/* Status */}
+                    {/* Status *
                     <td className="px-5 py-3.5">
                       <ShipmentStatusBadge status={shipment.currentStage} />
                     </td>
 
-                    {/* Action */}
+                    {/* Action *
                     <td className="px-5 py-3.5">
                       {shipment.currentStage !== 'delivered' ? (
                         <button className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700">
@@ -319,7 +318,7 @@ export default function SalesUserShipmentsPage() {
                       )}
                     </td>
 
-                    {/* Detail */}
+                    {/* Detail *
                     <td className="px-5 py-3.5">
                       <button
                         onClick={() => router.push(`/admin/shipments/${shipment.id}?from=/sales_user/shipments`)}
@@ -346,4 +345,4 @@ export default function SalesUserShipmentsPage() {
       </div>
     </div>
   )
-}
+*/}

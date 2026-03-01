@@ -148,6 +148,86 @@ export default function ShipmentFeed() {
         </div>
 
         <div className="shipment-card__actions">
+          {openFilter && (
+  <div className="shipment-filterPop">
+    <div className="shipment-filterPop__top">
+      <div className="shipment-filterPop__title">Filter by</div>
+      <button
+        className="shipment-filterPop__clear"
+        onClick={clearFilter}
+        type="button"
+      >
+        Clear
+      </button>
+    </div>
+
+    <div className="shipment-filterPop__chips">
+      <button
+        type="button"
+        className={`shipment-filterChip ${
+          filterType === 'department' ? 'active' : ''
+        }`}
+        onClick={() => {
+          setFilterType('department');
+          setStatusValue('All');
+        }}
+      >
+        Department
+      </button>
+
+      <button
+        type="button"
+        className={`shipment-filterChip ${
+          filterType === 'status' ? 'active' : ''
+        }`}
+        onClick={() => {
+          setFilterType('status');
+          setDeptValue('All');
+        }}
+      >
+        Current Status
+      </button>
+    </div>
+
+    {filterType === 'department' ? (
+      <div className="shipment-filterPop__group">
+        <label>Department</label>
+        <select
+          value={deptValue}
+          onChange={(e) => setDeptValue(e.target.value)}
+        >
+          <option>All</option>
+          <option>Air Freight</option>
+          <option>Sea Freight</option>
+          <option>Road Freight</option>
+        </select>
+      </div>
+    ) : (
+      <div className="shipment-filterPop__group">
+        <label>Status</label>
+        <select
+          value={statusValue}
+          onChange={(e) => setStatusValue(e.target.value)}
+        >
+          <option>All</option>
+          <option>In Transit</option>
+          <option>Customs Hold</option>
+          <option>Arrived at Port</option>
+          <option>Processing</option>
+          <option>Delivered</option>
+        </select>
+      </div>
+    )}
+
+    <button
+      className="shipment-filterPop__done"
+      onClick={() => setOpenFilter(false)}
+      type="button"
+    >
+      Done
+    </button>
+  </div>
+)}
           <button
   className="shipment-btn shipment-btn--ghost"
   onClick={() => setOpenFilter((prev) => !prev)}
