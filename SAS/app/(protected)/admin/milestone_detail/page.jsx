@@ -3,12 +3,14 @@
 import { useState } from "react";
 import MilestoneMap from "@/app/components/MilestoneMap";
 
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  CHANGE THIS to test different roles:
 //  "admin" | "superuser" | "operations" | "sales"
 //  When you connect Keycloak later, replace this with:
 //  const USER_ROLE = session?.user?.role ?? "admin";
 // ─────────────────────────────────────────────────────────────────────────────
+//sample 
 const USER_ROLE = "admin";
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────

@@ -13,7 +13,6 @@ import {
   Shield,
   Plus,
 } from 'lucide-react';
-import '../../styles/ComponentStyles/AdminLeftNavBar.css';
 
 
 export default function AdminLeftNavBar() {
