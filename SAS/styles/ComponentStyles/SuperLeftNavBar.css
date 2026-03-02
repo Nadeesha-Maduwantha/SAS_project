@@ -1,6 +1,8 @@
-/* Tailwind @apply version — Admin Left Navigation Bar Styles */
 @reference "tailwindcss";
-.admin-nav-container {
+
+/* Super User Left Navigation Bar Styles (Admin theme) */
+
+.super-nav-container {
   @apply w-full max-w-[300px] h-screen bg-[#f5f5f7] p-5 box-border overflow-y-auto flex flex-col gap-2 border-r border-[#e5e5e7];
 }
 
@@ -10,7 +12,7 @@
 }
 
 .nav-logo {
-  @apply flex items-center gap-2.5 cursor-pointer;
+  @apply flex items-center gap-2.5 cursor-pointer select-none;
 }
 
 .logo-icon {
@@ -42,7 +44,7 @@
 }
 
 .nav-section-header {
-  @apply flex items-center gap-3 w-full px-4 py-3 bg-transparent border-0 rounded-lg cursor-pointer text-[13px] font-semibold text-gray-800 tracking-[0.5px] transition-all duration-200 ease-in-out relative;
+  @apply flex items-center gap-3 w-full px-4 py-3 bg-transparent border-0 rounded-lg cursor-pointer text-[13px] font-semibold text-gray-800 uppercase tracking-[0.5px] transition-all duration-200 ease-in-out relative;
 }
 
 .nav-section-header:hover {
@@ -51,10 +53,6 @@
 
 .nav-icon {
   @apply w-[18px] h-[18px] shrink-0 text-gray-500;
-}
-
-.nav-section-header .nav-icon {
-  @apply text-gray-500;
 }
 
 .chevron-icon {
@@ -98,47 +96,33 @@
   padding-left: 13px;
 }
 
-/* Create Button */
-.nav-create-btn {
-  @apply flex items-center justify-center gap-2 w-full px-4 py-3 bg-transparent border-0 rounded-lg cursor-pointer text-[13px] font-semibold text-gray-500 tracking-[0.5px] transition-all duration-200 ease-in-out my-3;
-}
-
-.nav-create-btn:hover {
-  @apply bg-gray-100 text-gray-700;
-}
-
-.nav-create-btn .nav-icon {
-  @apply w-[18px] h-[18px];
-}
-
-/* Scrollbar Styling (keep as normal CSS — Tailwind doesn’t cover pseudo elements) */
-.admin-nav-container::-webkit-scrollbar {
+/* Scrollbar Styling */
+.super-nav-container::-webkit-scrollbar {
   width: 6px;
 }
 
-.admin-nav-container::-webkit-scrollbar-track {
+.super-nav-container::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.admin-nav-container::-webkit-scrollbar-thumb {
+.super-nav-container::-webkit-scrollbar-thumb {
   background: #d1d5db;
   border-radius: 3px;
 }
 
-.admin-nav-container::-webkit-scrollbar-thumb:hover {
+.super-nav-container::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .admin-nav-container {
+  .super-nav-container {
     @apply max-w-[250px] p-4 gap-1.5;
   }
 
   .nav-dashboard-btn,
   .nav-section-header,
-  .nav-item,
-  .nav-create-btn {
+  .nav-item {
     @apply text-[13px] px-3 py-2.5;
   }
 
@@ -153,4 +137,13 @@
   .logo-text {
     @apply text-sm;
   }
+}
+
+/* Create Button */
+.nav-create-btn {
+  @apply flex items-center justify-center gap-2 w-full px-4 py-3 bg-transparent border-0 rounded-lg cursor-pointer text-[13px] font-semibold text-gray-500 uppercase tracking-[0.5px] transition-all duration-200 ease-in-out my-3;
+}
+
+.nav-create-btn:hover {
+  @apply bg-gray-100 text-gray-700;
 }

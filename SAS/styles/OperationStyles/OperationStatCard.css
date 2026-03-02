@@ -1,0 +1,52 @@
+@reference "tailwindcss";
+
+.op-stat {
+  @apply bg-white border border-slate-200 rounded-2xl p-6 shadow-sm relative overflow-hidden;
+}
+
+.op-stat__top {
+  @apply flex items-center gap-3;
+}
+
+.op-stat__dot {
+  @apply w-2.5 h-2.5 rounded-full;
+}
+
+.op-stat__dot--blue { @apply bg-blue-600; }
+.op-stat__dot--purple { @apply bg-purple-600; }
+.op-stat__dot--green { @apply bg-green-600; }
+.op-stat__dot--red { @apply bg-red-500; }
+
+.op-stat__title {
+  @apply text-base font-semibold text-slate-600;
+}
+
+.op-stat__iconWrap {
+  @apply ml-auto w-14 h-14 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center opacity-50;
+}
+
+.op-stat__icon {
+  @apply w-8 h-8;
+}
+
+.op-stat__icon--blue { @apply text-blue-500; }
+.op-stat__icon--purple { @apply text-purple-500; }
+.op-stat__icon--green { @apply text-green-500; }
+.op-stat__icon--red { @apply text-red-400; }
+
+.op-stat__valueRow {
+  @apply mt-4 flex items-end gap-4;
+}
+
+.op-stat__value {
+  @apply text-4xl font-black text-slate-900;
+}
+
+.op-stat__meta {
+  @apply text-sm font-bold;
+}
+
+.op-stat__meta--blue { @apply text-green-600; } /* matches screenshot (+12%) */
+.op-stat__meta--purple { @apply text-slate-400; }
+.op-stat__meta--green { @apply text-slate-400; }
+.op-stat__meta--red { @apply text-red-500; }
