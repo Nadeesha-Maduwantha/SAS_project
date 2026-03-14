@@ -1,4 +1,4 @@
-{/*import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { Shipment, ShipmentStatus } from '@/types'
 
 interface ShipmentRow {
@@ -278,4 +278,4 @@ export async function getShipmentsBySalesUser(
 
   if (error) throw new Error(error.message)
   return data.map(mapRow)
-}*/}
+}
