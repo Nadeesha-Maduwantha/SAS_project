@@ -1,0 +1,58 @@
+@reference "tailwindcss";
+
+.wl-card {
+  @apply bg-white border border-slate-200 rounded-2xl p-6 shadow-sm;
+}
+
+.wl-card__head {
+  @apply flex items-center justify-between gap-4;
+}
+
+.wl-card__title {
+  @apply text-base font-black text-slate-900;
+}
+
+.wl-legend {
+  @apply flex items-center gap-4 text-xs text-slate-500;
+}
+
+.wl-legend__item {
+  @apply inline-flex items-center gap-2 font-semibold;
+}
+
+.wl-dot {
+  @apply w-2.5 h-2.5 rounded-full inline-block;
+}
+
+.wl-dot--blue { @apply bg-blue-600; }
+.wl-dot--gray { @apply bg-slate-300; }
+
+.wl-chart {
+  @apply mt-10 h-[220px] flex items-end justify-between gap-3;
+}
+
+.wl-col {
+  @apply flex-1 flex flex-col items-center;
+}
+
+.wl-bars {
+  @apply relative w-full max-w-[62px] h-[160px] flex items-end;
+}
+
+.wl-bar {
+  @apply absolute bottom-0 left-0 w-full rounded-lg;
+}
+
+.wl-bar--task {
+  @apply bg-blue-200;
+}
+
+.wl-bar--ship {
+  @apply bg-blue-600;
+  width: 86%;
+  left: 7%;
+}
+
+.wl-day {
+  @apply mt-3 text-[11px] font-bold text-slate-500;
+}
