@@ -2,7 +2,7 @@
 
 import React from 'react';
 import {
-    X, MapPin, Truck, AlertCircle, Clock, Package, CheckCircle2, Navigation, Anchor, Plane, Warehouse, User, FileText, Calendar, Mail
+    X, MapPin, Truck, AlertCircle, Clock, Package, CheckCircle2, Navigation, Anchor, Plane, Warehouse, User, FileText
 } from 'lucide-react';
 
 export interface AlertData {
@@ -234,7 +234,7 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
                         </div>
                         <div>
                             <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' } as React.CSSProperties}>Date Time</div>
-                            <div style={{ fontSize: '13px', color: '#111827', display: 'flex', alignItems: 'center', gap: '6px' } as React.CSSProperties}><Calendar size={12} /> {new Date().toLocaleDateString()} - 14:00</div>
+                            <div style={{ fontSize: '13px', color: '#111827', display: 'flex', alignItems: 'center', gap: '6px' } as React.CSSProperties}><FileText size={12} /> 2024-02-24 - 14:00</div>
                         </div>
                     </div>
 
@@ -258,9 +258,9 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
                             padding: '8px 16px', borderRadius: '6px',
                             border: '1px solid #e5e7eb', backgroundColor: 'white',
                             color: '#4b5563', fontSize: '13px', fontWeight: 500,
-                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
+                            cursor: 'pointer'
                         } as React.CSSProperties}>
-                            <Mail size={14} /> Email Client
+                            Email Client
                         </button>
                     )}
 
