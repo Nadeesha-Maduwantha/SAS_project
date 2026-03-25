@@ -18,39 +18,25 @@ class MockTable:
         print("Mock execute called")
         return {'data': 'ok'}
 
+class MockAuth:
+    def sign_up(self, data):
+        print(f"Mock signup called with: {data}")
+        return MockAuthResponse(data['email'])
+
+    def sign_in_with_password(self, data):
+        print(f"Mock sign_in_with_password called with: {data}")
+        email = data.get('email', 'mockuser@example.com')
+        return MockAuthResponse(email)
+
+    def sign_out(self):
+        print("Mock sign_out called")
+        return {"success": True}
+
 class MockSupabase:
     def __init__(self):
         self.auth = MockAuth()
     def table(self, name):
         return MockTable()
 
-class MockAuth:
-    def sign_up(self, data):
-        print(f"Mock signup called with: {data}")
-        return MockAuthResponse(data['email'])
-
 def get_supabase():
     return MockSupabase()
-# services/supabase_service.py (SQLite VERSION)
-import sqlite3
-
-def get_db():
-    conn = sqlite3.connect('test.db')
-    conn.row_factory = sqlite3.Row
-    # Create table if not exists
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS profiles (
-            id TEXT PRIMARY KEY,
-            email TEXT,
-            full_name TEXT,
-            age INTEGER,
-            ethnicity TEXT,
-            role TEXT,
-            department TEXT,
-            address TEXT,
-            created_at TEXT,
-            updated_at TEXT
-        )
-    ''')
-    conn.commit()
-    return conn

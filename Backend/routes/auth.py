@@ -49,22 +49,3 @@ def logout():
         return jsonify({'message': 'Logout successful'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 400
-
-bp = Blueprint('users', __name__, url_prefix='/api/users')
-
-@bp.route('/create', methods=['POST'])
-def create_user():
-    try:
-        data = request.json
-        email = data.get('email')
-        password = data.get('password')
-        
-        supabase = get_supabase()
-        response = supabase.auth.sign_up({
-            'email': email,
-            'password': password
-        })
-        
-        return jsonify({'message': 'User created successfully', 'user': response.user.__dict__}), 201
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400

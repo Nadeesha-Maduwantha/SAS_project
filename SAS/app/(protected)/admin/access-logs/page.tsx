@@ -10,7 +10,7 @@ import { AccessLog, AccessLogFilters, AccessLogStats } from "@/types/access-logs
 const mockLogs: AccessLog[] = [
   {
     id: "1",
-    timestamp: "2026-02-16 14:32:15",
+    timestamp: "2026-02-16T14:32:15Z",
     user: { 
       name: "Amal Perera", 
       email: "amal.perera@dartlogistic.com",
@@ -24,7 +24,7 @@ const mockLogs: AccessLog[] = [
   },
   {
     id: "2",
-    timestamp: "2026-02-16 14:28:42",
+    timestamp: "2026-02-16T14:28:42Z",
     user: { 
       name: "Sarah Johnson", 
       email: "sarah.j@dartlogistic.com",
@@ -38,7 +38,7 @@ const mockLogs: AccessLog[] = [
   },
   {
     id: "3",
-    timestamp: "2026-02-16 14:15:33",
+    timestamp: "2026-02-16T14:15:33Z",
     user: { 
       name: "Michael Chen", 
       email: "m.chen@dartlogistic.com",
@@ -52,7 +52,7 @@ const mockLogs: AccessLog[] = [
   },
   {
     id: "4",
-    timestamp: "2026-02-16 13:58:20",
+    timestamp: "2026-02-16T13:58:20Z",
     user: { 
       name: "Unknown User", 
       email: "attacker@malicious.com"
@@ -65,7 +65,7 @@ const mockLogs: AccessLog[] = [
   },
   {
     id: "5",
-    timestamp: "2026-02-16 13:45:11",
+    timestamp: "2026-02-16T13:45:11Z",
     user: { 
       name: "Emma Williams", 
       email: "emma.w@dartlogistic.com",
@@ -79,7 +79,7 @@ const mockLogs: AccessLog[] = [
   },
   {
     id: "6",
-    timestamp: "2026-02-16 13:22:05",
+    timestamp: "2026-02-16T13:22:05Z",
     user: { 
       name: "James Brown", 
       email: "j.brown@dartlogistic.com",
@@ -93,7 +93,7 @@ const mockLogs: AccessLog[] = [
   },
   {
     id: "7",
-    timestamp: "2026-02-16 12:58:47",
+    timestamp: "2026-02-16T12:58:47Z",
     user: { 
       name: "Lisa Anderson", 
       email: "l.anderson@dartlogistic.com",
@@ -107,7 +107,7 @@ const mockLogs: AccessLog[] = [
   },
   {
     id: "8",
-    timestamp: "2026-02-16 12:30:19",
+    timestamp: "2026-02-16T12:30:19Z",
     user: { 
       name: "David Martinez", 
       email: "d.martinez@dartlogistic.com",
@@ -196,6 +196,15 @@ export default function AccessLogsPage() {
   }, [filters]);
 
   const handleExport = () => {
+    // Escape a CSV field: wrap in quotes, escape internal quotes, and prefix
+    // formula-injection characters (=, +, -, @) with a single quote.
+    const escapeCSVField = (value: string): string => {
+      const str = String(value ?? "");
+      const safe = /^[=+\-@]/.test(str) ? `'${str}` : str;
+      const escaped = safe.replace(/"/g, '""');
+      return `"${escaped}"`;
+    };
+
     // Convert filtered logs to CSV format
     const csvContent = [
       ["Timestamp", "User", "Email", "Action", "IP Address", "Location", "Device", "Status"],
@@ -209,7 +218,7 @@ export default function AccessLogsPage() {
         log.device,
         log.status
       ])
-    ].map(row => row.join(",")).join("\n");
+    ].map(row => row.map(escapeCSVField).join(",")).join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);

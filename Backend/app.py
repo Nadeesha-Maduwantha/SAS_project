@@ -6,7 +6,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+
+# Configure CORS with an explicit allowlist from environment
+_frontend_origins = os.getenv("FRONTEND_ORIGINS", "http://localhost:3000")
+_cors_origins = [origin.strip() for origin in _frontend_origins.split(",") if origin.strip()]
+
+CORS(
+    app,
+    resources={r"/*": {"origins": _cors_origins}},
+    supports_credentials=True,
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+)
 
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
 
@@ -22,4 +33,5 @@ def health_check():
     return {'status': 'Backend is running'}, 200
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    debug = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(debug=debug, port=5000)
