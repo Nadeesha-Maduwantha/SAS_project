@@ -1,6 +1,6 @@
 // filepath: c:\Users\Nadeesha\Documents\GitHub\SAS_project\SAS\components\AdminUser\AccessLogs\AccessLogsTable.tsx
 
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { AccessLog } from "@/types/access-logs";
 
 interface AccessLogsTableProps {

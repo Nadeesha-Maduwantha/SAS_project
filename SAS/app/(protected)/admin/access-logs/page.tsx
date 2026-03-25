@@ -1,24 +1,21 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import AccessLogsStats from "@/components/AdminUser/AccessLogs/AccessLogsStats";
 import AccessLogsFilters from "@/components/AdminUser/AccessLogs/AccessLogsFilters";
 import AccessLogsTable from "@/components/AdminUser/AccessLogs/AccessLogsTable";
 import { AccessLog, AccessLogFilters, AccessLogStats } from "@/types/access-logs";
 
 // ─── Mock Data ───────────────────────────────────────────────────────────────
-const mockStats: AccessLogStats = {
-  totalLoginsToday: 1247,
-  successfulLogins: 1239,
-  failedAttempts: 8,
-  activeUsers: 342,
-};
-
 const mockLogs: AccessLog[] = [
   {
     id: "1",
     timestamp: "2026-02-16 14:32:15",
-    user: { name: "Amal Perera", email: "amal.perera@dartlogistic.com" },
+    user: { 
+      name: "Amal Perera", 
+      email: "amal.perera@dartlogistic.com",
+      role: "admin"
+    },
     action: "Login",
     ipAddress: "192.168.1.185",
     location: "Colombo, Sri Lanka",
@@ -28,7 +25,11 @@ const mockLogs: AccessLog[] = [
   {
     id: "2",
     timestamp: "2026-02-16 14:28:42",
-    user: { name: "Sarah Johnson", email: "sarah.j@dartlogistic.com" },
+    user: { 
+      name: "Sarah Johnson", 
+      email: "sarah.j@dartlogistic.com",
+      role: "sales"
+    },
     action: "View Shipment Details",
     ipAddress: "203.94.238.21",
     location: "Singapore",
@@ -38,7 +39,11 @@ const mockLogs: AccessLog[] = [
   {
     id: "3",
     timestamp: "2026-02-16 14:15:33",
-    user: { name: "Michael Chen", email: "m.chen@dartlogistic.com" },
+    user: { 
+      name: "Michael Chen", 
+      email: "m.chen@dartlogistic.com",
+      role: "operation"
+    },
     action: "Update Alert Status",
     ipAddress: "118.200.145.87",
     location: "Hong Kong",
@@ -48,7 +53,10 @@ const mockLogs: AccessLog[] = [
   {
     id: "4",
     timestamp: "2026-02-16 13:58:20",
-    user: { name: "Unknown User", email: "attacker@malicious.com" },
+    user: { 
+      name: "Unknown User", 
+      email: "attacker@malicious.com"
+    },
     action: "Failed Login Attempt",
     ipAddress: "45.142.212.61",
     location: "Unknown",
@@ -58,7 +66,11 @@ const mockLogs: AccessLog[] = [
   {
     id: "5",
     timestamp: "2026-02-16 13:45:11",
-    user: { name: "Emma Williams", email: "emma.w@dartlogistic.com" },
+    user: { 
+      name: "Emma Williams", 
+      email: "emma.w@dartlogistic.com",
+      role: "admin"
+    },
     action: "Export Report",
     ipAddress: "172.16.254.12",
     location: "London, UK",
@@ -68,7 +80,11 @@ const mockLogs: AccessLog[] = [
   {
     id: "6",
     timestamp: "2026-02-16 13:22:05",
-    user: { name: "James Brown", email: "j.brown@dartlogistic.com" },
+    user: { 
+      name: "James Brown", 
+      email: "j.brown@dartlogistic.com",
+      role: "sales"
+    },
     action: "Create Shipment",
     ipAddress: "10.0.1.42",
     location: "New York, USA",
@@ -78,7 +94,11 @@ const mockLogs: AccessLog[] = [
   {
     id: "7",
     timestamp: "2026-02-16 12:58:47",
-    user: { name: "Lisa Anderson", email: "l.anderson@dartlogistic.com" },
+    user: { 
+      name: "Lisa Anderson", 
+      email: "l.anderson@dartlogistic.com",
+      role: "admin"
+    },
     action: "Modify User Permissions",
     ipAddress: "192.168.50.200",
     location: "Dubai, UAE",
@@ -88,7 +108,11 @@ const mockLogs: AccessLog[] = [
   {
     id: "8",
     timestamp: "2026-02-16 12:30:19",
-    user: { name: "David Martinez", email: "d.martinez@dartlogistic.com" },
+    user: { 
+      name: "David Martinez", 
+      email: "d.martinez@dartlogistic.com",
+      role: "operation"
+    },
     action: "Delete Document",
     ipAddress: "198.51.100.45",
     location: "Madrid, Spain",
@@ -106,8 +130,94 @@ export default function AccessLogsPage() {
     dateRange: "today",
   });
 
+  // Filter logs based on selected filters
+  const filteredLogs = useMemo(() => {
+    let result = [...mockLogs];
+
+    // Filter by user role
+    if (filters.user !== "all") {
+      result = result.filter((log) => {
+        const role = log.user.role?.toLowerCase() || "";
+        const email = log.user.email.toLowerCase();
+        
+        return role === filters.user || 
+               email.includes(filters.user);
+      });
+    }
+
+    // Filter by action type
+    if (filters.action !== "all") {
+      result = result.filter((log) => {
+        const action = log.action.toLowerCase();
+        return action.includes(filters.action.toLowerCase());
+      });
+    }
+
+    // Filter by date range
+    if (filters.dateRange !== "today" && filters.dateRange !== "all") {
+      const now = new Date();
+      result = result.filter((log) => {
+        const logDate = new Date(log.timestamp);
+        
+        if (filters.dateRange === "week") {
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          return logDate >= weekAgo;
+        }
+        
+        if (filters.dateRange === "month") {
+          const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          return logDate >= monthAgo;
+        }
+        
+        return true;
+      });
+    }
+
+    return result;
+  }, [filters]);
+
+  // Calculate stats based on filtered data
+  const filteredStats = useMemo(() => {
+    const successCount = filteredLogs.filter(log => log.status === "Success").length;
+    const failedCount = filteredLogs.filter(log => log.status === "Failed").length;
+    const uniqueUsers = new Set(filteredLogs.map(log => log.user.email)).size;
+
+    return {
+      totalLoginsToday: filteredLogs.length,
+      successfulLogins: successCount,
+      failedAttempts: failedCount,
+      activeUsers: uniqueUsers,
+    };
+  }, [filteredLogs]);
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
+
   const handleExport = () => {
-    alert("Exporting logs...");
+    // Convert filtered logs to CSV format
+    const csvContent = [
+      ["Timestamp", "User", "Email", "Action", "IP Address", "Location", "Device", "Status"],
+      ...filteredLogs.map(log => [
+        log.timestamp,
+        log.user.name,
+        log.user.email,
+        log.action,
+        log.ipAddress,
+        log.location,
+        log.device,
+        log.status
+      ])
+    ].map(row => row.join(",")).join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `access-logs-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   return (
@@ -134,16 +244,16 @@ export default function AccessLogsPage() {
         </div>
 
         {/* Stats */}
-        <AccessLogsStats stats={mockStats} />
+        <AccessLogsStats stats={filteredStats} />
 
         {/* Filters */}
         <AccessLogsFilters filters={filters} onFilterChange={setFilters} />
 
         {/* Table */}
         <AccessLogsTable
-          logs={mockLogs}
+          logs={filteredLogs}
           currentPage={currentPage}
-          totalResults={1247}
+          totalResults={filteredLogs.length}
           resultsPerPage={8}
           onPageChange={setCurrentPage}
         />

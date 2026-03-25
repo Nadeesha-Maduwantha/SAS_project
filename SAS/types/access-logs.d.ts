@@ -4,6 +4,7 @@ export interface AccessLog {
   user: {
     name: string;
     email: string;
+    role?: string;
   };
   action: string;
   ipAddress: string;
@@ -12,15 +13,15 @@ export interface AccessLog {
   status: "Success" | "Failed";
 }
 
+export interface AccessLogFilters {
+  user: string;
+  action: string;
+  dateRange: string;
+}
+
 export interface AccessLogStats {
   totalLoginsToday: number;
   successfulLogins: number;
   failedAttempts: number;
   activeUsers: number;
-}
-
-export interface AccessLogFilters {
-  user: string;
-  action: string;
-  dateRange: string;
 }
