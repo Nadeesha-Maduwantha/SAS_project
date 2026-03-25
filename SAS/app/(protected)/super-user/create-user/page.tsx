@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 
 interface FormData {
+  email: string
+  password: string
   fullName: string
-  age: string
+  age: number
   ethnicity: string
   role: string
   department: string
@@ -18,8 +20,10 @@ export default function CreateUserPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState<FormData>({
+    email: '',
+    password: '',
     fullName: '',
-    age: '',
+    age: 0,
     ethnicity: '',
     role: '',
     department: '',
@@ -41,7 +45,7 @@ export default function CreateUserPage() {
     setError(null)
 
     try {
-      const response = await fetch('/api/users', {
+      const response = await fetch('http://localhost:5000/api/users/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -53,7 +57,9 @@ export default function CreateUserPage() {
 
       router.push('/admin/users')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      const errorMsg = err instanceof Error ? err.message : 'An error occurred'
+      console.log('Error details:', errorMsg)  // ← Add this
+      setError(errorMsg)
     } finally {
       setLoading(false)
     }
@@ -91,6 +97,33 @@ export default function CreateUserPage() {
               <p className="text-sm text-red-700">{error}</p>
             </div>
           )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="e.g. jonathan@example.com"
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder="Enter secure password"
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>

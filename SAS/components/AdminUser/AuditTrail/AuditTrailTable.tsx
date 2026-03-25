@@ -1,118 +1,149 @@
 import React from "react";
-import { AuditLog } from "@/types/audit-trail";
+import { AuditTrailEvent } from "@/types/audit-trail";
 
 interface AuditTrailTableProps {
-  logs: AuditLog[];
+  events: AuditTrailEvent[];
   currentPage: number;
   totalResults: number;
   resultsPerPage: number;
   onPageChange: (page: number) => void;
 }
 
-const AuditTrailTable: React.FC<AuditTrailTableProps> = ({
-  logs,
+export default function AuditTrailTable({
+  events,
   currentPage,
   totalResults,
   resultsPerPage,
   onPageChange,
-}) => {
-  const totalPages = Math.ceil(totalResults / resultsPerPage);
-  const startResult = (currentPage - 1) * resultsPerPage + 1;
-  const endResult = Math.min(currentPage * resultsPerPage, totalResults);
+}: AuditTrailTableProps) {
+  const startIndex = (currentPage - 1) * resultsPerPage;
+  const endIndex = Math.min(startIndex + resultsPerPage, events.length);
+  const paginatedEvents = events.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(events.length / resultsPerPage);
 
-  const getSeverityClass = (severity: string) => {
+  const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case "Info":     return "bg-blue-100 text-blue-600";
-      case "Warning":  return "bg-yellow-100 text-yellow-600";
-      case "Critical": return "bg-red-100 text-red-600";
-      default:         return "bg-blue-100 text-blue-600";
+      case "Info":
+        return "bg-blue-100 text-blue-800";
+      case "Warning":
+        return "bg-yellow-100 text-yellow-800";
+      case "Critical":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
-  const getModuleClass = (module: string) => {
-    switch (module) {
-      case "User Management":       return "bg-blue-100 text-blue-700";
-      case "Security Settings":     return "bg-green-100 text-green-700";
-      case "Shipment Management":   return "bg-purple-100 text-purple-700";
-      case "Alert Management":      return "bg-yellow-100 text-yellow-700";
-      case "Department Management": return "bg-red-100 text-red-700";
-      case "System Configuration":  return "bg-gray-100 text-gray-700";
-      default:                      return "bg-gray-100 text-gray-700";
-    }
+  const getModuleColor = (module: string) => {
+    const colors: Record<string, string> = {
+      "User Management": "bg-blue-100 text-blue-800",
+      "Security Settings": "bg-green-100 text-green-800",
+      "Shipment Management": "bg-purple-100 text-purple-800",
+      "Alert Management": "bg-yellow-100 text-yellow-800",
+      "Department Management": "bg-red-100 text-red-800",
+      "System": "bg-gray-100 text-gray-800",
+    };
+    return colors[module] || "bg-gray-100 text-gray-800";
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left border-collapse">
+        <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">TIMESTAMP</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">USER</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">MODULE</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">ACTION</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">DETAILS</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">SEVERITY</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">ACTIONS</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Timestamp
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                User
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Module
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Action
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Details
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Severity
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
           </thead>
-          <tbody>
-            {logs.map((log, index) => (
-              <tr
-                key={log.id}
-                className={`border-b border-gray-100 transition-colors ${
-                  index % 2 === 0 ? "bg-white hover:bg-gray-50" : "bg-gray-50 hover:bg-gray-100"
-                }`}
-              >
-                <td className="px-4 py-3 text-gray-700 align-middle">{log.timestamp}</td>
-                <td className="px-4 py-3 align-middle">
-                  <p className="font-medium text-gray-800 text-sm">{log.user.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{log.user.role}</p>
-                </td>
-                <td className="px-4 py-3 align-middle">
-                  <span className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full ${getModuleClass(log.module)}`}>
-                    {log.module}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-gray-700 align-middle">{log.action}</td>
-                <td className="px-4 py-3 text-gray-500 align-middle max-w-xs truncate">{log.details}</td>
-                <td className="px-4 py-3 align-middle">
-                  <span className={`inline-block text-xs font-semibold px-3 py-1 rounded-full ${getSeverityClass(log.severity)}`}>
-                    {log.severity}
-                  </span>
-                </td>
-                <td className="px-4 py-3 align-middle">
-                  <button className="text-blue-500 text-sm font-medium hover:underline cursor-pointer">
-                    View Details
-                  </button>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {paginatedEvents.length > 0 ? (
+              paginatedEvents.map((event) => (
+                <tr key={event.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {event.timestamp}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{event.user.name}</div>
+                      <div className="text-sm text-gray-500">{event.user.role}</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getModuleColor(event.module)}`}>
+                      {event.module}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    {event.action}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                    {event.details}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getSeverityColor(event.severity)}`}>
+                      {event.severity}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button className="text-blue-600 hover:text-blue-800 font-medium">
+                      View Details
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500">
+                  No events found matching the selected filters.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-        <p className="text-sm text-gray-500">
-          Showing {startResult} to {endResult} of {totalResults.toLocaleString()} results
-        </p>
-        <div className="flex items-center gap-1">
+      <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+        <div className="text-sm text-gray-700">
+          Showing {paginatedEvents.length > 0 ? startIndex + 1 : 0} to {endIndex} of {totalResults} results
+        </div>
+        <div className="flex gap-2">
           <button
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className="px-3 py-1.5 text-sm border border-gray-200 rounded-md text-gray-600 bg-white hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Previous
           </button>
-          {Array.from({ length: Math.min(totalPages, 3) }, (_, i) => i + 1).map((page) => (
+          {totalPages > 0 && Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((page) => (
             <button
               key={page}
               onClick={() => onPageChange(page)}
-              className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
+              className={`px-3 py-1 border rounded-md text-sm font-medium ${
                 currentPage === page
-                  ? "bg-blue-500 text-white border border-blue-500"
-                  : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
               }`}
             >
               {page}
@@ -120,8 +151,8 @@ const AuditTrailTable: React.FC<AuditTrailTableProps> = ({
           ))}
           <button
             onClick={() => onPageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="px-3 py-1.5 text-sm border border-gray-200 rounded-md text-gray-600 bg-white hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled={currentPage === totalPages || totalPages === 0}
+            className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next
           </button>
@@ -129,6 +160,4 @@ const AuditTrailTable: React.FC<AuditTrailTableProps> = ({
       </div>
     </div>
   );
-};
-
-export default AuditTrailTable;
+}
