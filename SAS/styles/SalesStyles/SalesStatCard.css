@@ -1,0 +1,57 @@
+@reference "tailwindcss";
+
+.sales-stat {
+  @apply bg-white border border-slate-200 rounded-3xl p-6 shadow-sm relative overflow-hidden;
+}
+
+/* right color strip like screenshot */
+.sales-stat--amber { @apply border-r-4 border-r-amber-400; }
+.sales-stat--blue { @apply border-r-4 border-r-blue-500; }
+.sales-stat--purple { @apply border-r-4 border-r-indigo-500; }
+.sales-stat--green { @apply border-r-4 border-r-emerald-500; }
+
+.sales-stat__top {
+  @apply flex items-center justify-between;
+}
+
+.sales-stat__mini {
+  @apply flex items-center gap-3;
+}
+
+.sales-stat__miniIcon {
+  @apply w-11 h-11 rounded-2xl flex items-center justify-center;
+}
+
+.sales-stat__miniIcon--amber { @apply bg-amber-50; }
+.sales-stat__miniIcon--blue { @apply bg-blue-50; }
+.sales-stat__miniIcon--purple { @apply bg-indigo-50; }
+.sales-stat__miniIcon--green { @apply bg-emerald-50; }
+
+.sales-stat__icon {
+  @apply w-5 h-5;
+}
+
+.sales-stat__icon--amber { @apply text-amber-600; }
+.sales-stat__icon--blue { @apply text-blue-600; }
+.sales-stat__icon--purple { @apply text-indigo-600; }
+.sales-stat__icon--green { @apply text-emerald-600; }
+
+.sales-stat__chip {
+  @apply text-sm font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-full;
+}
+
+.sales-stat__title {
+  @apply mt-6 text-lg font-semibold text-slate-600;
+}
+
+.sales-stat__bottom {
+  @apply mt-2 flex items-end gap-4;
+}
+
+.sales-stat__value {
+  @apply text-4xl font-black text-slate-900;
+}
+
+.sales-stat__delta {
+  @apply text-sm font-black text-emerald-600;
+}
