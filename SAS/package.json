@@ -9,7 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+<<<<<<< HEAD
     "lucide-react": "^0.475.0",
+=======
+>>>>>>> parent of 574ffe7 (missed)
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"
