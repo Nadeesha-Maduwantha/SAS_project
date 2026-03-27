@@ -61,7 +61,6 @@ consigneeName?: string
 consigneeAddress?: string
 consigneeContact?: string
 consigneeEmail?: string
-
 }
 
 export interface ShipmentStats {
@@ -102,24 +101,6 @@ export interface UserFormData {
   unlockAccount: boolean;
 }
 
-// ─── Profile Types ───────────────────────────────────────────
+//  Profile Types 
 
-export interface UserProfile {
-  id: string;
-  fullName: string;
-  email: string;
-  phoneNumber: string;
-  department: string;
-  role: "admin" | "super-user" | "sales_user" | "operation_user";
-  status: "Active" | "Inactive";
-  isVerified: boolean;
-  lastLogin: string;
-  memberSince: string;
-  avatarUrl?: string;
-}
-
-export interface PasswordChange {
-  currentPassword: string;
-  newPassword: string;
-  confirmPassword: string;
-}
+export type { UserProfile, PasswordChange } from './profile';

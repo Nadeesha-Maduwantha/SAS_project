@@ -1,5 +1,3 @@
-// filepath: c:\Users\Nadeesha\Documents\GitHub\SAS_project\SAS\components\AdminUser\AccessLogs\AccessLogsTable.tsx
-
 import React, { useState, useMemo } from "react";
 import { AccessLog } from "@/types/access-logs";
 
@@ -22,6 +20,11 @@ const AccessLogsTable: React.FC<AccessLogsTableProps> = ({
   const startResult = (currentPage - 1) * resultsPerPage + 1;
   const endResult = Math.min(currentPage * resultsPerPage, totalResults);
 
+  // 1 & 2. Slice the logs array for the current page
+  const startIndex = (currentPage - 1) * resultsPerPage;
+  const endIndex = startIndex + resultsPerPage;
+  const paginatedLogs = logs.slice(startIndex, endIndex);
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
 
@@ -40,7 +43,8 @@ const AccessLogsTable: React.FC<AccessLogsTableProps> = ({
             </tr>
           </thead>
           <tbody>
-            {logs.map((log, index) => (
+            {/* 3. Map over paginatedLogs instead of logs */}
+            {paginatedLogs.map((log, index) => (
               <tr
                 key={log.id}
                 className={`border-b border-gray-100 transition-colors ${

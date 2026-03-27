@@ -31,10 +31,14 @@ export default function CreateUserPage() {
   })
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
+    const { name, value, type } = e.target
+    
+    // Convert number inputs to actual integers, default to 0 if NaN
+    const parsedValue = type === 'number' ? parseInt(value, 10) || 0 : value
+
     setFormData(prev => ({
       ...prev,
-      [name]: value,
+      [name]: parsedValue,
       ...(name === 'role' && value !== 'superuser' && { department: '' }),
     }))
   }
@@ -45,7 +49,10 @@ export default function CreateUserPage() {
     setError(null)
 
     try {
-      const response = await fetch('http://localhost:5000/api/users/create', {
+      // Fallback to localhost if the env variable isn't set, useful for local dev
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+      
+      const response = await fetch(`${apiUrl}/api/users/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

@@ -196,9 +196,17 @@ export default function AccessLogsPage() {
   }, [filters]);
 
   const handleExport = () => {
-    // Convert filtered logs to CSV format
+    // Helper function to safely escape CSV fields
+    const escapeCSV = (field: any) => {
+      if (field === null || field === undefined) return '""';
+      const stringField = String(field);
+      // Double up any existing quotes, and wrap the whole field in quotes
+      return `"${stringField.replace(/"/g, '""')}"`;
+    };
+
+    // Convert filtered logs to CSV format safely
     const csvContent = [
-      ["Timestamp", "User", "Email", "Action", "IP Address", "Location", "Device", "Status"],
+      ["Timestamp", "User", "Email", "Action", "IP Address", "Location", "Device", "Status"].map(escapeCSV),
       ...filteredLogs.map(log => [
         log.timestamp,
         log.user.name,
@@ -208,7 +216,7 @@ export default function AccessLogsPage() {
         log.location,
         log.device,
         log.status
-      ])
+      ].map(escapeCSV))
     ].map(row => row.join(",")).join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });

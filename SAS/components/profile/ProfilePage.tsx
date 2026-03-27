@@ -6,7 +6,7 @@ import PersonalInformation from "./PersonalInformation";
 import SecuritySettings from "./SecuritySettings";
 import { PasswordChange } from "@/types/profile";
 
-interface UserProfile {
+export interface UserProfile {
   fullName: string;
   email: string;
   phone: string;
@@ -19,19 +19,15 @@ interface UserProfile {
   profileImage: string | null;
 }
 
-export default function ProfilePage() {
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-    fullName: "Amal Perera",
-    email: "amalperera@dart.com",
-    phone: "+94 77 123-4567",
-    department: "System Administration",
-    role: "Administrator",
-    status: "Active",
-    verified: true,
-    lastLogin: "Today, 09:15 AM",
-    memberSince: "Oct 15, 2021",
-    profileImage: null,
-  });
+// 1. Define the props interface
+export interface ProfilePageProps {
+  user: UserProfile;
+}
+
+// 2. Accept the user prop in the component
+export default function ProfilePage({ user }: ProfilePageProps) {
+  // 3. Initialize the state using the passed-in user prop
+  const [userProfile, setUserProfile] = useState<UserProfile>(user);
 
   const handleProfileUpdate = (updatedData: Partial<UserProfile>) => {
     setUserProfile((prev) => ({
@@ -61,7 +57,8 @@ export default function ProfilePage() {
               onUpdate={handleProfileUpdate} 
             />
             <SecuritySettings onChangePassword={function (data: PasswordChange): void {
-              throw new Error("Function not implemented.");
+              // Now you can implement actual password logic when needed
+              console.log("Password change requested", data);
             } } />
           </div>
         </div>

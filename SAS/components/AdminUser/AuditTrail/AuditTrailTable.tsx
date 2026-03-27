@@ -16,10 +16,11 @@ export default function AuditTrailTable({
   resultsPerPage,
   onPageChange,
 }: AuditTrailTableProps) {
+  // Use totalResults for all derived pagination state
   const startIndex = (currentPage - 1) * resultsPerPage;
-  const endIndex = Math.min(startIndex + resultsPerPage, events.length);
+  const endIndex = Math.min(currentPage * resultsPerPage, totalResults);
   const paginatedEvents = events.slice(startIndex, endIndex);
-  const totalPages = Math.ceil(events.length / resultsPerPage);
+  const totalPages = Math.ceil(totalResults / resultsPerPage);
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
