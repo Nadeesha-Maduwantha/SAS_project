@@ -34,7 +34,9 @@ export default function AllShipmentsPage() {
 
   const filteredShipments = shipments.filter((s) => {
     if (activeFilters.transportMode && s.transportMode !== activeFilters.transportMode) return false
-    if (activeFilters.currentStage && s.currentStage !== activeFilters.currentStage) return false
+    if (activeFilters.currentStage && 
+          s.llmIdentifiedType !== activeFilters.currentStage && 
+          s.currentStage !== activeFilters.currentStage) return false
     if (searchQuery && !s.cargowiseId.toLowerCase().includes(searchQuery.toLowerCase())) return false
     return true
   })
@@ -50,16 +52,16 @@ export default function AllShipmentsPage() {
       ],
     },
     {
-      label: 'By Current Stage',
-      key: 'currentStage',
-      options: [
-        { label: 'In Transit', value: 'in_transit' },
-        { label: 'Customs Hold', value: 'customs_hold' },
-        { label: 'Arrived at Port', value: 'arrived_at_port' },
-        { label: 'Processing', value: 'processing' },
-        { label: 'Delivered', value: 'delivered' },
-      ],
-    },
+  label: 'By Current Stage',
+  key: 'currentStage',
+  options: [
+    { label: 'Delivered', value: 'Delivered' },
+    { label: 'Booking Approval', value: 'Booking Approval' },
+    { label: 'Delivery Date', value: 'Delivery Date' },
+    { label: 'Delivered to CFS warehouse', value: 'Delivered to CFS warehouse' },
+    { label: 'Import Delivery Instructions', value: 'Import Delivery Instructions' },
+  ],
+},
   ]
 
   useEffect(() => {
@@ -189,8 +191,11 @@ export default function AllShipmentsPage() {
                     </div>
                   </td>
                   <td className="px-5 py-3.5">
-                    <ShipmentStatusBadge status={shipment.currentStage} />
-                  </td>
+  <ShipmentStatusBadge status={shipment.llmIdentifiedType ?? shipment.currentStage} />
+  {shipment.stNoteText && (
+    <p className="text-xs text-gray-400 mt-1 max-w-xs truncate">{shipment.stNoteText}</p>
+  )}
+</td>
                   <td className="px-5 py-3.5 text-sm text-gray-700">
                     {shipment.carrier}
                   </td>

@@ -7,7 +7,7 @@ import { ShipmentStatusBadge } from '@/components/shipments/ShipmentStatusBadge'
 import { Shipment } from '@/types'
 import {
   ArrowLeft, Printer, Truck, Calendar,
-  MapPin, Package, User, Mail, Phone, Box
+  MapPin, Package, User, Mail, Phone, Box, Brain
 } from 'lucide-react'
 import { exportShipmentDetailPDF } from '@/lib/Utils/exportPDF'
 import { ShipmentMap } from '@/components/shipments/ShipmentMap'
@@ -41,6 +41,14 @@ function getProgressPercent(stage: string): number {
     delivered: 100,
   }
   return map[stage] ?? 30
+}
+
+function getPickupStatusColor(status: string | undefined): { bg: string; color: string; border: string } {
+  if (!status) return { bg: '#f9fafb', color: '#6b7280', border: '#e5e7eb' }
+  if (status === 'Future') return { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe' }
+  if (status === 'Past') return { bg: '#fef2f2', color: '#dc2626', border: '#fca5a5' }
+  if (status === 'Today') return { bg: '#f0fdf4', color: '#16a34a', border: '#86efac' }
+  return { bg: '#f9fafb', color: '#6b7280', border: '#e5e7eb' }
 }
 
 export default function ShipmentDetailPage() {
@@ -82,14 +90,15 @@ export default function ShipmentDetailPage() {
   )
 
   const progress = getProgressPercent(shipment.currentStage)
+  const pickupStatusColors = getPickupStatusColor(shipment.pickupDateStatus)
 
   const backLabel =
-  from.includes('delayed') ? 'Delayed Shipments' :
-  from.includes('archive') ? 'Archived Shipments' :
-  from.includes('operation_user') ? 'My Assigned Shipments' :
-  from.includes('sales_user') ? 'Assigned Shipments' :
-  from.includes('Super_user') ? 'Active Shipments' :
-  'Shipments'
+    from.includes('delayed') ? 'Delayed Shipments' :
+    from.includes('archive') ? 'Archived Shipments' :
+    from.includes('operation_user') ? 'My Assigned Shipments' :
+    from.includes('sales_user') ? 'Assigned Shipments' :
+    from.includes('Super_user') ? 'Active Shipments' :
+    'Shipments'
 
   return (
     <div style={{ padding: '24px', maxWidth: '1400px', fontFamily: 'inherit' }}>
@@ -114,41 +123,47 @@ export default function ShipmentDetailPage() {
             <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#111827', margin: 0 }}>
               Shipment #{shipment.cargowiseId}
             </h1>
-            <ShipmentStatusBadge status={shipment.currentStage} />
+            <ShipmentStatusBadge status={shipment.llmIdentifiedType ?? shipment.currentStage} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px', color: '#6b7280', fontSize: '13px' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
               <Truck style={{ width: '14px', height: '14px' }} />
-              Carrier: {shipment.carrier}
+              {shipment.carrier ?? shipment.transportMode ?? '—'}
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
               <Calendar style={{ width: '14px', height: '14px' }} />
               ETA: {formatDate(shipment.estimatedArrival)}
             </span>
+            {shipment.branch && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <MapPin style={{ width: '14px', height: '14px' }} />
+                Branch: {shipment.branch}
+              </span>
+            )}
           </div>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-  <button
-    onClick={() => exportShipmentDetailPDF(shipment)}
-    style={{
-      display: 'flex', alignItems: 'center', gap: '6px',
-      padding: '8px 16px', fontSize: '13px', fontWeight: 500,
-      color: '#374151', background: 'white', border: '1px solid #d1d5db',
-      borderRadius: '8px', cursor: 'pointer'
-    }}
-  >
-    <Printer style={{ width: '14px', height: '14px' }} />
-    Export PDF
-  </button>
-</div>
+          <button
+            onClick={() => exportShipmentDetailPDF(shipment)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '8px 16px', fontSize: '13px', fontWeight: 500,
+              color: '#374151', background: 'white', border: '1px solid #d1d5db',
+              borderRadius: '8px', cursor: 'pointer'
+            }}
+          >
+            <Printer style={{ width: '14px', height: '14px' }} />
+            Export PDF
+          </button>
+        </div>
       </div>
 
       {/* Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
         {[
-          { label: 'Carrier', value: shipment.carrier, icon: <Truck style={{ width: '18px', height: '18px' }} /> },
-          { label: 'Transport Mode', value: shipment.transportMode ?? '—', icon: <Package style={{ width: '18px', height: '18px' }} /> },
+          { label: 'Transport Mode', value: shipment.transportMode ?? '—', icon: <Truck style={{ width: '18px', height: '18px' }} /> },
           { label: 'House Bill Number', value: shipment.houseBillNumber ?? '—', icon: <Box style={{ width: '18px', height: '18px' }} /> },
+          { label: 'AI Identified Type', value: shipment.llmIdentifiedType ?? '—', icon: <Brain style={{ width: '18px', height: '18px' }} /> },
           { label: 'ETA', value: formatDate(shipment.estimatedArrival), icon: <Calendar style={{ width: '18px', height: '18px' }} /> },
         ].map((stat, i) => (
           <div key={i} style={{
@@ -186,10 +201,9 @@ export default function ShipmentDetailPage() {
                   <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: 0 }}>Current Status</h2>
                 </div>
                 <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0 }}>
-                  Last updated {formatDateTime(shipment.jobLastEditTime)}
+                  Last updated {formatDateTime(shipment.jobLastEditTime ?? shipment.updatedAt)}
                 </p>
               </div>
-              
             </div>
 
             {/* Status Box */}
@@ -200,10 +214,10 @@ export default function ShipmentDetailPage() {
                 </div>
                 <div>
                   <p style={{ fontSize: '16px', fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>
-                    {shipment.stDescription ?? shipment.currentStage.replace(/_/g, ' ')}
+                    {shipment.llmIdentifiedType ?? shipment.stDescription ?? shipment.currentStage.replace(/_/g, ' ')}
                   </p>
                   <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>
-                    {shipment.originCity} ({shipment.originCountryCode}) → {shipment.destinationCity} ({shipment.destinationCountryCode})
+                    {shipment.consigneeName ?? '—'}
                   </p>
                 </div>
               </div>
@@ -216,20 +230,57 @@ export default function ShipmentDetailPage() {
             </div>
 
             {/* Progress Bar */}
-            <div style={{ marginBottom: '8px' }}>
+            <div style={{ marginBottom: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#6b7280', marginBottom: '6px' }}>
-                <span>{shipment.originCity} ({shipment.originCountryCode})</span>
-                <span>{shipment.destinationCity} ({shipment.destinationCountryCode})</span>
+                <span>{shipment.originCity ? `${shipment.originCity} (${shipment.originCountryCode})` : 'Origin'}</span>
+                <span>{shipment.destinationCity ? `${shipment.destinationCity} (${shipment.destinationCountryCode})` : 'Destination'}</span>
               </div>
               <div style={{ height: '6px', background: '#e5e7eb', borderRadius: '9999px', overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${progress}%`, background: '#2563eb', borderRadius: '9999px', transition: 'width 0.5s ease' }} />
               </div>
             </div>
 
+            {/* Shipment Note */}
             {shipment.stNoteText && (
-              <p style={{ fontSize: '12px', color: '#6b7280', background: '#f9fafb', borderRadius: '8px', padding: '8px 12px', margin: '12px 0 0' }}>
-                Note: {shipment.stNoteText}
-              </p>
+              <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '10px 12px', marginTop: '8px', border: '1px solid #e5e7eb' }}>
+                <p style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600, margin: '0 0 3px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Shipment Note
+                </p>
+                <p style={{ fontSize: '13px', color: '#374151', margin: 0, lineHeight: '1.5' }}>
+                  {shipment.stNoteText}
+                </p>
+              </div>
+            )}
+
+            {/* AI Note */}
+            {shipment.llmNote && (
+              <div style={{ background: '#eff6ff', borderRadius: '8px', padding: '10px 12px', marginTop: '8px', border: '1px solid #bfdbfe' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
+                  <Brain style={{ width: '12px', height: '12px', color: '#3b82f6' }} />
+                  <p style={{ fontSize: '11px', color: '#3b82f6', fontWeight: 600, margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    AI Note
+                  </p>
+                </div>
+                <p style={{ fontSize: '13px', color: '#1e40af', margin: 0, lineHeight: '1.5' }}>
+                  {shipment.llmNote}
+                </p>
+              </div>
+            )}
+
+            {/* Pickup Date Status */}
+            {shipment.pickupDateStatus && (
+              <div style={{
+                background: pickupStatusColors.bg,
+                borderRadius: '8px', padding: '10px 12px', marginTop: '8px',
+                border: `1px solid ${pickupStatusColors.border}`
+              }}>
+                <p style={{ fontSize: '11px', color: pickupStatusColors.color, fontWeight: 600, margin: '0 0 3px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Pickup Date Status
+                </p>
+                <p style={{ fontSize: '13px', fontWeight: 600, color: pickupStatusColors.color, margin: 0 }}>
+                  {shipment.pickupDateStatus}
+                </p>
+              </div>
             )}
           </div>
 
@@ -244,10 +295,10 @@ export default function ShipmentDetailPage() {
                   Shipper (From)
                 </p>
                 <p style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 4px' }}>
-                  {shipment.shipperName ?? shipment.originCity}
+                  {shipment.shipperName ?? shipment.originCity ?? '—'}
                 </p>
                 <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 8px', lineHeight: 1.5 }}>
-                  {shipment.shipperAddress ?? `${shipment.originCity}, ${shipment.originCountryCode}`}
+                  {shipment.shipperAddress ?? (shipment.originCity ? `${shipment.originCity}, ${shipment.originCountryCode}` : '—')}
                 </p>
                 {shipment.shipperContact && (
                   <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -267,10 +318,10 @@ export default function ShipmentDetailPage() {
                   Consignee (To)
                 </p>
                 <p style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 4px' }}>
-                  {shipment.consigneeName ?? shipment.destinationCity}
+                  {shipment.consigneeName ?? shipment.destinationCity ?? '—'}
                 </p>
                 <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 8px', lineHeight: 1.5 }}>
-                  {shipment.consigneeAddress ?? `${shipment.destinationCity}, ${shipment.destinationCountryCode}`}
+                  {shipment.consigneeAddress ?? (shipment.destinationCity ? `${shipment.destinationCity}, ${shipment.destinationCountryCode}` : '—')}
                 </p>
                 {shipment.consigneeContact && (
                   <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -286,10 +337,10 @@ export default function ShipmentDetailPage() {
             </div>
 
             <ShipmentMap
-              originCity={shipment.originCity}
-              destinationCity={shipment.destinationCity}
+              originCity={shipment.originCity ?? ''}
+              destinationCity={shipment.destinationCity ?? ''}
               progressPercent={progress}
-              />
+            />
           </div>
 
           {/* Cargo Timeline */}
@@ -364,33 +415,44 @@ export default function ShipmentDetailPage() {
             <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 14px' }}>CargoWise Details</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {[
-                { label: 'Job Number', value: shipment.jobNumber },
+                { label: 'Job Number', value: shipment.jobNumber ?? shipment.cargowiseId },
                 { label: 'House Bill', value: shipment.houseBillNumber },
                 { label: 'Branch', value: shipment.branch },
                 { label: 'Transport Mode', value: shipment.transportMode },
-                { label: 'LLM Type', value: shipment.llmIdentifiedType },
+                { label: 'GC Code', value: shipment.gcCode },
+                { label: 'GB Code', value: shipment.gbCode },
+                { label: 'Pickup Status', value: shipment.pickupDateStatus },
+                { label: 'AI Type', value: shipment.llmIdentifiedType },
               ].map((item, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', color: '#9ca3af' }}>{item.label}</span>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>{item.value ?? '—'}</span>
-                </div>
+                item.value ? (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>{item.label}</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>{item.value}</span>
+                  </div>
+                ) : null
               ))}
 
               <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '10px', marginTop: '2px' }}>
                 <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 4px' }}>Created By</p>
-                <p style={{ fontSize: '13px', fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>{shipment.createdBy.name}</p>
-                <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>{shipment.createdBy.email}</p>
+                <p style={{ fontSize: '13px', fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>
+                  {shipment.createdBy?.name ?? '—'}
+                </p>
+                <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                  {shipment.createdBy?.email ?? '—'}
+                </p>
               </div>
 
               <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '10px' }}>
                 <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 4px' }}>Last Updated By</p>
-                <p style={{ fontSize: '13px', fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>{shipment.lastUpdatedBy.name}</p>
-                <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>{shipment.lastUpdatedBy.email}</p>
+                <p style={{ fontSize: '13px', fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>
+                  {shipment.lastUpdatedBy?.name ?? '—'}
+                </p>
+                <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                  {shipment.lastUpdatedBy?.email ?? '—'}
+                </p>
               </div>
             </div>
           </div>
-
-        
 
         </div>
       </div>
