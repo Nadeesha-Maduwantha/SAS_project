@@ -243,58 +243,70 @@ return {
   ).length,
 }
 }
-export async function getActiveShipmentsByDepartment(
-  transportMode: string
-): Promise<Shipment[]> {
+export async function getActiveShipmentsByDepartment(department: string): Promise<Shipment[]> {
   const { data, error } = await supabase
     .from('shipments')
     .select('*')
-    .eq('transport_mode', transportMode)
-    .is('archived_date', null)
-    .is('delivery_date', null)
-    .order('created_at', { ascending: false })
-
-  console.log('TRANSPORT MODE:', transportMode)
-  console.log('ACTIVE SHIPMENTS:', data?.length)
-  console.log('DATA:', data)
+    .eq('transport_mode', department)
 
   if (error) throw new Error(error.message)
-  return data.map(mapRow)
+  return (data ?? [])
+    .map(mapRow)
+    .filter((s) => !s.llmIdentifiedType?.toLowerCase().includes('delivered'))
 }
 
-export async function getArchivedShipmentsByDepartment(
-  transportMode: string
-): Promise<Shipment[]> {
+export async function getArchivedShipmentsByDepartment(department: string): Promise<Shipment[]> {
   const { data, error } = await supabase
     .from('shipments')
     .select('*')
-    .eq('transport_mode', transportMode)
-    .eq('current_stage', 'delivered')
-    .not('archived_date', 'is', null)
-    .order('archived_date', { ascending: false })
+    .eq('transport_mode', department)
 
   if (error) throw new Error(error.message)
-  return data.map(mapRow)
+  return (data ?? [])
+    .map(mapRow)
+    .filter((s) =>
+      s.llmIdentifiedType?.toLowerCase().includes('delivered')
+    )
 }
 
-export async function getDepartmentStats(transportMode: string) {
+export async function getDepartmentStats(department: string) {
   const { data, error } = await supabase
     .from('shipments')
-    .select('current_stage, is_priority, delivery_date, delay_days')
-    .eq('transport_mode', transportMode)
+    .select('*')
+    .eq('transport_mode', department)
 
   if (error) throw new Error(error.message)
+  const shipments = (data ?? []).map(mapRow)
 
-  const today = new Date().toDateString()
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
 
   return {
-    onTime: data.filter((s) => !s.delay_days && s.current_stage !== 'delivered').length,
-    delayed: data.filter((s) => s.delay_days && s.delay_days > 0).length,
-    atRisk: data.filter((s) => s.is_priority).length,
-    deliveredToday: data.filter((s) =>
-      s.delivery_date &&
-      new Date(s.delivery_date).toDateString() === today
+    onTime: shipments.filter((s) =>
+  s.pickupDateStatus === 'Future' &&
+  !s.llmIdentifiedType?.toLowerCase().includes('delivered')
+).length,
+    delayed: shipments.filter((s) =>
+      s.pickupDateStatus === 'Past' &&
+      !s.llmIdentifiedType?.toLowerCase().includes('delivered')
     ).length,
+    atRisk: shipments.filter((s) => {
+      const note = s.llmNote?.toLowerCase() ?? ''
+      return (
+        note.includes('risk') ||
+        note.includes('delay') ||
+        note.includes('issue') ||
+        note.includes('problem') ||
+        note.includes('urgent')
+      )
+    }).length,
+    deliveredToday: shipments.filter((s) => {
+      if (!s.llmIdentifiedType?.toLowerCase().includes('delivered')) return false
+      if (!s.llmCargoPickupDate) return false
+      const deliveredDate = new Date(s.llmCargoPickupDate)
+      deliveredDate.setHours(0, 0, 0, 0)
+      return deliveredDate.getTime() === today.getTime()
+    }).length,
   }
 }
 
