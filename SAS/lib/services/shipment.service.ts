@@ -140,23 +140,27 @@ export async function getDelayedShipments(): Promise<Shipment[]> {
   const { data, error } = await supabase
     .from('shipments')
     .select('*')
-    .not('delay_days', 'is', null)
-    .order('delay_days', { ascending: false })
+    .eq('pickup_date_status', 'Past')
 
   if (error) throw new Error(error.message)
-  return data.map(mapRow)
+  return (data ?? [])
+    .map(mapRow)
+    .filter((s) =>
+      !s.llmIdentifiedType?.toLowerCase().includes('delivered')
+    )
 }
 
 export async function getArchivedShipments(): Promise<Shipment[]> {
   const { data, error } = await supabase
     .from('shipments')
     .select('*')
-    .eq('current_stage', 'delivered')
-    .not('archived_date', 'is', null)
-    .order('archived_date', { ascending: false })
 
   if (error) throw new Error(error.message)
-  return data.map(mapRow)
+  return (data ?? [])
+    .map(mapRow)
+    .filter((s) =>
+      s.llmIdentifiedType?.toLowerCase().includes('delivered')
+    )
 }
 
 export async function getShipmentById(id: string): Promise<Shipment | null> {
@@ -193,19 +197,51 @@ export async function getShipmentStats() {
 export async function getDelayedStats() {
   const { data, error } = await supabase
     .from('shipments')
-    .select('delay_days, is_priority, current_stage')
-    .not('delay_days', 'is', null)
+    .select('*')
+    .eq('pickup_date_status', 'Past')
 
   if (error) throw new Error(error.message)
 
-  const totalDelays = data.reduce((sum, s) => sum + (s.delay_days ?? 0), 0)
+  const shipments = (data ?? [])
+    .map(mapRow)
+    .filter((s) =>
+      !s.llmIdentifiedType?.toLowerCase().includes('delivered')
+    )
 
-  return {
-    totalDelayed: data.length,
-    highPriority: data.filter((s) => s.is_priority).length,
-    avgDelayDays: data.length > 0 ? Math.round(totalDelays / data.length) : 0,
-    customsIssues: data.filter((s) => s.current_stage === 'customs_hold').length,
-  }
+  // Calculate average delay days from llm_cargo_pickup_date
+const today = new Date()
+const delayDaysArray = shipments
+  .filter((s) => s.llmCargoPickupDate)
+  .map((s) => {
+    const pickupDate = new Date(s.llmCargoPickupDate!)
+    const diff = Math.floor(
+      (today.getTime() - pickupDate.getTime()) / (1000 * 60 * 60 * 24)
+    )
+    return diff > 0 ? diff : 0
+  })
+
+const avgDelayDays = delayDaysArray.length > 0
+  ? Math.round(delayDaysArray.reduce((a, b) => a + b, 0) / delayDaysArray.length)
+  : 0
+
+return {
+  totalDelayed: shipments.length,
+  highPriority: shipments.filter((s) => {
+    const note = s.llmNote?.toLowerCase() ?? ''
+    return (
+      note.includes('urgent') ||
+      note.includes('critical') ||
+      note.includes('immediate') ||
+      note.includes('asap') ||
+      note.includes('priority')
+    )
+  }).length,
+  avgDelayDays,
+  customsIssues: shipments.filter((s) =>
+    s.llmIdentifiedType?.toLowerCase().includes('customs') ||
+    s.stNoteText?.toLowerCase().includes('customs')
+  ).length,
+}
 }
 export async function getActiveShipmentsByDepartment(
   transportMode: string

@@ -29,6 +29,10 @@ async function fetchShipments(token: string) {
       headers: { Authorization: `Bearer ${token}` },
     }
   )
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(`API error ${response.status}: ${text}`)
+  }
   return response.json()
 }
 
@@ -49,8 +53,11 @@ export async function GET() {
     const shipments = await fetchShipments(token)
 
     if (!Array.isArray(shipments)) {
-      return NextResponse.json({ error: 'Invalid API response' }, { status: 500 })
-    }
+  return NextResponse.json({ 
+    error: 'Invalid API response', 
+    received: JSON.stringify(shipments).slice(0, 200) 
+  }, { status: 500 })
+}
 
     let inserted = 0
     let updated = 0
@@ -99,6 +106,17 @@ export async function GET() {
         running_date_time: record.running_date_time,
         created_by_name: record.oh_full_name,
         updated_at: new Date().toISOString(),
+        gen_custom_last_edit_time: record.gen_custom_last_edit_time ?? null,
+        job_docs_last_edit_time: record.job_docs_last_edit_time ?? null,
+        note_last_edit_time: record.note_last_edit_time ?? null,
+        is_priority: 
+          record.pickup_date_status === 'Past' && (
+            record.llm_note?.toLowerCase().includes('urgent') ||
+            record.llm_note?.toLowerCase().includes('critical') ||
+            record.llm_note?.toLowerCase().includes('immediate') ||
+            record.llm_note?.toLowerCase().includes('asap') ||
+            record.llm_note?.toLowerCase().includes('priority')
+  ) ? true : false,
       }
 
       if (existing) {
