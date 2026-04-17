@@ -6,7 +6,12 @@ import AccountManagement from '@/components/AdminUser/AccountManagement';
 import { UserFormData } from '@/types';
 
 const EditUserPage: React.FC = () => {
-  const [formData, setFormData] = useState<UserFormData>({
+  // --- New state for search ---
+  const [searchEmail, setSearchEmail] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
+
+  const [formData, setFormData] = useState<UserFormData & { id?: string }>({
     fullName: '',
     email: '',
     department: '',
@@ -15,6 +20,43 @@ const EditUserPage: React.FC = () => {
     resetPassword: false,
     unlockAccount: false,
   });
+
+  // --- Real Backend Search Handler ---
+  const handleSearch = async () => {
+    if (!searchEmail) return;
+    
+    setIsSearching(true);
+    setSearchError('');
+    console.log('Searching for user with email:', searchEmail);
+    
+    try {
+      // Connects to your Python Flask backend
+      const response = await fetch(`http://localhost:5000/api/users/search?email=${encodeURIComponent(searchEmail)}`);
+      const data = await response.json();
+      
+      if (response.ok && data.user) {
+        // Populate the form fields with the data found in Supabase
+        setFormData({
+          id: data.user.id,
+          fullName: data.user.fullName || '',
+          email: data.user.email || '',
+          department: data.user.department || '',
+          role: data.user.role || 'Custom Configuration',
+          userAction: '',
+          resetPassword: false,
+          unlockAccount: false,
+        });
+      } else {
+        // Usually a 404 Not Found error
+        setSearchError(data.error || 'User not found. Please check the email.');
+      }
+    } catch (error) {
+      console.error('Failed to search user:', error);
+      setSearchError('Connection failed. Please ensure the backend is running.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -50,6 +92,7 @@ const EditUserPage: React.FC = () => {
       resetPassword: false,
       unlockAccount: false,
     });
+    setSearchEmail(''); // clear search as well
   };
 
   return (
@@ -65,6 +108,40 @@ const EditUserPage: React.FC = () => {
             Configure user details and granular access controls for the DGL system.
           </p>
         </div>
+
+        {/* NEW: Search Section */}
+        <div className="mb-6 bg-white p-5 rounded-xl shadow-sm flex items-center gap-4 border border-gray-100">
+          <label htmlFor="searchEmail" className="text-sm font-semibold text-gray-700 whitespace-nowrap">
+            Find User
+          </label>
+          <input
+            type="email"
+            id="searchEmail"
+            value={searchEmail}
+            onChange={(e) => setSearchEmail(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            placeholder="Enter user email address..."
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm"
+          />
+          <button
+            onClick={handleSearch}
+            disabled={isSearching || !searchEmail}
+            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+              isSearching || !searchEmail 
+                ? 'bg-blue-300 cursor-not-allowed text-white' 
+                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
+            }`}
+          >
+            {isSearching ? 'Searching...' : 'Search'}
+          </button>
+        </div>
+
+        {/* NEW: Search Error Feedback */}
+        {searchError && (
+          <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-lg text-sm font-medium border border-red-100">
+            {searchError}
+          </div>
+        )}
 
         {/* Main Card */}
         <div className="bg-white rounded-xl p-8 grid grid-cols-2 gap-8 mb-6">

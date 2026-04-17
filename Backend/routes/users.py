@@ -1,20 +1,17 @@
 from flask import Blueprint, request, jsonify
 from services.supabase_service import get_supabase
 from datetime import datetime
+import traceback
+
+print("=== USERS.PY MODULE LOADED ===")  # ← TOP OF FILE outside function
 
 bp = Blueprint('users', __name__, url_prefix='/api/users')
-
-def serialize_error(e):
-    try:
-        return str(e)
-    except Exception:
-        return type(e).__name__
 
 @bp.route('/create', methods=['POST'])
 def create_user():
     try:
         data = request.json
-        
+
         if not data:
             return jsonify({'error': 'Request body is empty'}), 400
 
@@ -23,37 +20,45 @@ def create_user():
 
         supabase = get_supabase()
 
+        print("=== STEP 1: Creating auth user ===")
         auth_response = supabase.auth.sign_up({
             'email': data.get('email'),
             'password': data.get('password')
         })
 
         if not auth_response or not auth_response.user:
-            return jsonify({'error': 'Failed to create user.'}), 400
-
-        identities = auth_response.user.identities
-        if identities is not None and len(identities) == 0:
-            return jsonify({'error': 'Email is already registered.'}), 400
+            return jsonify({'error': 'Failed to create user in Auth.'}), 400
 
         user_id = str(auth_response.user.id)
         email = str(auth_response.user.email)
-        now = datetime.now().isoformat()
+        print(f"Auth user created: {user_id} / {email}")
 
+        print("=== STEP 2: Building profile data ===")
         user_data = {
             'id': user_id,
             'email': email,
-            'full_name': str(data.get('fullName', '')),
-            'age': int(data.get('age')) if data.get('age') else None,
-            'ethnicity': str(data.get('ethnicity', '')),
-            'role': str(data.get('role', '')),
-            'department': str(data.get('department', '')),
-            'address': str(data.get('address', '')),
-            'created_at': now,
-            'updated_at': now
+            'full_name': data.get('fullName') or '',
+            'age': int(data.get('age')) if data.get('age') else 0,
+            'ethnicity': data.get('ethnicity') or '',
+            'role': data.get('role') or '',
+            'department': data.get('department') or '',
+            'address': data.get('address') or '',
+            'created_at': datetime.now().isoformat(),
+            'updated_at': datetime.now().isoformat()
         }
+        print(f"Profile data: {user_data}")
 
-        supabase.table('profiles').insert(user_data).execute()
+        print("=== STEP 3: Inserting into profiles table ===")
+        try:
+            result = supabase.table('profiles').insert(user_data).execute()
+            print(f"Insert result: {result}")
+            print(f"Insert data: {result.data}")
+        except Exception as table_err:
+            print(f"Table Insert Failed: {str(table_err)}")
+            traceback.print_exc()
+            return jsonify({'error': f'Profile Insert failed: {str(table_err)}'}), 400
 
+        print("=== STEP 4: Success ===")
         return jsonify({
             'message': 'User created successfully',
             'user_id': user_id,
@@ -62,13 +67,6 @@ def create_user():
 
     except Exception as e:
         print("=== ERROR ===")
-        import traceback
         traceback.print_exc()
-        # ✅ Fix: safely extract error message without serializing Supabase objects
-        try:
-            error_message = e.args[0] if e.args else type(e).__name__
-            if not isinstance(error_message, str):
-                error_message = type(e).__name__
-        except Exception:
-            error_message = 'An error occurred'
+        error_message = type(e).__name__
         return jsonify({'error': error_message}), 400
