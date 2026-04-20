@@ -84,3 +84,5 @@ export interface DelayedStats {
   avgDelayDays: number
   customsIssues: number
 }
+
+declare module '*.css'

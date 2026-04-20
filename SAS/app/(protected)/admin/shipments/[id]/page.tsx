@@ -164,7 +164,7 @@ export default function ShipmentDetailPage() {
           { label: 'Transport Mode', value: shipment.transportMode ?? '—', icon: <Truck style={{ width: '18px', height: '18px' }} /> },
           { label: 'House Bill Number', value: shipment.houseBillNumber ?? '—', icon: <Box style={{ width: '18px', height: '18px' }} /> },
           { label: 'AI Identified Type', value: shipment.llmIdentifiedType ?? '—', icon: <Brain style={{ width: '18px', height: '18px' }} /> },
-          { label: 'ETA', value: formatDate(shipment.estimatedArrival), icon: <Calendar style={{ width: '18px', height: '18px' }} /> },
+          { label: 'Pickup Date', value: shipment.llmCargoPickupDate ? new Date(shipment.llmCargoPickupDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : '—', icon: <Calendar style={{ width: '18px', height: '18px' }} /> },
         ].map((stat, i) => (
           <div key={i} style={{
             background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb',

@@ -316,11 +316,9 @@ export async function getShipmentsByOperationUser(
   const { data, error } = await supabase
     .from('shipments')
     .select('*')
-    .eq('created_by_staff_code', staffCode)
-    .order('estimated_arrival', { ascending: true })
 
   if (error) throw new Error(error.message)
-  return data.map(mapRow)
+  return (data ?? []).map(mapRow)
 }
 
 export async function getShipmentsBySalesUser(
@@ -329,9 +327,7 @@ export async function getShipmentsBySalesUser(
   const { data, error } = await supabase
     .from('shipments')
     .select('*')
-    .eq('sales_user_staff_code', staffCode)
-    .order('estimated_arrival', { ascending: true })
 
   if (error) throw new Error(error.message)
-  return data.map(mapRow)
+  return (data ?? []).map(mapRow)
 }
