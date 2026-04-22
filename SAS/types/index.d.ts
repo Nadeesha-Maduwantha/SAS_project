@@ -63,10 +63,6 @@ export interface Shipment {
   salesUserStaffCode?: string
   salesUserName?: string
   salesUserEmail?: string
-  jsPk?: string
-  llmCargoPickupDate?: string
-  runningDateTime?: Date | null
-  noteNumber?: number | null
 }
 
 export interface ShipmentStats {
@@ -126,5 +122,3 @@ export interface PasswordChange {
   newPassword: string;
   confirmPassword: string;
 }
-
-declare module '*.css'
