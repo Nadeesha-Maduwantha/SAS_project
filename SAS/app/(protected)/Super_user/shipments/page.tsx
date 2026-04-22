@@ -3,31 +3,25 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCircle, AlertTriangle, Clock, Package } from 'lucide-react'
-
 import { ShipmentStatusBadge } from '@/components/shipments/ShipmentStatusBadge'
 import { ShipmentStatsCard } from '@/components/shipments/ShipmentStatsCard'
 import { ShipmentPagination } from '@/components/shipments/ShipmentPagination'
 import { ShipmentFilter } from '@/components/shipments/ShipmentFilter'
 import { exportAllShipmentsPDF } from '@/lib/Utils/exportPDF'
 import { Shipment } from '@/types'
-import {
-  getActiveShipmentsByDepartment,
-  getDepartmentStats
-} from '@/lib/services/shipment.service'
+import { getActiveShipmentsByDepartment, getDepartmentStats } from '@/lib/services/shipment.service'
 import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
 
 // ─── Temporary: replace with session.user.department when auth is ready ───
 const USER_DEPARTMENT = 'SEA'
 // ─────────────────────────────────────────────────────────────────────────
 
-function formatDate(date: Date | null | undefined) {
-  if (!date) return 'Pending'
-  return date.toLocaleDateString('en-US', {
+function formatPickupDate(date: string | undefined) {
+  if (!date) return '—'
+  return new Date(date).toLocaleDateString('en-US', {
     month: 'short', day: '2-digit', year: 'numeric'
   })
 }
-
-
 
 export default function SuperUserActiveShipmentsPage() {
   const router = useRouter()
@@ -40,24 +34,24 @@ export default function SuperUserActiveShipmentsPage() {
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({
     currentStage: '',
   })
-  
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     async function fetchData() {
-  try {
-    setLoading(true)
-    const [shipmentsData, statsData] = await Promise.all([
-      getActiveShipmentsByDepartment(USER_DEPARTMENT),
-      getDepartmentStats(USER_DEPARTMENT),
-    ])
-    setShipments(shipmentsData)
-    setStats(statsData)
-  } catch {
-    setError('Failed to load shipments')
-  } finally {
-    setLoading(false)
-  }
-}
+      try {
+        setLoading(true)
+        const [shipmentsData, statsData] = await Promise.all([
+          getActiveShipmentsByDepartment(USER_DEPARTMENT),
+          getDepartmentStats(USER_DEPARTMENT),
+        ])
+        setShipments(shipmentsData)
+        setStats(statsData)
+      } catch {
+        setError('Failed to load shipments')
+      } finally {
+        setLoading(false)
+      }
+    }
     fetchData()
   }, [])
 
@@ -66,26 +60,27 @@ export default function SuperUserActiveShipmentsPage() {
     if (activeTab === 'standard') return !s.isPriority
     return true
   })
-  const [searchQuery, setSearchQuery] = useState('')
 
   const filteredShipments = tabFiltered.filter((s) => {
-  if (activeFilters.currentStage && s.currentStage !== activeFilters.currentStage) return false
-  if (searchQuery && !s.cargowiseId.toLowerCase().includes(searchQuery.toLowerCase())) return false
-  return true
-})
+    if (activeFilters.currentStage &&
+      s.llmIdentifiedType !== activeFilters.currentStage &&
+      s.currentStage !== activeFilters.currentStage) return false
+    if (searchQuery && !s.cargowiseId.toLowerCase().includes(searchQuery.toLowerCase())) return false
+    return true
+  })
 
   const pageSize = 10
   const paginated = filteredShipments.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
   const filterGroups = [
     {
-      label: 'By Current Stage',
+      label: 'By Stage',
       key: 'currentStage',
       options: [
-        { label: 'In Transit', value: 'in_transit' },
-        { label: 'Customs Hold', value: 'customs_hold' },
-        { label: 'Arrived at Port', value: 'arrived_at_port' },
-        { label: 'Processing', value: 'processing' },
+        { label: 'Booking Approval', value: 'Booking Approval' },
+        { label: 'Delivery Date', value: 'Delivery Date' },
+        { label: 'Delivered to CFS warehouse', value: 'Delivered to CFS warehouse' },
+        { label: 'Unknown', value: 'Unknown' },
       ],
     },
   ]
@@ -114,8 +109,8 @@ export default function SuperUserActiveShipmentsPage() {
             </span>
           </div>
           <p className="text-sm text-gray-500 mt-0.5">
-            Department: {USER_DEPARTMENT === 'SEA' ? 'Sea Freight' : 
-                         USER_DEPARTMENT === 'AIR' ? 'Air Freight' : 
+            Department: {USER_DEPARTMENT === 'SEA' ? 'Sea Freight' :
+                         USER_DEPARTMENT === 'AIR' ? 'Air Freight' :
                          'Road Freight'}
           </p>
         </div>
@@ -158,7 +153,6 @@ export default function SuperUserActiveShipmentsPage() {
 
         {/* Tabs + Toolbar */}
         <div className="flex items-center justify-between px-5 pt-4 pb-0">
-          {/* Tabs */}
           <div className="flex items-center gap-1">
             {(['all', 'expedited', 'standard'] as const).map((tab) => (
               <button
@@ -175,9 +169,11 @@ export default function SuperUserActiveShipmentsPage() {
             ))}
           </div>
 
-          {/* Filter + Export */}
           <div className="flex items-center gap-2 pb-2">
-            <ShipmentSearch value={searchQuery} onChange={setSearchQuery} />
+            <ShipmentSearch
+              value={searchQuery}
+              onChange={(v) => { setSearchQuery(v); setCurrentPage(1) }}
+            />
             <ShipmentFilter
               groups={filterGroups}
               activeFilters={activeFilters}
@@ -206,45 +202,73 @@ export default function SuperUserActiveShipmentsPage() {
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                 <th className="text-left px-5 py-3">Shipment ID</th>
-                <th className="text-left px-5 py-3">Destination</th>
+                <th className="text-left px-5 py-3">Consignee</th>
                 <th className="text-left px-5 py-3">Status</th>
-                <th className="text-left px-5 py-3">ETA</th>
+                <th className="text-left px-5 py-3">Pickup Date</th>
+                <th className="text-left px-5 py-3">Pickup Status</th>
                 <th className="text-left px-5 py-3">Priority</th>
-                <th className="text-left px-5 py-3">Actions</th>
+                <th className="text-left px-5 py-3">Action</th>
                 <th className="text-left px-5 py-3">Detail</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-sm text-gray-400">
+                  <td colSpan={8} className="px-5 py-10 text-center text-sm text-gray-400">
                     No shipments found
                   </td>
                 </tr>
               ) : paginated.map((shipment) => (
                 <tr key={shipment.id} className="hover:bg-gray-50 transition-colors">
+
                   {/* Shipment ID */}
                   <td className="px-5 py-3.5">
                     <p className="text-sm font-semibold text-gray-900">#{shipment.cargowiseId}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{shipment.carrier}</p>
+                    {shipment.branch && (
+                      <p className="text-xs text-gray-400 mt-0.5">Branch: {shipment.branch}</p>
+                    )}
                   </td>
 
-                  {/* Destination */}
+                  {/* Consignee */}
                   <td className="px-5 py-3.5">
-                    <p className="text-sm text-gray-900">{shipment.destinationCity}, {shipment.destinationCountryCode}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">From {shipment.originCity}</p>
+                    <p className="text-sm text-gray-900">{shipment.consigneeName ?? '—'}</p>
+                    {shipment.gcCode && (
+                      <p className="text-xs text-gray-400 mt-0.5">{shipment.gcCode}</p>
+                    )}
                   </td>
 
                   {/* Status */}
                   <td className="px-5 py-3.5">
-                    <ShipmentStatusBadge status={shipment.currentStage} />
+                    <ShipmentStatusBadge status={shipment.llmIdentifiedType ?? shipment.currentStage} />
+                    {shipment.stNoteText && (
+                      <p className="text-xs text-gray-400 mt-1 max-w-xs truncate">
+                        {shipment.stNoteText}
+                      </p>
+                    )}
                   </td>
 
-                 
-
-                  {/* ETA */}
+                  {/* Pickup Date */}
                   <td className="px-5 py-3.5 text-sm text-gray-700">
-                    {formatDate(shipment.estimatedArrival)}
+                    {formatPickupDate(shipment.llmCargoPickupDate)}
+                  </td>
+
+                  {/* Pickup Status */}
+                  <td className="px-5 py-3.5">
+                    {shipment.pickupDateStatus ? (
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center',
+                        padding: '3px 10px', borderRadius: '9999px',
+                        fontSize: '12px', fontWeight: 600,
+                        background: shipment.pickupDateStatus === 'Future' ? '#eff6ff' :
+                                    shipment.pickupDateStatus === 'Past' ? '#fef2f2' : '#f0fdf4',
+                        color: shipment.pickupDateStatus === 'Future' ? '#1d4ed8' :
+                               shipment.pickupDateStatus === 'Past' ? '#dc2626' : '#16a34a',
+                      }}>
+                        {shipment.pickupDateStatus}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
                   </td>
 
                   {/* Priority */}
@@ -258,24 +282,25 @@ export default function SuperUserActiveShipmentsPage() {
                     </span>
                   </td>
 
-                  {/* Action Column */}
-<td className="px-5 py-3.5">
-  {shipment.currentStage !== 'delivered' && (
-    <button className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-      Take Action
-    </button>
-  )}
-</td>
+                  {/* Action */}
+                  <td className="px-5 py-3.5">
+                    {shipment.currentStage !== 'delivered' && (
+                      <button className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        Take Action
+                      </button>
+                    )}
+                  </td>
 
-{/* Detail Column */}
-<td className="px-5 py-3.5">
-  <button
-    onClick={() => router.push(`/admin/shipments/${shipment.id}?from=/Super_user/shipments`)}
-    className="text-xs font-medium text-blue-600 hover:underline"
-  >
-    View Details
-  </button>
-</td>
+                  {/* Detail */}
+                  <td className="px-5 py-3.5">
+                    <button
+                      onClick={() => router.push(`/admin/shipments/${shipment.id}?from=/Super_user/shipments`)}
+                      className="text-xs font-medium text-blue-600 hover:underline"
+                    >
+                      View Details
+                    </button>
+                  </td>
+
                 </tr>
               ))}
             </tbody>

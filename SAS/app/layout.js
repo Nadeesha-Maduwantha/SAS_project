@@ -1,17 +1,11 @@
 import './globals.css'
-import type { Metadata } from 'next'
-import React from 'react'
 
-export const metadata: Metadata = {
+export const metadata = {
     title: 'Dart Global Logistics - SAS Systems',
     description: 'Secure, real-time alert management for global supply chains',
 }
 
-export default function RootLayout({
-    children,
-}: {
-    children: React.ReactNode
-}) {
+export default function RootLayout({ children }) {
     return (
         <html lang="en" suppressHydrationWarning>
             <head>

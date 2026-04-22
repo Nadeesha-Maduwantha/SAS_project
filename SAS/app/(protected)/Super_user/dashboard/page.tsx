@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 import SuperLeftNavBar from '@/components/SuperUser/SuperLeftNavBar';
 
-import SuperDashboardHeader from '@/components/SuperUser/SuperDashboardHeader';
+import SuperDashboardHeader from '../../../../components/SuperUser/SuperDashboardHeader';
 import SuperStatsGrid from '@/components/SuperUser/SuperStatsGrid';
 import SuperWorkloadChartCard from '@/components/SuperUser/SuperWorkloadChartCard';
 import SuperCriticalAlertsCard from '@/components/SuperUser/SuperCriticalAlertsCard';
