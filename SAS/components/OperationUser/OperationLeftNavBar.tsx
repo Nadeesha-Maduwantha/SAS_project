@@ -64,7 +64,7 @@ export default function OperationLeftNavBar({ alertsCount = 0 }: Props) {
 
       {/* My Shipments (NO dropdown) */}
       <button
-        className={`nav-single-btn ${isActiveRoute('/operation_user/shipments') ? 'active' : ''}`}
+        className={`nav-section-header ${isActiveRoute('/operation_user/shipments') ? 'active' : ''}`}
         onClick={() => handleNavigation('/operation_user/shipments')}
       >
         <Package className="nav-icon" />
@@ -73,7 +73,7 @@ export default function OperationLeftNavBar({ alertsCount = 0 }: Props) {
 
       {/* My Alerts (NO dropdown) */}
       <button
-        className={`nav-single-btn ${isActiveRoute('/operation_user/alerts') ? 'active' : ''}`}
+        className={`nav-section-header ${isActiveRoute('/operation_user/alerts') ? 'active' : ''}`}
         onClick={() => handleNavigation('/operation_user/alerts')}
       >
         <Bell className="nav-icon" />
@@ -82,10 +82,11 @@ export default function OperationLeftNavBar({ alertsCount = 0 }: Props) {
 
       {/* History (single) */}
       <button
-        className={`nav-single-btn ${isActiveRoute('/operation_user/history') ? 'active' : ''}`}
+        className={`nav-section-header ${isActiveRoute('/operation_user/history') ? 'active' : ''}`}
         onClick={() => handleNavigation('/operation_user/history')}
-      >< Clock className="nav-icon" />
-        <span className="nav-history-label">HISTORY</span>
+      >
+        <Clock className="nav-icon" />
+        <span className="nav-history-label">Histroy</span>
       </button>
 
       {/* Settings (dropdown) */}
@@ -107,7 +108,7 @@ export default function OperationLeftNavBar({ alertsCount = 0 }: Props) {
               className={`nav-item ${isActiveRoute('/operation_user/settings/profile') ? 'active' : ''}`}
               onClick={() => handleNavigation('/operation_user/settings/profile')}
             >
-              <User className="nav-item-icon" />
+              
               <span>My Profile</span>
             </button>
 
@@ -115,7 +116,7 @@ export default function OperationLeftNavBar({ alertsCount = 0 }: Props) {
               className={`nav-item ${isActiveRoute('/operation_user/settings/notifications') ? 'active' : ''}`}
               onClick={() => handleNavigation('/operation_user/settings/notifications')}
             >
-              <Bell className="nav-item-icon" />
+              
               <span>Notification Preferences</span>
             </button>
           </div>
