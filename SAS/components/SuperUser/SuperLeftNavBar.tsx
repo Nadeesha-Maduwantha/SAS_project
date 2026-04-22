@@ -83,37 +83,39 @@ export default function SuperLeftNavBar({ alertsCount = 0 }: Props) {
         {expandedSections.shipments && (
           <div className="nav-section-content">
             <button
-              className={`nav-item ${isActiveRoute('/super_user/shipments') && !pathname.includes('/archive') && !pathname.includes('/delayed') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/super_user/shipments')}
+              className={`nav-item ${isActiveRoute('/Super_user/shipments') && !pathname.includes('/archive') && !pathname.includes('/delayed') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/Super_user/shipments')}
             >
               Active Shipments
             </button>
 
             <button
-              className={`nav-item ${isActiveRoute('/super_user/shipments/delayed') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/super_user/shipments/delayed')}
+              className={`nav-item ${isActiveRoute('/Super_user/shipments/delayed') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/Super_user/shipments/delayed')}
             >
               Critical Milestones
             </button>
 
             <button
-              className={`nav-item ${isActiveRoute('/super_user/shipments/archive') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/super_user/shipments/archive')}
+              className={`nav-item ${isActiveRoute('/Super_user/shipments/archive') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/Super_user/shipments/archive')}
             >
               Archive
             </button>
           </div>
         )}
       </div>
+      <div className="nav-section">
 
       {/* ✅ Create Template (NEW) */}
       <button
-        className="nav-create-btn"
-        onClick={() => handleNavigation('/super_user/templates')}
+        className="nav-section-header"
+        onClick={() => handleNavigation('/Super_user/templates')}
       >
         <Plus className="nav-icon" />
         <span>Create Template</span>
       </button>
+      </div>
 
       {/* Alerts */}
       <div className="nav-section">
@@ -131,22 +133,22 @@ export default function SuperLeftNavBar({ alertsCount = 0 }: Props) {
         {expandedSections.alerts && (
           <div className="nav-section-content">
             <button
-              className={`nav-item ${isActiveRoute('/super_user/alerts') && !pathname.includes('/my-alerts') && !pathname.includes('/resolved') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/super_user/alerts')}
+              className={`nav-item ${isActiveRoute('/Super_user/alerts') && !pathname.includes('/my-alerts') && !pathname.includes('/resolved') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/Super_user/alerts')}
             >
               All Alerts
             </button>
 
             <button
-              className={`nav-item ${isActiveRoute('/super_user/alerts/my-alerts') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/super_user/alerts/my-alerts')}
+              className={`nav-item ${isActiveRoute('/Super_user/alerts/my-alerts') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/Super_user/alerts/my-alerts')}
             >
               My Alerts
             </button>
 
             <button
-              className={`nav-item ${isActiveRoute('/super_user/alerts/resolved') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/super_user/alerts/resolved')}
+              className={`nav-item ${isActiveRoute('/Super_user/alerts/resolved') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/Super_user/alerts/resolved')}
             >
               Resolved
             </button>

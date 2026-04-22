@@ -1,5 +1,4 @@
-@reference "tailwindcss";
-
+@reference "../../app/globals.css";
 .admin-topbar {
   @apply w-full bg-white border-b border-slate-100;
 }
