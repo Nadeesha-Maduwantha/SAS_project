@@ -1,0 +1,149 @@
+@reference "tailwindcss";
+
+/* Super User Left Navigation Bar Styles (Admin theme) */
+
+.super-nav-container {
+  @apply w-full max-w-[300px] h-screen bg-[#f5f5f7] p-5 box-border overflow-y-auto flex flex-col gap-2 border-r border-[#e5e5e7];
+}
+
+/* Header Styles */
+.nav-header {
+  @apply flex items-center justify-center gap-2 mb-5 p-3;
+}
+
+.nav-logo {
+  @apply flex items-center gap-2.5 cursor-pointer select-none;
+}
+
+.logo-icon {
+  @apply w-8 h-8 rounded-lg p-1 text-white shrink-0;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.logo-text {
+  @apply text-base font-bold text-black tracking-[-0.5px];
+}
+
+/* Dashboard Button */
+.nav-dashboard-btn {
+  @apply flex items-center gap-3 w-full px-4 py-3 bg-blue-100 border-0 rounded-xl cursor-pointer text-sm font-semibold text-blue-900 transition-all duration-200 ease-in-out mb-3;
+}
+
+.nav-dashboard-btn:hover {
+  @apply bg-blue-200;
+  transform: translateX(2px);
+}
+
+.nav-dashboard-btn.active {
+  @apply bg-blue-500 text-white;
+}
+
+/* Navigation Sections */
+.nav-section {
+  @apply flex flex-col gap-0 mb-2;
+}
+
+.nav-section-header {
+  @apply flex items-center gap-3 w-full px-4 py-3 bg-transparent border-0 rounded-lg cursor-pointer text-[13px] font-semibold text-gray-800 uppercase tracking-[0.5px] transition-all duration-200 ease-in-out relative;
+}
+
+.nav-section-header:hover {
+  @apply bg-[#efefef];
+}
+
+.nav-icon {
+  @apply w-[18px] h-[18px] shrink-0 text-gray-500;
+}
+
+.chevron-icon {
+  @apply w-[18px] h-[18px] ml-auto shrink-0 text-gray-400 transition-transform duration-300 ease-in-out;
+}
+
+.chevron-icon.expanded {
+  @apply rotate-180;
+}
+
+/* Section Content */
+.nav-section-content {
+  @apply flex flex-col gap-0 pl-3 border-l-2 border-gray-300 ml-[9px];
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+  }
+}
+
+/* Navigation Items */
+.nav-item {
+  @apply flex items-center gap-3 w-full px-4 py-[10px] bg-transparent border-0 rounded-md cursor-pointer text-sm text-gray-700 text-left transition-all duration-200 ease-in-out font-medium;
+}
+
+.nav-item:hover {
+  @apply bg-gray-200 text-gray-800;
+  padding-left: 20px;
+}
+
+.nav-item.active {
+  @apply bg-blue-100 text-blue-900 font-semibold border-l-[3px] border-blue-500;
+  padding-left: 13px;
+}
+
+/* Scrollbar Styling */
+.super-nav-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.super-nav-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.super-nav-container::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.super-nav-container::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .super-nav-container {
+    @apply max-w-[250px] p-4 gap-1.5;
+  }
+
+  .nav-dashboard-btn,
+  .nav-section-header,
+  .nav-item {
+    @apply text-[13px] px-3 py-2.5;
+  }
+
+  .nav-icon {
+    @apply w-4 h-4;
+  }
+
+  .chevron-icon {
+    @apply w-4 h-4;
+  }
+
+  .logo-text {
+    @apply text-sm;
+  }
+}
+
+/* Create Button */
+.nav-create-btn {
+  @apply flex items-center justify-center gap-2 w-full px-4 py-3 bg-transparent border-0 rounded-lg cursor-pointer text-[13px] font-semibold text-gray-500 uppercase tracking-[0.5px] transition-all duration-200 ease-in-out my-3;
+}
+
+.nav-create-btn:hover {
+  @apply bg-gray-100 text-gray-700;
+}

@@ -1,53 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import MilestoneMap from "@/app/components/MilestoneMap";
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  CHANGE THIS to test different roles:
-//  "admin" | "superuser" | "operations" | "sales"
-//  When you connect Keycloak later, replace this with:
-//  const USER_ROLE = session?.user?.role ?? "admin";
-// ─────────────────────────────────────────────────────────────────────────────
-const USER_ROLE = "admin";
-
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-const SHIPMENT = {
-  id: "SHP-2025-0042",
-  client: "Apex Electronics Ltd.",
-  type: "Air Freight",
-  route: "Colombo → Singapore → Tokyo",
-  operationsUser: {
-    name: "Raveendra Perera",
-    email: "r.perera@dartglobal.com",
-    role: "Operations Officer",
-    company: "Dart Global Logistics",
-  },
-  shiplineContact: {
-    name: "Nimal Jayawardena",
-    email: "n.jayawardena@emirateslogistics.com",
-    role: "Cargo Operations",
-    company: "Emirates Logistics",
-  },
-  clientContact: {
-    name: "David Chen",
-    email: "d.chen@apexelectronics.com",
-    role: "Logistics Manager",
-    company: "Apex Electronics Ltd.",
-  },
-};
-
-const MILESTONES = [
-  { id: "m1", number: 1, name: "Booking Confirmation",    status: "completed", critical: false, automated: true,  date: "2025-01-10", completedAt: "2025-01-10 09:15", location: { label: "Colombo, Sri Lanka",                   lat: 6.9271,  lng: 79.8612  }, notes: "Booking confirmed with Emirates Logistics. AWB issued.", daysFromBooking: 0  },
-  { id: "m2", number: 2, name: "Cargo Ready Date",         status: "completed", critical: false, automated: false, date: "2025-01-13", completedAt: "2025-01-13 14:30", location: { label: "Colombo Port, Sri Lanka",              lat: 6.9388,  lng: 79.8430  }, notes: "Cargo packed and ready at shipper warehouse.",           daysFromBooking: 3  },
-  { id: "m3", number: 3, name: "Pickup from Shipper",      status: "completed", critical: false, automated: false, date: "2025-01-14", completedAt: "2025-01-14 11:00", location: { label: "Katunayake, Sri Lanka",                lat: 7.1696,  lng: 79.8830  }, notes: "Cargo collected from shipper premises.",                daysFromBooking: 4  },
-  { id: "m4", number: 4, name: "Export Customs Clearance", status: "completed", critical: false, automated: false, date: "2025-01-15", completedAt: "2025-01-15 16:45", location: { label: "BIA Customs, Sri Lanka",               lat: 7.1806,  lng: 79.8847  }, notes: "Export declaration approved. No holds.",                 daysFromBooking: 5  },
-  { id: "m5", number: 5, name: "Departure from Origin",    status: "overdue",   critical: true,  automated: false, date: "2025-01-16", completedAt: null,               location: { label: "Bandaranaike Intl Airport, Sri Lanka", lat: 7.1808,  lng: 79.8847  }, notes: "Flight EK652 delayed. Cargo still on ground.",         daysFromBooking: 6  },
-  { id: "m6", number: 6, name: "In Transit / En Route",    status: "pending",   critical: false, automated: true,  date: "2025-01-17", completedAt: null,               location: { label: "Dubai International Airport, UAE",     lat: 25.2532, lng: 55.3657  }, notes: null,                                                   daysFromBooking: 7  },
-  { id: "m7", number: 7, name: "Arrival at Destination",   status: "pending",   critical: true,  automated: false, date: "2025-01-18", completedAt: null,               location: { label: "Narita International Airport, Japan",  lat: 35.7720, lng: 140.3929 }, notes: null,                                                   daysFromBooking: 8  },
-  { id: "m8", number: 8, name: "Import Customs Clearance", status: "pending",   critical: false, automated: false, date: "2025-01-19", completedAt: null,               location: { label: "Narita Customs, Japan",                lat: 35.7647, lng: 140.3864 }, notes: null,                                                   daysFromBooking: 9  },
-  { id: "m9", number: 9, name: "Delivery to Consignee",    status: "pending",   critical: false, automated: false, date: "2025-01-20", completedAt: null,               location: { label: "Tokyo, Japan",                         lat: 35.6762, lng: 139.6503 }, notes: null,                                                   daysFromBooking: 10 },
-];
 
 // ─── Role config ──────────────────────────────────────────────────────────────
 const ROLE_CONFIG = {
@@ -121,18 +76,12 @@ function TakeActionModal({ milestone, shipment, role, onClose, onSent }) {
   const [step, setStep] = useState(1);
   const config    = ROLE_CONFIG[role];
   const recipient = config.recipient(shipment);
-
-  const [emailBody, setEmailBody] = useState(
-    config.emailBody(milestone, shipment)
-  );
-
+  const [emailBody, setEmailBody] = useState(config.emailBody(milestone, shipment));
   const handleSend = () => { setStep(2); onSent(); };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden">
-
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
             <h3 className="text-base font-semibold text-gray-900">{config.modalTitle}</h3>
@@ -142,10 +91,8 @@ function TakeActionModal({ milestone, shipment, role, onClose, onSent }) {
             <XIcon />
           </button>
         </div>
-
         {step === 1 ? (
           <>
-            {/* Critical warning */}
             {milestone.critical && (
               <div className="mx-6 mt-4 flex items-start gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg">
                 <div className="text-red-500 mt-0.5"><AlertIcon /></div>
@@ -155,8 +102,6 @@ function TakeActionModal({ milestone, shipment, role, onClose, onSent }) {
                 </div>
               </div>
             )}
-
-            {/* To / From / Subject */}
             <div className="px-6 pt-4 space-y-3">
               <div className="flex items-center gap-3 text-sm">
                 <span className="w-10 text-gray-400 font-medium text-xs uppercase">To</span>
@@ -182,8 +127,6 @@ function TakeActionModal({ milestone, shipment, role, onClose, onSent }) {
                 </div>
               </div>
             </div>
-
-            {/* Email body */}
             <div className="px-6 pt-3">
               <textarea
                 value={emailBody}
@@ -192,20 +135,14 @@ function TakeActionModal({ milestone, shipment, role, onClose, onSent }) {
                 className="w-full px-4 py-3 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono leading-relaxed"
               />
             </div>
-
-            {/* Footer */}
             <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 mt-2">
               <p className="text-xs text-gray-400">
-                {role === "operations"
-                  ? "The shipline must update CargoWise — SAS will auto-resolve once synced."
-                  : role === "sales"
-                  ? "Client will be notified of the shipment status update."
+                {role === "operations" ? "The shipline must update CargoWise — SAS will auto-resolve once synced."
+                  : role === "sales" ? "Client will be notified of the shipment status update."
                   : "The operations user will be alerted to take action."}
               </p>
               <div className="flex gap-2">
-                <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                  Cancel
-                </button>
+                <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
                 <button onClick={handleSend} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
                   <SendIcon /> Send
                 </button>
@@ -213,23 +150,16 @@ function TakeActionModal({ milestone, shipment, role, onClose, onSent }) {
             </div>
           </>
         ) : (
-          /* Step 2 — confirmation */
           <div className="flex flex-col items-center justify-center py-16 px-6">
             <div className="w-14 h-14 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center mb-4 text-emerald-600">
               <CheckIcon />
             </div>
             <h4 className="text-base font-semibold text-gray-900 mb-1">Email Sent</h4>
-            <p className="text-sm text-gray-500 text-center max-w-sm">
-              {config.confirmMsg(milestone, shipment)}
-            </p>
+            <p className="text-sm text-gray-500 text-center max-w-sm">{config.confirmMsg(milestone, shipment)}</p>
             {role === "operations" && (
-              <p className="text-xs text-gray-400 mt-3">
-                SAS will auto-resolve this alert on next sync once CargoWise is updated.
-              </p>
+              <p className="text-xs text-gray-400 mt-3">SAS will auto-resolve this alert on next sync once CargoWise is updated.</p>
             )}
-            <button onClick={onClose} className="mt-6 px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
-              Done
-            </button>
+            <button onClick={onClose} className="mt-6 px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">Done</button>
           </div>
         )}
       </div>
@@ -239,45 +169,95 @@ function TakeActionModal({ milestone, shipment, role, onClose, onSent }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function MilestonePage() {
-  const [currentIndex, setCurrentIndex]     = useState(4);
-  const [showModal, setShowModal]           = useState(false);
+  const searchParams = useSearchParams();
+
+  // ✅ ALL hooks inside the component
+  const [shipment,      setShipment]      = useState(null);
+  const [milestones,    setMilestones]    = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [currentIndex,  setCurrentIndex]  = useState(0);
+  const [showModal,     setShowModal]     = useState(false);
   const [sentMilestones, setSentMilestones] = useState(new Set());
 
-  const milestone  = MILESTONES[currentIndex];
-  const status     = STATUS[milestone.status];
-  const hasSent    = sentMilestones.has(milestone.id);
+  const USER_ROLE = "admin"; // replace with real role from session later
+
+useEffect(() => {
+  const shipmentId = searchParams.get("id") ?? "605ec73e-89d5-4d18-8721-5bd694bd9528";
+  
+  fetch(`http://localhost:5000/api/shipments/${shipmentId}`)
+    .then(r => r.json())
+    .then(result => {
+      setShipment(result.data.shipment);
+
+      // Transform flat DB columns into nested location object the map expects
+      const transformed = (result.data.milestones ?? []).map((m, i) => ({
+        ...m,
+        number: m.sequence_order + 1,
+        date: m.due_date,
+        completedAt: m.completed_date,
+        critical: m.is_critical,
+        location: {
+          label: m.location_label ?? "Unknown",
+          lat:   m.location_lat  ?? 0,
+          lng:   m.location_lng  ?? 0,
+        }
+      }));
+
+      setMilestones(transformed);
+    })
+    .catch(() => {})
+    .finally(() => setLoading(false));
+  }, []);
+
+
+  // ── Loading guard ──
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <p className="text-gray-400 text-sm">Loading shipment...</p>
+    </div>
+  );
+
+  if (!shipment) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <p className="text-red-400 text-sm">Could not load shipment. Is Flask running?</p>
+    </div>
+  );
+
+  const milestone  = milestones[currentIndex];
+  const status     = STATUS[milestone?.status] ?? STATUS.pending;
+  const hasSent    = sentMilestones.has(milestone?.id);
   const roleConfig = ROLE_CONFIG[USER_ROLE];
 
-  const goTo       = (i) => { if (i >= 0 && i < MILESTONES.length) setCurrentIndex(i); };
+  const goTo       = (i) => { if (i >= 0 && i < milestones.length) setCurrentIndex(i); };
   const handleSent = () => setSentMilestones(prev => new Set([...prev, milestone.id]));
 
   return (
     <div className="min-h-screen bg-gray-50 flex" style={{ height: "100vh" }}>
 
-      {/* ════════ LEFT — Main content ════════ */}
+      {/* ════════ LEFT ════════ */}
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
 
         {/* Shipment strip */}
         <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 flex items-center gap-6 flex-wrap">
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-1">Shipment</p>
-            <p className="text-sm font-semibold text-gray-900 font-mono">{SHIPMENT.id}</p>
+            <p className="text-sm font-semibold text-gray-900 font-mono">{shipment.id}</p>
           </div>
           <div className="w-px h-8 bg-gray-200" />
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-1">Client</p>
-            <p className="text-sm font-semibold text-gray-900">{SHIPMENT.client}</p>
+            <p className="text-sm font-semibold text-gray-900">{shipment.client}</p>
           </div>
           <div className="w-px h-8 bg-gray-200" />
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-1">Route</p>
-            <p className="text-sm font-semibold text-gray-900">{SHIPMENT.route}</p>
+            <p className="text-sm font-semibold text-gray-900">{shipment.route}</p>
           </div>
           <div className="w-px h-8 bg-gray-200" />
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-1">Type</p>
             <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200">
-              {SHIPMENT.type}
+              {shipment.type}
             </span>
           </div>
           <div className="ml-auto flex items-center gap-2">
@@ -285,7 +265,7 @@ export default function MilestonePage() {
               <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
               {status.label}
             </span>
-            {milestone.critical && (
+            {milestone?.critical && (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-red-600 text-white">
                 <AlertIcon /> CRITICAL
               </span>
@@ -299,45 +279,41 @@ export default function MilestonePage() {
             <h2 className="text-sm font-semibold text-gray-700">Milestone Location</h2>
             <span className="text-xs text-gray-400">Updates without page reload as you navigate</span>
           </div>
-          <MilestoneMap milestone={milestone} allMilestones={MILESTONES} currentIndex={currentIndex} />
+          <MilestoneMap milestone={milestone} allMilestones={milestones} currentIndex={currentIndex} />
         </div>
 
         {/* Milestone details */}
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-900">{milestone.name}</h2>
-            {milestone.automated && (
-              <span className="px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200">
-                Auto-updated
-              </span>
+            <h2 className="text-sm font-semibold text-gray-900">{milestone?.name}</h2>
+            {milestone?.automated && (
+              <span className="px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200">Auto-updated</span>
             )}
           </div>
           <div className="px-5 py-4 grid grid-cols-2 gap-x-8 gap-y-5">
             <div>
               <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-1.5 flex items-center gap-1.5"><CalendarIcon /> Expected Date</p>
-              <p className="text-sm font-semibold text-gray-900">{milestone.date}</p>
+              <p className="text-sm font-semibold text-gray-900">{milestone?.date}</p>
             </div>
             <div>
               <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-1.5 flex items-center gap-1.5"><CheckIcon /> Completed At</p>
-              <p className={`text-sm font-semibold ${milestone.completedAt ? "text-emerald-700" : "text-gray-400"}`}>
-                {milestone.completedAt ?? "Not yet completed"}
+              <p className={`text-sm font-semibold ${milestone?.completedAt ? "text-emerald-700" : "text-gray-400"}`}>
+                {milestone?.completedAt ?? "Not yet completed"}
               </p>
             </div>
             <div>
               <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-1.5 flex items-center gap-1.5"><MapPinIcon /> Location</p>
-              <p className="text-sm font-semibold text-gray-900">{milestone.location.label}</p>
+              <p className="text-sm font-semibold text-gray-900">{milestone?.location?.label}</p>
             </div>
             <div>
               <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-1.5">Days from Booking</p>
-              <p className="text-sm font-semibold text-gray-900">Day {milestone.daysFromBooking}</p>
+              <p className="text-sm font-semibold text-gray-900">Day {milestone?.daysFromBooking}</p>
             </div>
           </div>
-          {milestone.notes && (
+          {milestone?.notes && (
             <div className="px-5 pb-4">
               <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-1.5">Notes</p>
-              <div className="px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                {milestone.notes}
-              </div>
+              <div className="px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">{milestone.notes}</div>
             </div>
           )}
         </div>
@@ -352,18 +328,18 @@ export default function MilestonePage() {
               <div className="w-8 h-8 rounded-lg bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-600 flex-shrink-0"><UserIcon /></div>
               <div>
                 <p className="text-xs text-blue-500 font-medium uppercase tracking-wide mb-0.5">Operations</p>
-                <p className="text-sm font-semibold text-gray-900">{SHIPMENT.operationsUser.name}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{SHIPMENT.operationsUser.role}</p>
-                <p className="text-xs text-blue-600 mt-1">{SHIPMENT.operationsUser.email}</p>
+                <p className="text-sm font-semibold text-gray-900">{shipment.operationsUser?.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{shipment.operationsUser?.role}</p>
+                <p className="text-xs text-blue-600 mt-1">{shipment.operationsUser?.email}</p>
               </div>
             </div>
             <div className="flex items-start gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
               <div className="w-8 h-8 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-500 flex-shrink-0"><UserIcon /></div>
               <div>
                 <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">Shipline Contact</p>
-                <p className="text-sm font-semibold text-gray-900">{SHIPMENT.shiplineContact.name}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{SHIPMENT.shiplineContact.company}</p>
-                <p className="text-xs text-gray-500 mt-1">{SHIPMENT.shiplineContact.email}</p>
+                <p className="text-sm font-semibold text-gray-900">{shipment.shiplineContact?.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{shipment.shiplineContact?.company}</p>
+                <p className="text-xs text-gray-500 mt-1">{shipment.shiplineContact?.email}</p>
               </div>
             </div>
           </div>
@@ -373,10 +349,8 @@ export default function MilestonePage() {
 
       {/* ════════ RIGHT — Sidebar ════════ */}
       <div className="w-72 flex-shrink-0 border-l border-gray-200 bg-white overflow-y-auto flex flex-col">
-
-        {/* Take Action */}
         <div className="px-4 pt-5 pb-4 border-b border-gray-100">
-          {milestone.status !== "completed" ? (
+          {milestone?.status !== "completed" ? (
             <button
               onClick={() => setShowModal(true)}
               className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white transition-colors ${roleConfig.buttonColor(milestone)}`}
@@ -389,12 +363,7 @@ export default function MilestonePage() {
               <CheckIcon /> Milestone Completed
             </div>
           )}
-          {hasSent && (
-            <p className="text-xs text-emerald-600 text-center mt-2 font-medium">
-              ✓ Alert sent successfully
-            </p>
-          )}
-          {/* Role indicator */}
+          {hasSent && <p className="text-xs text-emerald-600 text-center mt-2 font-medium">✓ Alert sent successfully</p>}
           <div className="mt-3 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
             <p className="text-xs text-gray-400 text-center">
               Viewing as <span className="font-semibold text-gray-600 capitalize">{USER_ROLE}</span>
@@ -402,39 +371,28 @@ export default function MilestonePage() {
           </div>
         </div>
 
-        {/* Prev / Next */}
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-          <button
-            onClick={() => goTo(currentIndex - 1)}
-            disabled={currentIndex === 0}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 border border-gray-300 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
+          <button onClick={() => goTo(currentIndex - 1)} disabled={currentIndex === 0}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 border border-gray-300 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
             <ChevronLeft /> Prev
           </button>
-          <span className="text-xs text-gray-400 font-medium">{currentIndex + 1} / {MILESTONES.length}</span>
-          <button
-            onClick={() => goTo(currentIndex + 1)}
-            disabled={currentIndex === MILESTONES.length - 1}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 border border-gray-300 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
+          <span className="text-xs text-gray-400 font-medium">{currentIndex + 1} / {milestones.length}</span>
+          <button onClick={() => goTo(currentIndex + 1)} disabled={currentIndex === milestones.length - 1}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 border border-gray-300 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
             Next <ChevronRight />
           </button>
         </div>
 
-        {/* Milestone list */}
         <div className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
           <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold px-2 mb-2">All Milestones</p>
-          {MILESTONES.map((m, i) => {
-            const s = STATUS[m.status];
+          {milestones.map((m, i) => {
+            const s = STATUS[m.status] ?? STATUS.pending;
             const isActive = i === currentIndex;
             return (
-              <button
-                key={m.id}
-                onClick={() => goTo(i)}
+              <button key={m.id} onClick={() => goTo(i)}
                 className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors flex items-start gap-3 ${
                   isActive ? "bg-blue-50 border border-blue-200" : "hover:bg-gray-50 border border-transparent"
-                }`}
-              >
+                }`}>
                 <span className={`flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold mt-0.5 ${
                   isActive ? "bg-blue-600 text-white" : `${s.bg} ${s.text} border ${s.border}`
                 }`}>
@@ -452,14 +410,12 @@ export default function MilestonePage() {
             );
           })}
         </div>
-
       </div>
 
-      {/* Modal */}
-      {showModal && (
+      {showModal && milestone && (
         <TakeActionModal
           milestone={milestone}
-          shipment={SHIPMENT}
+          shipment={shipment}
           role={USER_ROLE}
           onClose={() => setShowModal(false)}
           onSent={handleSent}

@@ -24,50 +24,60 @@ export default function MilestoneMap({ milestone, allMilestones, currentIndex })
 
   // ── Initialize map once ──────────────────────────────────────────────────
   useEffect(() => {
-    if (mapInstance.current) return; // already initialized
+      // Guard: if already initialized, skip
+      if (mapInstance.current) return;
 
-    // Dynamically import Leaflet to avoid SSR issues
-    import("leaflet").then((L) => {
-      // Fix default marker icon paths broken by webpack
-      delete L.Icon.Default.prototype._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-        iconUrl:       "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-        shadowUrl:     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-      });
-
-      const map = L.map(mapRef.current, {
-        center:          [milestone.location.lat, milestone.location.lng],
-        zoom:            5,
-        zoomControl:     true,
-        attributionControl: false,
-        scrollWheelZoom: false,
-      });
-
-      // Dark-style tile layer (CartoDB Dark Matter — free, no key)
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-        maxZoom: 19,
-      }).addTo(map);
-
-      // Attribution (small, bottom right)
-      L.control.attribution({ prefix: false })
-        .addAttribution('© <a href="https://carto.com">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OSM</a>')
-        .addTo(map);
-
-      mapInstance.current = map;
-
-      // Draw initial markers + polyline
-      drawAll(L, map, allMilestones, currentIndex);
-    });
-
-    return () => {
-      if (mapInstance.current) {
-        mapInstance.current.remove();
-        mapInstance.current = null;
+      // Guard: clear any leftover leaflet ID on the DOM node
+      if (mapRef.current && mapRef.current._leaflet_id) {
+        mapRef.current._leaflet_id = null;
       }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+
+      import("leaflet").then((L) => {
+        // Extra guard after async import
+        if (mapInstance.current) return;
+        if (!mapRef.current) return;
+
+        delete L.Icon.Default.prototype._getIconUrl;
+        L.Icon.Default.mergeOptions({
+          iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+          iconUrl:       "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+          shadowUrl:     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+        });
+
+        const map = L.map(mapRef.current, {
+          center:             [milestone.location.lat || 20, milestone.location.lng || 80],
+          zoom:               5,
+          zoomControl:        true,
+          attributionControl: false,
+          scrollWheelZoom:    false,
+        });
+
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+          maxZoom: 19,
+        }).addTo(map);
+
+        L.control.attribution({ prefix: false })
+          .addAttribution('© <a href="https://carto.com">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OSM</a>')
+          .addTo(map);
+
+        mapInstance.current = map;
+        drawAll(L, map, allMilestones, currentIndex);
+      });
+
+      return () => {
+        if (mapInstance.current) {
+          mapInstance.current.remove();
+          mapInstance.current = null;
+        }
+        if (mapRef.current) {
+          delete mapRef.current._leaflet_id;
+        }
+        markersRef.current = [];
+        polylineRef.current = null;
+        pulseRef.current = null;
+      };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
   // ── Update when milestone changes ────────────────────────────────────────
   useEffect(() => {

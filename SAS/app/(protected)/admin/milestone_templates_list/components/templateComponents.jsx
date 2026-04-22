@@ -254,8 +254,8 @@ export function MilestoneCard({ milestone, index, editMode, onDragStart, onDragO
           {/* Variables summary */}
           <div style={{ fontSize: "11px", color: T.gray400 }}>
             Expected date
-            {milestone.vars.length > 0
-              ? ` + ${milestone.vars.length} custom variable${milestone.vars.length > 1 ? "s" : ""}`
+            {(milestone.vars ?? []).length > 0
+              ? ` + ${(milestone.vars ?? []).length} custom variable${milestone.vars.length > 1 ? "s" : ""}`
               : ""}
           </div>
         </div>

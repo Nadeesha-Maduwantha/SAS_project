@@ -1,0 +1,38 @@
+@reference "tailwindcss";
+
+.super-stat {
+  @apply bg-white border border-slate-200 rounded-2xl p-5 shadow-sm;
+}
+
+.super-stat__top {
+  @apply flex items-center justify-between;
+}
+
+.super-stat__iconWrap {
+  @apply w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center;
+}
+
+.super-stat__icon {
+  @apply w-5 h-5;
+}
+
+.super-stat__icon--blue { @apply text-blue-600; }
+.super-stat__icon--red { @apply text-red-500; }
+.super-stat__icon--purple { @apply text-purple-600; }
+.super-stat__icon--green { @apply text-green-600; }
+
+.super-stat__meta {
+  @apply text-xs font-bold px-2.5 py-1 rounded-full border border-slate-200 text-slate-600 bg-white;
+}
+
+.super-stat__meta--good { @apply text-green-600 border-green-200 bg-green-50; }
+.super-stat__meta--bad { @apply text-red-600 border-red-200 bg-red-50; }
+.super-stat__meta--neutral { @apply text-slate-600 border-slate-200 bg-slate-50; }
+
+.super-stat__label {
+  @apply mt-4 text-sm text-slate-500 font-semibold;
+}
+
+.super-stat__value {
+  @apply mt-1 text-2xl font-black text-slate-900;
+}

@@ -46,7 +46,7 @@ export default function OperationLeftNavBar({ alertsCount = 0 }: Props) {
     <div className="op-nav-container">
       {/* Header */}
       <div className="nav-header">
-        <div className="nav-logo" onClick={() => handleNavigation('/operation_user/dashboard')}>
+        <div className="nav-logo" onClick={() => handleNavigation('/operation_user')}>
           <Shield className="logo-icon" />
           <span className="logo-text">SAS ALERT</span>
         </div>
@@ -54,8 +54,8 @@ export default function OperationLeftNavBar({ alertsCount = 0 }: Props) {
 
       {/* My Dashboard */}
       <button
-        className={`nav-dashboard-btn ${isActiveRoute('/operation_user/dashboard') ? 'active' : ''}`}
-        onClick={() => handleNavigation('/operation_user/dashboard')}
+        className={`nav-dashboard-btn ${isActiveRoute('/operation_user') && pathname === '/operation_user' ? 'active' : ''}`}
+        onClick={() => handleNavigation('/operation_user')}
       >
         <LayoutGrid className="nav-icon" />
         <span>My Dashboard</span>

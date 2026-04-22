@@ -207,7 +207,7 @@ function FilterDropdown({ statusFilter, setStatusFilter, sortOrder, setSortOrder
 
 // ── Milestone Row ─────────────────────────────────────────────
 
-function MilestoneRow({ milestone, isCurrent, role, shipment, contacts, onTakeAction }) {
+function MilestoneRow({ milestone, isCurrent, role, shipment, contacts, onTakeAction, router }) {
   const [hov, setHov] = useState(false);
   const action = ROLE_ACTION[role] || ROLE_ACTION.admin;
 
@@ -216,11 +216,12 @@ function MilestoneRow({ milestone, isCurrent, role, shipment, contacts, onTakeAc
     : hov ? T.gray50 : T.cardBg;
 
   return (
-    <tr
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{ background: rowBg, borderLeft: `3px solid ${isCurrent ? T.green : "transparent"}`, transition: "background 0.15s" }}
-    >
+<tr
+  onMouseEnter={() => setHov(true)}
+  onMouseLeave={() => setHov(false)}
+  onClick={() => router.push(`/admin/milestone_detail?milestoneId=${milestone.id}&shipmentId=${shipment.id}`)}
+  style={{ background: rowBg, borderLeft: `3px solid ${isCurrent ? T.green : "transparent"}`, transition: "background 0.15s", cursor: "pointer" }}
+>
       {/* Seq */}
       <td style={{ ...td, width: "56px" }}>
         <span style={{
@@ -372,7 +373,7 @@ function buildSubject(role, milestone, shipment) {
 export default function MilestonesTable({ role, shipment, milestones, contacts }) {
   const [search,        setSearch]        = useState("");
   const [statusFilter,  setStatusFilter]  = useState("All Milestones");
-  const [sortOrder,     setSortOrder]     = useState("Default (Current First)");
+  const [sortOrder, setSortOrder] = useState("Ascending (1 → 9)");
   const [filterOpen,    setFilterOpen]    = useState(false);
   const router = useRouter();
 
@@ -396,8 +397,8 @@ export default function MilestonesTable({ role, shipment, milestones, contacts }
       role,
     });
 
-    // ── Change this path to match where your team's mail creation page lives ──
-    router.push(`/admin/mail_create?${params.toString()}`);
+    // ── Navigate to milestone detail page where the alert can be sent ──
+    router.push(`/admin/milestone_detail?milestoneId=${milestone.id}&shipmentId=${shipment.id}`);
   };
 
   const completedCount = milestones.filter(m => m.status === "completed").length;
@@ -447,8 +448,8 @@ export default function MilestonesTable({ role, shipment, milestones, contacts }
   }, [milestones, statusFilter, sortOrder, search]);
 
   const activeFilters = [
-    statusFilter !== "All Milestones"           ? statusFilter : null,
-    sortOrder    !== "Default (Current First)" ? sortOrder    : null,
+    statusFilter !== "All Milestones"        ? statusFilter : null,
+    sortOrder    !== "Ascending (1 → 9)"    ? sortOrder    : null,
   ].filter(Boolean);
 
   const currentMilestone = milestones.find(m => m.status === "current");
@@ -557,7 +558,7 @@ export default function MilestonesTable({ role, shipment, milestones, contacts }
               <span
                 onClick={() => {
                   if (STATUS_OPTIONS.includes(f)) setStatusFilter("All Milestones");
-                  if (SORT_OPTIONS.includes(f))   setSortOrder("Default (Current First)");
+                  if (SORT_OPTIONS.includes(f)) setSortOrder("Ascending (1 → 9)");
                 }}
                 style={{ cursor: "pointer", color: T.blueMid, lineHeight: 1 }}
               >×</span>
@@ -632,7 +633,8 @@ export default function MilestonesTable({ role, shipment, milestones, contacts }
                     shipment={shipment}
                     contacts={contacts}
                     onTakeAction={handleTakeAction}
-                  />
+                    router={router}
+                    />
                 ))
               )}
             </tbody>
