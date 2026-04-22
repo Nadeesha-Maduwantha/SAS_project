@@ -1,17 +1,13 @@
 @reference "tailwindcss";
 
+/* Root: no need flex when sidebar is fixed */
 .admin-layout {
-  @apply flex min-h-screen bg-slate-50;
+  @apply min-h-screen bg-slate-50;
 }
 
-/* LEFT NAVBAR width */
-.admin-layout > :first-child {
-  @apply w-[260px] shrink-0;
-}
-
-/* RIGHT CONTENT */
+/* RIGHT CONTENT: push to the right of fixed sidebar */
 .admin-content {
-  @apply flex-1 flex flex-col;
+  @apply ml-[260px] min-h-screen flex flex-col;
 }
 
 /* Inner container */

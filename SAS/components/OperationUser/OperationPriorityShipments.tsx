@@ -9,7 +9,7 @@ const rows = [
     dest: 'Los Angeles, US',
     status: { label: 'Delayed', tone: 'red' as const },
     eta: 'Oct 24, 2023',
-    value: '$124,500',
+    
   },
   {
     id: '#SHP-2024-002',
@@ -18,7 +18,7 @@ const rows = [
     dest: 'New York, US',
     status: { label: 'Processing', tone: 'blue' as const },
     eta: 'Oct 26, 2023',
-    value: '$45,200',
+    
   },
   {
     id: '#SHP-2024-003',
@@ -27,7 +27,7 @@ const rows = [
     dest: 'London, UK',
     status: { label: 'In Transit', tone: 'purple' as const },
     eta: 'Oct 22, 2023',
-    value: '$89,000',
+    
   },
   {
     id: '#SHP-2024-004',
@@ -36,7 +36,7 @@ const rows = [
     dest: 'Dubai, UAE',
     status: { label: 'Arrived', tone: 'green' as const },
     eta: 'Oct 20, 2023',
-    value: '$210,000',
+    
   },
 ];
 
@@ -46,7 +46,6 @@ export default function OperationPriorityShipments() {
       <div className="op-tableHead">
         <div>
           <h2 className="op-tableTitle">Priority Shipments</h2>
-          <p className="op-tableSub">Tasks requiring immediate attention</p>
         </div>
 
         <div className="op-tableSearch">
@@ -63,7 +62,6 @@ export default function OperationPriorityShipments() {
               <th>ORIGIN / DESTINATION</th>
               <th>STATUS</th>
               <th>ETA</th>
-              <th>VALUE</th>
               <th className="text-right">ACTION</th>
             </tr>
           </thead>
@@ -89,7 +87,6 @@ export default function OperationPriorityShipments() {
                 </td>
 
                 <td className="op-strong">{r.eta}</td>
-                <td className="op-strong">{r.value}</td>
 
                 <td className="op-action">
                   <button className="op-linkBtn" type="button">
