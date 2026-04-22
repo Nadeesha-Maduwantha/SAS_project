@@ -10,6 +10,7 @@ import {
   ChevronDown,
   Shield,
   User,
+  Clock,
 } from 'lucide-react';
 
 import '../../styles/ComponentStyles/OperationLeftNavBar.css';
@@ -46,7 +47,7 @@ export default function OperationLeftNavBar({ alertsCount = 0 }: Props) {
     <div className="op-nav-container">
       {/* Header */}
       <div className="nav-header">
-        <div className="nav-logo" onClick={() => handleNavigation('/operation_user')}>
+        <div className="nav-logo" onClick={() => handleNavigation('/operation_user/dashboard')}>
           <Shield className="logo-icon" />
           <span className="logo-text">SAS ALERT</span>
         </div>
@@ -54,8 +55,8 @@ export default function OperationLeftNavBar({ alertsCount = 0 }: Props) {
 
       {/* My Dashboard */}
       <button
-        className={`nav-dashboard-btn ${isActiveRoute('/operation_user') && pathname === '/operation_user' ? 'active' : ''}`}
-        onClick={() => handleNavigation('/operation_user')}
+        className={`nav-dashboard-btn ${isActiveRoute('/operation_user/dashboard') ? 'active' : ''}`}
+        onClick={() => handleNavigation('/operation_user/dashboard')}
       >
         <LayoutGrid className="nav-icon" />
         <span>My Dashboard</span>
@@ -83,7 +84,7 @@ export default function OperationLeftNavBar({ alertsCount = 0 }: Props) {
       <button
         className={`nav-single-btn ${isActiveRoute('/operation_user/history') ? 'active' : ''}`}
         onClick={() => handleNavigation('/operation_user/history')}
-      >
+      >< Clock className="nav-icon" />
         <span className="nav-history-label">HISTORY</span>
       </button>
 

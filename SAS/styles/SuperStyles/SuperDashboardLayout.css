@@ -31,3 +31,8 @@
     @apply col-span-2;
   }
 }
+
+
+.super-content {
+  @apply ml-[260px] min-h-screen;
+}

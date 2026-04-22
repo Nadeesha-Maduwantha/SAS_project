@@ -1,7 +1,13 @@
 @reference "tailwindcss";
 
+/* ============================= */
+/* CARD LAYOUT */
+/* ============================= */
+
 .shipment-card {
-  @apply bg-white border border-slate-100 rounded-[14px] shadow-[0_10px_24px_rgba(15,23,42,0.04)] overflow-hidden;
+  @apply bg-white border border-slate-100 rounded-[14px]
+  shadow-[0_10px_24px_rgba(15,23,42,0.04)]
+  overflow-hidden flex flex-col relative;
 }
 
 .shipment-card__head {
@@ -16,20 +22,18 @@
   @apply text-sm font-black text-slate-900;
 }
 
-.shipment-card__pill {
-  @apply text-[10px] font-black uppercase px-[10px] py-[6px] rounded-full bg-blue-50 border border-blue-200 text-blue-700;
-}
-
-.shipment-card__sub {
-  @apply mt-1 text-xs text-slate-500;
-}
-
 .shipment-card__actions {
-  @apply flex items-center gap-2;
+  @apply flex items-center gap-2 relative;
 }
+
+/* ============================= */
+/* BUTTONS */
+/* ============================= */
 
 .shipment-btn {
-  @apply text-xs font-extrabold rounded-[10px] px-[10px] py-2 cursor-pointer transition-colors duration-200;
+  @apply text-xs font-extrabold rounded-[10px]
+  px-[12px] py-2 cursor-pointer
+  transition-all duration-200;
 }
 
 .shipment-btn--ghost {
@@ -48,8 +52,13 @@
   @apply bg-blue-700;
 }
 
+/* ============================= */
+/* TABLE AREA */
+/* ============================= */
+
 .shipment-tableWrap {
-  @apply overflow-x-auto;
+  @apply overflow-x-auto flex-1;
+  min-height: 360px; /* prevents layout shrink when filtering */
 }
 
 .shipment-table {
@@ -57,16 +66,38 @@
 }
 
 .shipment-table thead th {
-  @apply text-left text-[11px] uppercase tracking-[0.7px] text-slate-500 bg-slate-50 border-y border-slate-100 px-4 py-3;
+  @apply text-left text-[11px] uppercase tracking-[0.7px]
+  text-slate-500 bg-slate-50 border-y border-slate-100
+  px-4 py-3;
+}
+
+/* Selection column header */
+.shipment-table thead th:first-child {
+  @apply w-10 px-3;
 }
 
 .shipment-table tbody td {
   @apply px-4 py-[14px] border-b border-slate-100 align-top;
 }
 
+/* Selection column cell */
+.shipment-table tbody td:first-child {
+  @apply w-10 px-3 align-middle;
+}
+
 .shipment-table tbody tr:hover {
   background: rgba(15, 23, 42, 0.02);
 }
+
+/* Checkbox styling */
+.shipment-table input[type='checkbox'] {
+  @apply h-4 w-4 cursor-pointer rounded border border-slate-300
+  text-blue-600 focus:ring-2 focus:ring-blue-200;
+}
+
+/* ============================= */
+/* TABLE TEXT */
+/* ============================= */
 
 .shipment-id {
   @apply font-black text-blue-600;
@@ -81,15 +112,21 @@
 }
 
 .shipment-od__sub {
-  @apply mt-1 flex items-center gap-1.5 text-[11px] text-slate-400;
+  @apply mt-1 flex items-center gap-1.5
+  text-[11px] text-slate-400;
 }
 
 .shipment-od__icon {
   @apply w-[14px] h-[14px];
 }
 
+/* ============================= */
+/* STATUS PILLS */
+/* ============================= */
+
 .status-pill {
-  @apply text-[11px] font-black px-[10px] py-[6px] rounded-full border inline-block;
+  @apply text-[11px] font-black px-[10px] py-[6px]
+  rounded-full border inline-block;
 }
 
 .status--green {
@@ -100,22 +137,100 @@
   @apply bg-amber-50 border-amber-200 text-amber-700;
 }
 
-.status--red {
-  @apply bg-rose-50 border-rose-200 text-rose-700;
-}
-
 .status--blue {
   @apply bg-blue-50 border-blue-200 text-blue-700;
 }
+
+.status--purple {
+  @apply bg-indigo-50 border-indigo-200 text-indigo-700;
+}
+
+.status--gray {
+  @apply bg-gray-100 border-gray-300 text-gray-700;
+}
+
+/* ============================= */
+/* FOOTER */
+/* ============================= */
 
 .shipment-card__footer {
   @apply px-4 py-3 flex justify-center;
 }
 
 .shipment-viewAll {
-  @apply bg-transparent border-0 cursor-pointer text-xs font-extrabold text-blue-600;
+  @apply bg-transparent border-0 cursor-pointer
+  text-xs font-extrabold text-blue-600;
 }
 
 .shipment-viewAll:hover {
   @apply text-blue-700;
+}
+
+/* ============================= */
+/* FILTER POPUP */
+/* ============================= */
+
+.shipment-filterPop {
+  @apply absolute right-0 top-[52px]
+  z-50 w-[280px]
+  rounded-2xl border border-slate-200
+  bg-white
+  shadow-[0_18px_40px_rgba(15,23,42,0.12)]
+  p-4;
+}
+
+.shipment-filterPop__top {
+  @apply flex items-center justify-between;
+}
+
+.shipment-filterPop__title {
+  @apply text-sm font-black text-slate-900;
+}
+
+.shipment-filterPop__clear {
+  @apply text-xs font-black text-blue-600 hover:text-blue-700;
+}
+
+.shipment-filterPop__chips {
+  @apply mt-3 flex items-center gap-2;
+}
+
+.shipment-filterChip {
+  @apply px-3 py-2 rounded-full border border-slate-200
+  bg-white text-xs font-black text-slate-600
+  hover:bg-slate-50 transition;
+}
+
+.shipment-filterChip.active {
+  @apply bg-blue-50 border-blue-200 text-blue-700;
+}
+
+.shipment-filterPop__group {
+  @apply mt-4 flex flex-col gap-1;
+}
+
+.shipment-filterPop__group label {
+  @apply text-xs font-black text-slate-600;
+}
+
+.shipment-filterPop__group select {
+  @apply mt-1 px-3 py-2 rounded-xl
+  border border-slate-200
+  text-sm bg-white outline-none;
+}
+
+.shipment-filterPop__done {
+  @apply mt-4 w-full rounded-xl
+  bg-blue-600 text-white
+  text-sm font-black py-2
+  hover:bg-blue-700 transition;
+}
+
+/* ============================= */
+/* EMPTY STATE */
+/* ============================= */
+
+.shipment-empty {
+  @apply text-center text-sm font-bold
+  text-slate-500 py-24;
 }
