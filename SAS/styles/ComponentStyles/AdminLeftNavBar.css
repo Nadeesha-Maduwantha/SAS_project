@@ -1,7 +1,8 @@
 /* Tailwind @apply version — Admin Left Navigation Bar Styles */
 @reference "tailwindcss";
 .admin-nav-container {
-  @apply w-full max-w-[300px] h-screen bg-[#f5f5f7] p-5 box-border overflow-y-auto flex flex-col gap-2 border-r border-[#e5e5e7];
+  @apply w-full max-w-[300px] 
+  h-screen bg-[#f5f5f7] p-5 box-border overflow-y-auto flex flex-col gap-2 border-r border-[#e5e5e7];
 }
 
 /* Header Styles */
@@ -31,8 +32,12 @@
 }
 
 /* Dashboard Button */
+
+
 .nav-dashboard-btn {
-  @apply flex items-center gap-3 w-full px-5 py-4 bg-blue-100 border-0 rounded-2xl cursor-pointer text-[14px] font-black text-blue-900 transition-all duration-200 ease-in-out mb-3;
+  @apply flex items-center gap-3 w-full px-5 py-4 bg-blue-100 border-0 
+  rounded-2xl cursor-pointer text-[14px] font-black text-blue-900 
+  transition-all duration-200 ease-in-out mb-3;
 }
 
 .nav-dashboard-btn:hover {
@@ -53,12 +58,16 @@
 }
 
 /* Sections */
+
+
 .nav-section {
   @apply flex flex-col gap-0 mb-2;
 }
 
 .nav-section-header {
-  @apply flex items-center gap-3 w-full px-5 py-4 bg-transparent border-0 rounded-2xl cursor-pointer text-[14px] font-bold text-slate-800 transition-all duration-200 ease-in-out text-left;
+  @apply flex items-center gap-3 w-full px-5 py-4 bg-transparent border-0 
+  rounded-2xl cursor-pointer text-[14px] font-bold text-slate-800 
+  transition-all duration-200 ease-in-out text-left;
 }
 
 .nav-section-header:hover {
@@ -93,7 +102,9 @@
 
 /* Items */
 .nav-item {
-  @apply w-full px-4 py-3 bg-transparent border-0 rounded-xl cursor-pointer text-[14px] font-extrabold text-slate-500 text-left transition-all duration-200 ease-in-out;
+  @apply w-full px-4 py-3 bg-transparent border-0 rounded-xl 
+  cursor-pointer text-[14px] font-extrabold text-slate-500 
+  text-left transition-all duration-200 ease-in-out;
 }
 
 .nav-item:hover {

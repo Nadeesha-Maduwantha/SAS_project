@@ -329,5 +329,5 @@ export async function getShipmentsBySalesUser(
     .select('*')
 
   if (error) throw new Error(error.message)
-  return (data ?? []).map(mapRow)
+  return data.map(mapRow)
 }
