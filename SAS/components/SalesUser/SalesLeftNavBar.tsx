@@ -122,27 +122,6 @@ export default function SalesLeftNavBar({
         </div>
       </div>
 
-      {/* Bottom Profile Card */}
-      <div className="sales-nav-bottom">
-        <div className="profile-card">
-          <div className="profile-left">
-            <div className="profile-avatar" aria-hidden="true" />
-            <div className="profile-meta">
-              <div className="profile-name">{userName}</div>
-              <div className="profile-role">{roleLabel}</div>
-            </div>
-          </div>
-
-          <button
-            className="logout-btn"
-            onClick={() => handleNavigation('/logout')}
-            aria-label="Logout"
-            title="Logout"
-          >
-            <LogOut className="logout-icon" />
-          </button>
-        </div>
-      </div>
     </aside>
   );
 }

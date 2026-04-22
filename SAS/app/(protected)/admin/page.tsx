@@ -1,10 +1,14 @@
-import AdminBanner from '@/components/AdminUser/AdminBanner';
+import AdminLeftNavBar from '../../../components/AdminUser/AdminLeftNavBar';
 
 export default function AdminPage() {
   return (
-    <>
-      <AdminBanner />
-      <h1>Admin Dashboard</h1>
-    </>
+    <div style={{ display: 'flex' }}>
+      <AdminLeftNavBar />
+
+      <main style={{ padding: 24, flex: 1 }}>
+        <h1>Admin</h1>
+        <p></p>
+      </main>
+    </div>
   );
 }

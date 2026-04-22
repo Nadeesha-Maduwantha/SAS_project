@@ -61,6 +61,14 @@ consigneeName?: string
 consigneeAddress?: string
 consigneeContact?: string
 consigneeEmail?: string
+salesUserStaffCode?: string
+salesUserName?: string
+salesUserEmail?: string
+salesUserEmail?: string
+jsPk?: string
+llmCargoPickupDate?: string
+runningDateTime?: Date | null
+noteNumber?: number | null
 }
 
 export interface ShipmentStats {
@@ -76,3 +84,5 @@ export interface DelayedStats {
   avgDelayDays: number
   customsIssues: number
 }
+
+declare module '*.css'

@@ -1,4 +1,3 @@
-import { Inter, IBM_Plex_Mono } from 'next/font/google'
 import './globals.css'
 
 export const metadata = {
@@ -9,9 +8,15 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className="antialiased">
-        {children}
-      </body>
-    </html>
+  <head>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+  </head>
+  <body className="antialiased">
+    {children}
+  </body>
+</html>
   );
 }
