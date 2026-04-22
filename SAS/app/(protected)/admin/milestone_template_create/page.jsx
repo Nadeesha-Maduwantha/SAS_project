@@ -10,8 +10,8 @@ import {
   PAGE_KEYFRAMES,
 } from "@/app/(protected)/admin/milestone_templates_list/components/templateComponents";
 // =============================================================
-//  File path: src/app/templates/create/page.jsx
-//  Route:     /templates/create
+//  File path: app/(protected)/admin/milestone_template_create/page.jsx
+//  Route:     /admin/milestone_template_create
 // =============================================================
 
 // Shipment type options for the dropdown
@@ -78,14 +78,47 @@ export default function CreateTemplatePage() {
   };
 
   // --- Save --------------------------------------------------
-  const handleSave = () => {
+  const [saving, setSaving] = useState(false);
+
+  // Replace the entire handleSave function with this:
+  const handleSave = async () => {
+    // validate() checks name, shipmentType, milestones are filled
+    // returns false if anything missing — stops here
     if (!validate()) return;
 
-    // TODO: replace with actual API call
-    //   const { id: newId } = await api.createTemplate({ name: tmplName, shipmentType, description, milestones });
-    const newId = `TPL-${Date.now()}`;
+    setSaving(true); // disable the button while request is in flight
 
-    router.push(`/admin/milestone_template?id=${newId}`);
+    try {
+      const response = await fetch('http://localhost:5000/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:          tmplName,
+          shipment_type: shipmentType,
+          description:   description,
+          milestones:    milestones.map((m, i) => ({
+            name:           m.name,
+            sequence_order: i,
+          }))
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        // result.data.id is the real UUID from Supabase
+        // this replaces the fake TPL-${Date.now()} id
+        router.push(`/admin/milestone_template?id=${result.data.id}`);
+      } else {
+        alert(result.error || 'Failed to save template');
+      }
+
+    } catch (err) {
+      // this runs if Flask is not running at all
+      alert('Could not connect to server. Is Flask running on port 5000?');
+    } finally {
+      setSaving(false); // re-enable button whether success or error
+    }
   };
 
   const handleDiscard = () => {
@@ -387,6 +420,7 @@ export default function CreateTemplatePage() {
               {/* Save button */}
               <button
                 onClick={handleSave}
+                disabled={saving}
                 style={{
                   ...solidBtn(T.blue, "#fff"),
                   width:          "100%",
@@ -395,11 +429,13 @@ export default function CreateTemplatePage() {
                   justifyContent: "center",
                   fontSize:       "13px",
                   marginBottom:   "8px",
+                  opacity:        saving ? 0.7 : 1,
+                  cursor:         saving ? "not-allowed" : "pointer",
                 }}
-                onMouseEnter={e => e.currentTarget.style.opacity = "0.87"}
-                onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+                onMouseEnter={e => { if (!saving) e.currentTarget.style.opacity = "0.87"; }}
+                onMouseLeave={e => e.currentTarget.style.opacity = saving ? "0.7" : "1"}
               >
-                Save Template
+                {saving ? "Saving..." : "Save Template"}
               </button>
 
               {/* Discard button */}

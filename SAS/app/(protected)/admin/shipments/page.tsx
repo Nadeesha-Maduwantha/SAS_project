@@ -110,7 +110,7 @@ export default function AllShipmentsPage() {
                     <td className="px-5 py-3.5 text-sm text-gray-700">{formatDate(shipment.estimatedArrival)}</td>
                     <td className="px-5 py-3.5">
                       {action === 'take_action' && (
-                        <button className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700">Take Action</button>
+                        <button onClick={() => router.push(`/admin/shipment_milestones?shipmentId=${shipment.id}`)} className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700">Take Action</button>
                       )}
                       {action === 'details' && (
                         <button onClick={() => router.push(`/admin/shipments/${shipment.id}`)} className="text-xs font-medium text-blue-600 hover:underline">Details</button>

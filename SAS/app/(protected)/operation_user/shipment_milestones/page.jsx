@@ -1,71 +1,142 @@
 "use client";
 
-// =============================================================
-//  File path: app/(protected)/admin/shipment_milestones/page.jsx
-//  (Also used by operation_user, sales_user, Super_user —
-//   copy this file to their equivalent folder and change ROLE)
-//
-//  Role       | Folder
-//  -----------|----------------------------------------------
-//  admin      | (protected)/admin/shipment_milestones/page.jsx
-//  super_user | (protected)/Super_user/shipment_milestones/page.jsx
-//  operations | (protected)/operation_user/shipment_milestones/page.jsx
-//  sales      | (protected)/sales_user/shipment_milestones/page.jsx
-//
-//  Only the ROLE constant and the shipment/contacts data change.
-//  Everything else is shared via MilestonesTable.
-// =============================================================
-
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { T } from "@/styles/tokens";
 import MilestonesTable from "./components/MilestonesTable";
 
-// ── Change this per role folder ───────────────────────────────
-const ROLE = "operations_user";
-// Options: "admin" | "super_user" | "" | "sales_user"
+const ROLE = "operation";
 
-// ── Dummy data — replace with API fetch using shipment ID ─────
-// In production: const shipment = await fetchShipment(params.id);
-//                const milestones = await fetchMilestones(params.id);
-
-const SHIPMENT = {
-  id:       "SHP-2024-0892",
-  client:   "Oceanic Traders Ltd",
-  route:    "LK → USA",
-  type:     "Air Freight",
-  template: "Standard Air Freight",
-};
-
-// Contacts — who to email depending on role
-const CONTACTS = {
-  operationsUser: { name: "Amal Perera",             email: "amal.perera@dartglobal.com"     },
-  carrier:        { name: "Star Shipping Line",       email: "ops@starshipping.com"            },
-  client:         { name: "Oceanic Traders Ltd",      email: "logistics@oceanictraders.com"    },
-};
-
-const MILESTONES = [
-  { id: "ms1", seq: 1, name: "Booking Confirmation",    status: "completed", automated: true,  critical: false, completedAt: "2025-01-10", expectedDate: "2025-01-10", completedBy: "System",      notes: ""                          },
-  { id: "ms2", seq: 2, name: "Cargo Ready Date",         status: "completed", automated: false, critical: false, completedAt: "2025-01-13", expectedDate: "2025-01-13", completedBy: "Amal Perera", notes: ""                          },
-  { id: "ms3", seq: 3, name: "Pickup from Shipper",      status: "completed", automated: false, critical: false, completedAt: "2025-01-14", expectedDate: "2025-01-14", completedBy: "Amal Perera", notes: "Collected at 09:30 AM"     },
-  { id: "ms4", seq: 4, name: "Export Customs Clearance", status: "completed", automated: false, critical: false, completedAt: "2025-01-15", expectedDate: "2025-01-15", completedBy: "Nimal Silva", notes: ""                          },
-  { id: "ms5", seq: 5, name: "Departure from Origin",    status: "current",   automated: false, critical: true,  completedAt: null,         expectedDate: "2025-01-17", completedBy: null,          notes: "", daysRemaining: 1         },
-  { id: "ms6", seq: 6, name: "In Transit / En Route",    status: "upcoming",  automated: true,  critical: false, completedAt: null,         expectedDate: "2025-01-18", completedBy: null,          notes: "", daysRemaining: 2         },
-  { id: "ms7", seq: 7, name: "Arrival at Destination",   status: "upcoming",  automated: false, critical: true,  completedAt: null,         expectedDate: "2025-01-20", completedBy: null,          notes: "", daysRemaining: 4         },
-  { id: "ms8", seq: 8, name: "Import Customs Clearance", status: "upcoming",  automated: false, critical: false, completedAt: null,         expectedDate: "2025-01-21", completedBy: null,          notes: "", daysRemaining: 5         },
-  { id: "ms9", seq: 9, name: "Delivery to Consignee",    status: "upcoming",  automated: false, critical: false, completedAt: null,         expectedDate: "2025-01-22", completedBy: null,          notes: "", daysRemaining: 6         },
-];
-
-// ── Role display labels ───────────────────────────────────────
 const ROLE_META = {
-  admin:           { label: "Admin",            color: "#7C3AED", bg: "#F5F3FF", border: "#DDD6FE" },
-  super_user:      { label: "Super User",       color: T.blue,    bg: T.blueBg,  border: T.blueBorder },
-  operations_user: { label: "Operations User",  color: T.green,   bg: T.greenBg, border: T.greenBorder },
-  sales_user:      { label: "Sales User",       color: T.amber,   bg: T.amberBg, border: T.amberBorder },
+  admin:           { label: "Admin",           color: "#7C3AED", bg: "#F5F3FF", border: "#DDD6FE" },
+  super_user:      { label: "Super User",      color: T.blue,    bg: T.blueBg,  border: T.blueBorder },
+  operations_user: { label: "Operations User", color: T.green,   bg: T.greenBg, border: T.greenBorder },
+  sales_user:      { label: "Sales User",      color: T.amber,   bg: T.amberBg, border: T.amberBorder },
 };
 
-// ── Page ──────────────────────────────────────────────────────
+function buildRoute(originCity, originCode, destCity, destCode) {
+  const origin = [originCity, originCode].filter(Boolean).join(", ");
+  const dest   = [destCity,   destCode  ].filter(Boolean).join(", ");
+  if (!origin && !dest) return "—";
+  if (!origin) return dest;
+  if (!dest)   return origin;
+  return `${origin} → ${dest}`;
+}
+
+function buildContacts(shipment) {
+  if (!shipment) return {};
+  return {
+    operationsUser: {
+      name:  shipment.created_by_name  ?? "—",
+      email: shipment.created_by_email ?? "—",
+    },
+    carrier: {
+      name:  shipment.carrier ?? "—",
+      email: "",
+    },
+    client: {
+      name:  shipment.consignee_name  ?? "—",
+      email: shipment.consignee_email ?? "—",
+    },
+    salesUser: {
+      name:  shipment.sales_user_name  ?? "—",
+      email: shipment.sales_user_email ?? "—",
+    },
+  };
+}
 
 export default function ShipmentMilestonesPage() {
-  const rm = ROLE_META[ROLE] || ROLE_META.admin;
+  const searchParams = useSearchParams();
+
+  const shipmentId = searchParams.get("id");
+  const jobNumber  = searchParams.get("job");
+
+  // ── State ──────────────────────────────────────────────────
+  const [shipment,   setShipment]   = useState(null);
+  const [milestones, setMilestones] = useState([]);  // ← real milestones from DB
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState(null);
+
+  // ── Fetch ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!shipmentId && !jobNumber) {
+      setError("No shipment ID provided in the URL.");
+      setLoading(false);
+      return;
+    }
+
+    const fetchShipment = async () => {
+      try {
+        const url = shipmentId
+          ? `http://localhost:5000/api/shipments/${shipmentId}`
+          : `http://localhost:5000/api/shipments/job/${jobNumber}`;
+
+        const response = await fetch(url);
+        const result   = await response.json();
+
+        if (response.ok) {
+          // ✅ Flask now returns { data: { shipment, milestones } }
+          setShipment(result.data.shipment);
+          setMilestones(result.data.milestones ?? []);
+        } else {
+          setError(result.error || "Shipment not found");
+        }
+      } catch (err) {
+        setError("Could not connect to server. Is Flask running on port 5000?");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchShipment();
+  }, [shipmentId, jobNumber]);
+
+  // ── Map DB milestones to what MilestonesTable expects ──────
+  const mappedMilestones = milestones.map((m, index) => {
+    const firstPendingIndex = milestones.findIndex(ms => ms.status !== "completed");
+
+    let status;
+    if (m.status === "completed") {
+      status = "completed";
+    } else if (index === firstPendingIndex) {
+      status = "current";    // first pending = currently active
+    } else {
+      status = "upcoming";   // rest are upcoming
+    }
+
+    return {
+      id:           m.id,
+      seq:          m.sequence_order + 1,
+      name:         m.name,
+      status,
+      critical:     m.is_critical    ?? false,
+      automated:    m.automated      ?? false,
+      expectedDate: m.due_date,
+      completedAt:  m.completed_date,
+      completedBy:  m.assigned_to,
+      notes:        m.notes          ?? "",
+      daysRemaining: null,
+    };
+  });
+
+  // ── Derived shipment meta ───────────────────────────────────
+  const shipmentMeta = {
+    id:       shipment?.job_number        ?? shipment?.id ?? "—",
+    client:   shipment?.consignee_name    ?? "—",
+    route:    buildRoute(
+                shipment?.origin_city,
+                shipment?.origin_country_code,
+                shipment?.destination_city,
+                shipment?.destination_country_code
+              ),
+    type:     shipment?.transport_mode    ?? "—",
+    template: shipment?.st_description   ?? "CargoWise Milestones",
+    branch:   shipment?.branch            ?? "—",
+    hbl:      shipment?.house_bill_number ?? "—",
+  };
+
+  const contacts = buildContacts(shipment);
+  const rm       = ROLE_META[ROLE] || ROLE_META.admin;
 
   return (
     <div style={{
@@ -77,22 +148,16 @@ export default function ShipmentMilestonesPage() {
     }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+        @keyframes spin { to { transform: rotate(360deg) } }
       `}</style>
 
-      {/* ── Page header ───────────────────────────────────────── */}
+      {/* Header */}
       <div style={{ marginBottom: "20px" }}>
-
-        {/* Role badge */}
         <div style={{ marginBottom: "10px" }}>
           <span style={{
-            fontSize:     "11px",
-            fontWeight:   "700",
-            color:        rm.color,
-            background:   rm.bg,
-            border:       `1px solid ${rm.border}`,
-            padding:      "3px 10px",
-            borderRadius: "5px",
-            letterSpacing:"0.05em",
+            fontSize: "11px", fontWeight: "700",
+            color: rm.color, background: rm.bg, border: `1px solid ${rm.border}`,
+            padding: "3px 10px", borderRadius: "5px", letterSpacing: "0.05em",
           }}>
             {rm.label}
           </span>
@@ -102,40 +167,92 @@ export default function ShipmentMilestonesPage() {
           Shipment Milestones
         </h1>
 
-        {/* Shipment meta */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-          <span style={{
-            fontFamily:   "'IBM Plex Mono', monospace",
-            fontSize:     "12px", fontWeight: "600",
-            color:        T.blue, background: T.blueBg,
-            border:       `1px solid ${T.blueBorder}`,
-            padding:      "3px 10px", borderRadius: "5px",
+        {loading ? (
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{
+              width: "16px", height: "16px", borderRadius: "50%",
+              border: `2px solid ${T.gray200}`, borderTopColor: T.blue,
+              animation: "spin 0.7s linear infinite",
+            }} />
+            <span style={{ fontSize: "13px", color: T.gray400 }}>Loading shipment...</span>
+          </div>
+        ) : error ? (
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: "8px",
+            padding: "8px 14px", background: "#fef2f2",
+            border: "1px solid #fecaca", borderRadius: "8px",
+            fontSize: "13px", color: "#dc2626",
           }}>
-            {SHIPMENT.id}
-          </span>
-          <span style={{ fontSize: "13px", color: T.gray700, fontWeight: "500" }}>{SHIPMENT.client}</span>
-          <span style={{ fontSize: "12px", color: T.gray400 }}>·</span>
-          <span style={{ fontSize: "13px", color: T.gray500 }}>{SHIPMENT.route}</span>
-          <span style={{ fontSize: "12px", color: T.gray400 }}>·</span>
-          <span style={{
-            fontSize: "12px", color: T.blue, background: T.blueBg,
-            border: `1px solid ${T.blueBorder}`, padding: "2px 9px", borderRadius: "5px", fontWeight: "500",
-          }}>
-            {SHIPMENT.type}
-          </span>
-          <span style={{ fontSize: "12px", color: T.gray400 }}>·</span>
-          <span style={{ fontSize: "12px", color: T.gray500 }}>
-            Template: <strong style={{ color: T.gray700 }}>{SHIPMENT.template}</strong>
-          </span>
-        </div>
+            ⚠ {error}
+          </div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            <span style={{
+              fontFamily: "'IBM Plex Mono', monospace",
+              fontSize: "12px", fontWeight: "600",
+              color: T.blue, background: T.blueBg,
+              border: `1px solid ${T.blueBorder}`,
+              padding: "3px 10px", borderRadius: "5px",
+            }}>
+              {shipmentMeta.id}
+            </span>
+            <span style={{ fontSize: "13px", color: T.gray700, fontWeight: "500" }}>
+              {shipmentMeta.client}
+            </span>
+            <span style={{ fontSize: "12px", color: T.gray300 }}>·</span>
+            <span style={{ fontSize: "13px", color: T.gray500 }}>
+              {shipmentMeta.route}
+            </span>
+            <span style={{ fontSize: "12px", color: T.gray300 }}>·</span>
+            <span style={{
+              fontSize: "12px", color: T.blue, background: T.blueBg,
+              border: `1px solid ${T.blueBorder}`,
+              padding: "2px 9px", borderRadius: "5px", fontWeight: "500",
+            }}>
+              {shipmentMeta.type}
+            </span>
+            {shipmentMeta.branch !== "—" && (
+              <>
+                <span style={{ fontSize: "12px", color: T.gray300 }}>·</span>
+                <span style={{ fontSize: "12px", color: T.gray500 }}>
+                  Branch: <strong style={{ color: T.gray700 }}>{shipmentMeta.branch}</strong>
+                </span>
+              </>
+            )}
+            {shipmentMeta.hbl !== "—" && (
+              <>
+                <span style={{ fontSize: "12px", color: T.gray300 }}>·</span>
+                <span style={{ fontSize: "12px", color: T.gray500 }}>
+                  HBL: <strong style={{ color: T.gray700 }}>{shipmentMeta.hbl}</strong>
+                </span>
+              </>
+            )}
+            {shipment?.pickup_date_status && (
+              <>
+                <span style={{ fontSize: "12px", color: T.gray300 }}>·</span>
+                <span style={{
+                  fontSize: "11px", fontWeight: "600",
+                  padding: "2px 9px", borderRadius: "5px",
+                  background: shipment.pickup_date_status.toLowerCase().includes("overdue") ? "#fef2f2" : "#f0fdf4",
+                  color:      shipment.pickup_date_status.toLowerCase().includes("overdue") ? "#dc2626" : "#15803d",
+                  border:     shipment.pickup_date_status.toLowerCase().includes("overdue") ? "1px solid #fecaca" : "1px solid #bbf7d0",
+                }}>
+                  {shipment.pickup_date_status}
+                </span>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* ── Milestones table (all logic lives here) ───────────── */}
+      {/* Milestones Table */}
       <MilestonesTable
         role={ROLE}
-        shipment={SHIPMENT}
-        milestones={MILESTONES}
-        contacts={CONTACTS}
+        shipment={shipmentMeta}
+        milestones={loading ? [] : mappedMilestones}
+        contacts={contacts}
+        loading={loading}
+        error={error}
       />
     </div>
   );

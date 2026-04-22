@@ -1,19 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import FilterDropdown from "./components/FilterDropdown";
 import TemplatesTable from "./components/TemplatesTable";
-
-const MOCK_TEMPLATES = [
-  { id: "TPL-001", name: "Standard Air Freight", createdBy: "Admin User", createdAt: "2024-11-10", parentTemplate: null, milestoneCount: 8, shipmentType: "Air Freight" },
-  { id: "TPL-002", name: "Express Air – High Value", createdBy: "Admin User", createdAt: "2024-11-15", parentTemplate: { id: "TPL-001", name: "Standard Air Freight" }, milestoneCount: 11, shipmentType: "Air Freight" },
-  { id: "TPL-003", name: "Standard Sea Freight", createdBy: "Super User", createdAt: "2024-12-01", parentTemplate: null, milestoneCount: 14, shipmentType: "Sea Freight" },
-  { id: "TPL-004", name: "Live Cargo – Marine Life", createdBy: "Admin User", createdAt: "2024-12-05", parentTemplate: { id: "TPL-003", name: "Standard Sea Freight" }, milestoneCount: 17, shipmentType: "Sea Freight" },
-  { id: "TPL-005", name: "Temperature Sensitive Sea", createdBy: "Super User", createdAt: "2025-01-08", parentTemplate: { id: "TPL-003", name: "Standard Sea Freight" }, milestoneCount: 16, shipmentType: "Sea Freight" },
-  { id: "TPL-006", name: "Air Freight – Perishables", createdBy: "Admin User", createdAt: "2025-01-20", parentTemplate: { id: "TPL-001", name: "Standard Air Freight" }, milestoneCount: 13, shipmentType: "Air Freight" },
-  { id: "TPL-007", name: "FCL Ocean Standard", createdBy: "Super User", createdAt: "2025-02-01", parentTemplate: null, milestoneCount: 12, shipmentType: "Sea Freight" },
-];
 
 const FILTER_ROWS = [
   {
@@ -55,22 +45,30 @@ const SearchIcon = () => (
 );
 
 export default function MilestoneTemplatesPage() {
-  const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState({ shipmentType: "all", sortBy: "none" });
+  const [templates, setTemplates] = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [search, setSearch]       = useState("");
+  const [filters, setFilters]     = useState({ shipmentType: "all", sortBy: "none" });
 
-  let data = MOCK_TEMPLATES.filter((t) => {
+  useEffect(() => {
+    fetch("http://localhost:5000/api/templates")
+      .then(r => r.json())
+      .then(result => setTemplates(result.data ?? []))
+      .catch(() => setTemplates([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  let data = templates.filter((t) => {
     const q = search.toLowerCase();
     const matchSearch = t.name.toLowerCase().includes(q) || t.id.toLowerCase().includes(q) || t.createdBy.toLowerCase().includes(q);
     const matchType = filters.shipmentType === "all" || t.shipmentType === filters.shipmentType;
     return matchSearch && matchType;
   });
 
-  if (filters.sortBy === "date-asc") data = [...data].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-  else if (filters.sortBy === "date-desc") data = [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  else if (filters.sortBy === "milestones-asc") data = [...data].sort((a, b) => a.milestoneCount - b.milestoneCount);
+  if (filters.sortBy === "date-asc")           data = [...data].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  else if (filters.sortBy === "date-desc")     data = [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  else if (filters.sortBy === "milestones-asc")  data = [...data].sort((a, b) => a.milestoneCount - b.milestoneCount);
   else if (filters.sortBy === "milestones-desc") data = [...data].sort((a, b) => b.milestoneCount - a.milestoneCount);
-
-  const handleDuplicate = (template) => console.log("Duplicate template:", template.id);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -83,7 +81,7 @@ export default function MilestoneTemplatesPage() {
             <p className="mt-1 text-sm text-gray-500">Manage shipment milestone templates and their timing rules.</p>
           </div>
           <Link
-            href="/admin/milestone_template/create"
+            href="/admin/milestone_template_create"
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
           >
             <PlusIcon />
@@ -94,21 +92,21 @@ export default function MilestoneTemplatesPage() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           {[
-            { label: "Total Templates", value: MOCK_TEMPLATES.length },
-            { label: "Air Freight", value: MOCK_TEMPLATES.filter((t) => t.shipmentType === "Air Freight").length },
-            { label: "Sea Freight", value: MOCK_TEMPLATES.filter((t) => t.shipmentType === "Sea Freight").length },
+            { label: "Total Templates", value: templates.length },
+            { label: "Air Freight",     value: templates.filter((t) => t.shipmentType === "Air Freight").length },
+            { label: "Sea Freight",     value: templates.filter((t) => t.shipmentType === "Sea Freight").length },
           ].map((s) => (
             <div key={s.label} className="bg-white rounded-xl border border-gray-200 px-5 py-4">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{s.label}</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{s.value}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                {loading ? "..." : s.value}
+              </p>
             </div>
           ))}
         </div>
 
-        {/* Toolbar — Filter LEFT, Search RIGHT */}
+        {/* Toolbar */}
         <div className="flex items-center justify-between gap-3 mb-4">
-
-          {/* LEFT: Filter + active chips */}
           <div className="flex items-center gap-2">
             <FilterDropdown filters={filters} setFilters={setFilters} rows={FILTER_ROWS} />
             {filters.shipmentType !== "all" && (
@@ -124,12 +122,8 @@ export default function MilestoneTemplatesPage() {
               </span>
             )}
           </div>
-
-          {/* RIGHT: Search */}
           <div className="relative w-72">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-              <SearchIcon />
-            </div>
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><SearchIcon /></div>
             <input
               type="text"
               placeholder="Search templates..."
@@ -138,14 +132,12 @@ export default function MilestoneTemplatesPage() {
               className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-
         </div>
 
         {/* Table */}
         <TemplatesTable
           data={data}
-          totalCount={MOCK_TEMPLATES.length}
-          onDuplicate={handleDuplicate}
+          totalCount={templates.length}
           basePath="/admin/milestone_template"
         />
 
