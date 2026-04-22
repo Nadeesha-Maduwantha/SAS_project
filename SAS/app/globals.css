@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+<<<<<<< HEAD
 * {
   box-sizing: border-box;
   margin: 0;
@@ -12,6 +13,8 @@ body {
   color: #1a1a2e;
 }
 
+=======
+>>>>>>> 71a8c07ded644f981fb3e2f715c66c0932dc9677
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 4px;
@@ -25,4 +28,8 @@ body {
 ::-webkit-scrollbar-thumb {
   background: #c1c1c1;
   border-radius: 4px;
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 71a8c07ded644f981fb3e2f715c66c0932dc9677
