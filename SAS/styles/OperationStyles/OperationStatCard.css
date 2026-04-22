@@ -1,11 +1,11 @@
 @reference "tailwindcss";
 
 .op-stat {
-  @apply bg-white border border-slate-200 rounded-2xl p-6 shadow-sm relative overflow-hidden;
+  @apply bg-white border border-slate-100 rounded-[14px] shadow-[0_10px_24px_rgba(15,23,42,0.04)] p-4;
 }
 
 .op-stat__top {
-  @apply flex items-center gap-3;
+  @apply flex items-center gap-2;
 }
 
 .op-stat__dot {

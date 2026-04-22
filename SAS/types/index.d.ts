@@ -1,5 +1,4 @@
 // ─── Shipment Types ───────────────────────────────────────────
-
 export type ShipmentStatus =
   | 'in_transit'
   | 'customs_hold'
@@ -38,37 +37,36 @@ export interface Shipment {
   deliveryDate?: Date
   archivedDate?: Date
   transitDays?: number
-jobNumber?: string
-houseBillNumber?: string
-transportMode?: string
-branch?: string
-gbCode?: string
-gcCode?: string
-stDescription?: string
-stNoteText?: string
-cargoReadyDate?: Date
-cargoReceivedDate?: Date
-cargoPickupDate?: Date
-pickupDateStatus?: string
-jobLastEditTime?: Date
-llmIdentifiedType?: string
-llmNote?: string
-shipperName?: string
-shipperAddress?: string
-shipperContact?: string
-shipperPhone?: string
-consigneeName?: string
-consigneeAddress?: string
-consigneeContact?: string
-consigneeEmail?: string
-salesUserStaffCode?: string
-salesUserName?: string
-salesUserEmail?: string
-salesUserEmail?: string
-jsPk?: string
-llmCargoPickupDate?: string
-runningDateTime?: Date | null
-noteNumber?: number | null
+  jobNumber?: string
+  houseBillNumber?: string
+  transportMode?: string
+  branch?: string
+  gbCode?: string
+  gcCode?: string
+  stDescription?: string
+  stNoteText?: string
+  cargoReadyDate?: Date
+  cargoReceivedDate?: Date
+  cargoPickupDate?: Date
+  pickupDateStatus?: string
+  jobLastEditTime?: Date
+  llmIdentifiedType?: string
+  llmNote?: string
+  shipperName?: string
+  shipperAddress?: string
+  shipperContact?: string
+  shipperPhone?: string
+  consigneeName?: string
+  consigneeAddress?: string
+  consigneeContact?: string
+  consigneeEmail?: string
+  salesUserStaffCode?: string
+  salesUserName?: string
+  salesUserEmail?: string
+  jsPk?: string
+  llmCargoPickupDate?: string
+  runningDateTime?: Date | null
+  noteNumber?: number | null
 }
 
 export interface ShipmentStats {
@@ -83,6 +81,50 @@ export interface DelayedStats {
   highPriority: number
   avgDelayDays: number
   customsIssues: number
+}
+
+export interface User {
+  id: string;
+  fullName: string;
+  email: string;
+  department: string;
+  role: string;
+  status: 'Active' | 'Blocked' | 'Locked';
+  lastLogin: string;
+  lastLoginIP: string;
+  lastUpdated: string;
+  lastUpdatedBy: string;
+}
+
+export interface UserFormData {
+  fullName: string;
+  email: string;
+  department: string;
+  role: string;
+  userAction: 'block' | 'unblock' | '';
+  resetPassword: boolean;
+  unlockAccount: boolean;
+}
+
+// ─── Profile Types ───────────────────────────────────────────
+export interface UserProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  department: string;
+  role: "admin" | "super-user" | "sales_user" | "operation_user";
+  status: "Active" | "Inactive";
+  isVerified: boolean;
+  lastLogin: string;
+  memberSince: string;
+  avatarUrl?: string;
+}
+
+export interface PasswordChange {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 }
 
 declare module '*.css'

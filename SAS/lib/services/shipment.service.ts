@@ -201,6 +201,7 @@ export async function getDelayedStats() {
     .eq('pickup_date_status', 'Past')
 
   if (error) throw new Error(error.message)
+  const shipments = (data ?? []).map(mapRow)
 
   const shipments = (data ?? [])
     .map(mapRow)
@@ -329,5 +330,5 @@ export async function getShipmentsBySalesUser(
     .select('*')
 
   if (error) throw new Error(error.message)
-  return (data ?? []).map(mapRow)
+  return data.map(mapRow)
 }
