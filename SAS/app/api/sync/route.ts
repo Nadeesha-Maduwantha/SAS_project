@@ -6,6 +6,37 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
+interface ShipmentRecord {
+  job_number?: string
+  transport_mode?: string
+  consignee?: string
+  house_bill_number?: string | null
+  cargo_ready_date?: string | null
+  cargo_pickup_date?: string | null
+  st_description?: string | null
+  st_note_text?: string | null
+  branch?: string | null
+  gc_code?: string | null
+  gb_code?: string | null
+  js_pk?: string | null
+  llm_identified_type?: string | null
+  llm_cargo_pickup_date?: string | null
+  llm_note?: string | null
+  pickup_date_status?: string | null
+  running_date_time?: string | null
+  oh_full_name?: string | null
+  gen_custom_last_edit_time?: string | null
+  job_docs_last_edit_time?: string | null
+  note_last_edit_time?: string | null
+}
+
+interface SyncErrorDetail {
+  shipment_id: string
+  field: string
+  reason: string
+  timestamp: string
+}
+
 async function getToken(): Promise<string> {
   const response = await fetch(
     `${process.env.CARGOWISE_API_URL}/auth/login`,
@@ -22,7 +53,7 @@ async function getToken(): Promise<string> {
   return data.access_token
 }
 
-async function fetchShipments(token: string) {
+async function fetchShipments(token: string): Promise<unknown> {
   const response = await fetch(
     `${process.env.CARGOWISE_API_URL}/cargo-pickup-date`,
     {
@@ -36,7 +67,7 @@ async function fetchShipments(token: string) {
   return response.json()
 }
 
-function validateRecord(record: any): string[] {
+function validateRecord(record: ShipmentRecord): string[] {
   const errors: string[] = []
   if (!record.job_number) errors.push('job_number is missing')
   if (!record.transport_mode) errors.push('transport_mode is missing')
@@ -62,10 +93,10 @@ export async function GET() {
     let inserted = 0
     let updated = 0
     let errors = 0
-    const errorDetails: any[] = []
+    const errorDetails: SyncErrorDetail[] = []
 
     // Step 3 - Process each record
-    for (const record of shipments) {
+    for (const record of shipments as ShipmentRecord[]) {
       const validationErrors = validateRecord(record)
 
       if (validationErrors.length > 0) {
@@ -162,7 +193,8 @@ if (insertError) {
       errorDetails,
     })
 
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown sync error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

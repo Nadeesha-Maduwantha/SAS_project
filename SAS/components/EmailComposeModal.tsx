@@ -2,7 +2,7 @@
 
 import React from 'react';
 import {
-    X, Save, Wand2, Send,
+    X, Save,
     Bold, Italic, Underline, Undo, Redo, List, ListOrdered, Image as ImageIcon,
     Paperclip, ChevronDown, Sparkles, Eye, Bot
 } from 'lucide-react';
@@ -335,7 +335,7 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }: EmailC
                                     padding: '12px', fontSize: '12.5px', color: '#6b7280',
                                     backgroundColor: '#f9fafb', lineHeight: '1.5'
                                 } as React.CSSProperties}>
-                                    I can help you draft this email. Try asking me to "Explain a weather delay" or "Request updated documents".
+                                    I can help you draft this email. Try asking me to &quot;Explain a weather delay&quot; or &quot;Request updated documents&quot;.
                                 </div>
                             </div>
                         </div>
