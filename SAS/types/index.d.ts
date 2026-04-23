@@ -61,6 +61,9 @@ consigneeName?: string
 consigneeAddress?: string
 consigneeContact?: string
 consigneeEmail?: string
+salesUserStaffCode?: string
+salesUserName?: string
+salesUserEmail?: string
 }
 
 export interface ShipmentStats {
@@ -75,4 +78,15 @@ export interface DelayedStats {
   highPriority: number
   avgDelayDays: number
   customsIssues: number
+}
+
+export interface ShipmentMilestone {
+  id: string
+  shipment_id: string
+  name: string
+  description?: string
+  scheduled_date?: Date
+  actual_date?: Date
+  status?: string
+  created_at?: Date
 }
