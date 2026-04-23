@@ -2,7 +2,7 @@
 
 import React from 'react';
 import {
-    X, MapPin, Truck, AlertCircle, Clock, Package, CheckCircle2, Navigation, Anchor, Plane, Warehouse, User, Calendar, Mail
+    X, MapPin, Truck, AlertCircle, Clock, Package, CheckCircle2, Navigation, Anchor, Plane, Warehouse, User, FileText, Calendar, Mail
 } from 'lucide-react';
 
 export interface AlertData {
@@ -34,6 +34,11 @@ function MilestoneIcon({ type }: MilestoneIconProps) {
         navigation: <Navigation {...props} />,
     };
     return icons[type] || <Package {...props} />;
+}
+
+interface BadgeProps {
+    level?: AlertData['priority'];
+    status?: AlertData['status'];
 }
 
 function PriorityBadge({ level }: { level: AlertData['priority'] }) {
