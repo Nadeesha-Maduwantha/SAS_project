@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Search, MoreVertical } from 'lucide-react';
 import '@/styles/SuperStyles/SuperRecentActivityTable.css';
 
@@ -46,6 +46,7 @@ export default function SuperRecentActivityTable({ dateRange }: Props) {
   const [showAll, setShowAll] = useState(false);
 
   const isFilteringByDate = !!(dateRange?.from && dateRange?.to);
+  const shouldShowAll = !isFilteringByDate && showAll;
 
   const filteredRows = useMemo(() => {
     const query = q.trim().toLowerCase();
@@ -81,13 +82,9 @@ export default function SuperRecentActivityTable({ dateRange }: Props) {
   }, [q, dateRange]);
 
   const displayedRows = useMemo(() => {
-    if (isFilteringByDate || showAll) return filteredRows;
+    if (isFilteringByDate || shouldShowAll) return filteredRows;
     return filteredRows.slice(0, 5);
-  }, [filteredRows, isFilteringByDate, showAll]);
-
-  useEffect(() => {
-    if (!isFilteringByDate) setShowAll(false);
-  }, [isFilteringByDate]);
+  }, [filteredRows, isFilteringByDate, shouldShowAll]);
 
   return (
     <div className="ra-card">
@@ -158,7 +155,7 @@ export default function SuperRecentActivityTable({ dateRange }: Props) {
       {!isFilteringByDate ? (
         filteredRows.length > 5 && (
           <button className="ra-load" type="button" onClick={() => setShowAll((p) => !p)}>
-            {showAll ? 'Show Less' : 'Load More Records'}
+            {shouldShowAll ? 'Show Less' : 'Load More Records'}
           </button>
         )
       ) : (

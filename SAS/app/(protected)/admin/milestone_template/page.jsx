@@ -4,11 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { T, solidBtn, outlineBtn, ghostBtn, inp, lbl } from "@/styles/tokens";
 import {
-  IcoEdit, IcoPlus, IcoTrash, IcoCopy, IcoX, IcoGrip, IcoWarn,
+  IcoEdit, IcoPlus, IcoTrash, IcoCopy, IcoX, IcoWarn,
   IcoTruck, IcoCheckList, IcoBranch,
-  Badge, SectionHead, Divider, ToggleCheck,
+  SectionHead, Divider,
   MilestoneCard, MilestoneForm, Modal,
-  PAGE_KEYFRAMES,
 } from "@/app/(protected)/admin/milestone_templates_list/components/templateComponents";
 
 // =============================================================
@@ -74,11 +73,12 @@ export default function MilestoneTemplatePage() {
   const searchParams = useSearchParams();
   const templateId   = searchParams.get("id");
   const openInEdit   = searchParams.get("edit") === "true";
+  const hasTemplateId = Boolean(templateId);
 
   // ── Data state ──────────────────────────────────────────────
   const [tmpl,    setTmpl]    = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState(null);
+  const [loading, setLoading] = useState(hasTemplateId);
+  const [error,   setError]   = useState(hasTemplateId ? null : "No template ID provided in the URL.");
 
   // ── UI state ────────────────────────────────────────────────
   const [editMode,    setEditMode]    = useState(openInEdit);
@@ -86,7 +86,7 @@ export default function MilestoneTemplatePage() {
   const [showCopy,    setShowCopy]    = useState(false);
   const [showDelete,  setShowDelete]  = useState(false);
   const [copyName,    setCopyName]    = useState("");
-  const [toast,       setToast]       = useState(null);
+  const [toast]       = useState(null);
   const [dragIdx,     setDragIdx]     = useState(null);
   const [dragOver,    setDragOver]    = useState(null);
   const [newCopyId,   setNewCopyId]   = useState(null);
@@ -95,12 +95,10 @@ export default function MilestoneTemplatePage() {
 
   // ── Fetch from Flask ────────────────────────────────────────
   useEffect(() => {
-    if (!templateId) {
-      setLoading(false);
-      return;
-    }
+    if (!templateId) return;
     const fetchTemplate = async () => {
       try {
+        setError(null);
         const response = await fetch(`http://localhost:5000/api/templates/${templateId}`);
         const result   = await response.json();
         if (response.ok) {
@@ -108,7 +106,7 @@ export default function MilestoneTemplatePage() {
         } else {
           setError(result.error || "Failed to load template");
         }
-      } catch (err) {
+      } catch {
         setError("Could not connect to server. Is Flask running?");
       } finally {
         setLoading(false);
@@ -118,11 +116,6 @@ export default function MilestoneTemplatePage() {
   }, [templateId]);
 
   // ── Helpers ─────────────────────────────────────────────────
-  const showToast = (msg, type = "success") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3500);
-  };
-
   const onDragStart = (i) => setDragIdx(i);
   const onDragOver  = (i) => setDragOver(i);
   const onDrop      = (i) => {
@@ -160,7 +153,7 @@ export default function MilestoneTemplatePage() {
       } else {
         alert(result.error || "Failed to copy template");
       }
-    } catch (err) {
+    } catch {
       alert("Could not connect to server. Is Flask running?");
     }
   };
@@ -175,7 +168,7 @@ export default function MilestoneTemplatePage() {
         const result = await response.json();
         alert(result.error || "Failed to delete");
       }
-    } catch (err) {
+    } catch {
       alert("Could not connect to server. Is Flask running?");
     }
   };
@@ -195,7 +188,7 @@ export default function MilestoneTemplatePage() {
   // ── Milestone area content — three possible states ──────────
   // Instead of returning early and hiding the whole page,
   // we render different content INSIDE the milestones card only
-  const MilestoneAreaContent = () => {
+  const milestoneAreaContent = (() => {
 
     // State 1 — still fetching from Flask
     if (loading) return (
@@ -254,7 +247,7 @@ export default function MilestoneTemplatePage() {
           No milestones in this template
         </div>
         <div style={{ fontSize: "12px", color: T.gray400, maxWidth: "220px", lineHeight: "1.6" }}>
-          Switch to edit mode and use "Add Milestone" to build the sequence.
+          Switch to edit mode and use &quot;Add Milestone&quot; to build the sequence.
         </div>
       </div>
     );
@@ -284,7 +277,7 @@ export default function MilestoneTemplatePage() {
         ))}
       </div>
     );
-  };
+  })();
 
   // ── Main render — page always renders regardless of load state
   return (
@@ -419,7 +412,7 @@ export default function MilestoneTemplatePage() {
               </div>
 
               {/* This renders one of 4 states: loading / error / empty / grid */}
-              <MilestoneAreaContent />
+              {milestoneAreaContent}
             </div>
 
           </div>
