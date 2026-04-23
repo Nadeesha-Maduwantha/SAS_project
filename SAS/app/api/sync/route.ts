@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
+if (!supabaseUrl || !supabaseServiceRoleKey) {
+  throw new Error('Missing Supabase server environment variables')
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
 interface ShipmentRecord {
   job_number?: string
   transport_mode?: string
@@ -94,8 +97,9 @@ export async function GET() {
     let updated = 0
     let errors = 0
     const errorDetails: SyncErrorDetail[] = []
+    const mappedRecords: Array<Record<string, unknown>> = []
 
-    // Step 3 - Process each record
+    // Step 3 - Validate and map each record
     for (const record of shipments as ShipmentRecord[]) {
       const validationErrors = validateRecord(record)
 
@@ -110,14 +114,7 @@ export async function GET() {
         continue
       }
 
-      // Step 4 - Check if exists
-      const { data: existing } = await supabase
-        .from('shipments')
-        .select('id')
-        .eq('cargowise_id', record.job_number)
-        .single()
-
-      const mappedRecord = {
+      mappedRecords.push({
         cargowise_id: record.job_number,
         consignee_name: record.consignee,
         transport_mode: record.transport_mode,
@@ -148,30 +145,54 @@ export async function GET() {
             record.llm_note?.toLowerCase().includes('asap') ||
             record.llm_note?.toLowerCase().includes('priority')
   ) ? true : false,
+      })
+    }
+
+    // Step 4 - Upsert in bulk
+    if (mappedRecords.length > 0) {
+      const validMappedRecords = mappedRecords.filter(
+        (record): record is Record<string, unknown> & { cargowise_id: string } =>
+          typeof record.cargowise_id === 'string'
+      )
+      const cargowiseIds = validMappedRecords.map((record) => record.cargowise_id)
+
+      const { data: existingRows, error: existingFetchError } = await supabase
+        .from('shipments')
+        .select('cargowise_id')
+        .in('cargowise_id', cargowiseIds)
+
+      if (existingFetchError) {
+        throw new Error(`Failed to load existing shipments: ${existingFetchError.message}`)
       }
 
-      if (existing) {
-        await supabase
-          .from('shipments')
-          .update(mappedRecord)
-          .eq('cargowise_id', record.job_number)
-        updated++
+      const existingIds = new Set((existingRows ?? []).map((row) => row.cargowise_id))
+      const pendingInserted = cargowiseIds.filter((id) => !existingIds.has(id)).length
+      const pendingUpdated = validMappedRecords.length - pendingInserted
+
+      const now = new Date().toISOString()
+      const upsertPayload = validMappedRecords.map((record) => {
+        const id = record.cargowise_id
+        return existingIds.has(id) ? record : { ...record, created_at: now }
+      })
+
+      const { error: upsertError } = await supabase
+        .from('shipments')
+        .upsert(upsertPayload, { onConflict: 'cargowise_id' })
+
+      if (upsertError) {
+        errors += validMappedRecords.length
+        const previewIds = cargowiseIds.slice(0, 20).join(', ')
+        errorDetails.push({
+          shipment_id: 'bulk_upsert',
+          field: 'upsert',
+          reason: `${upsertError.message}. Affected IDs: ${previewIds}${cargowiseIds.length > 20 ? '...' : ''}`,
+          timestamp: new Date().toISOString(),
+        })
+        inserted = 0
+        updated = 0
       } else {
-        const { error: insertError } = await supabase
-  .from('shipments')
-  .insert({ ...mappedRecord, created_at: new Date().toISOString() })
-if (insertError) {
-  console.error('Insert error:', insertError.message)
-  errors++
-  errorDetails.push({
-    shipment_id: record.job_number ?? 'unknown',
-    field: 'insert',
-    reason: insertError.message,
-    timestamp: new Date().toISOString(),
-  })
-} else {
-  inserted++
-}
+        inserted = pendingInserted
+        updated = pendingUpdated
       }
     }
 
