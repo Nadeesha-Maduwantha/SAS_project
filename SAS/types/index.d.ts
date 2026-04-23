@@ -35,6 +35,10 @@ export interface Shipment {
   deliveryDate?: Date
   archivedDate?: Date
   transitDays?: number
+salesUserStaffCode?: string
+salesUserName?: string
+salesUserEmail?: string
+
   jobNumber?: string
   houseBillNumber?: string
   transportMode?: string
@@ -61,20 +65,7 @@ export interface Shipment {
   salesUserStaffCode?: string
   salesUserName?: string
   salesUserEmail?: string
-}
 
-export interface ShipmentStats {
-  total: number
-  inTransit: number
-  exceptions: number
-  deliveredToday: number
-}
-
-export interface DelayedStats {
-  totalDelayed: number
-  highPriority: number
-  avgDelayDays: number
-  customsIssues: number
 }
 
 export interface User {
@@ -101,7 +92,6 @@ export interface UserFormData {
 }
 
 // ─── Profile Types ───────────────────────────────────────────
-
 export interface UserProfile {
   id: string;
   fullName: string;
@@ -121,3 +111,5 @@ export interface PasswordChange {
   newPassword: string;
   confirmPassword: string;
 }
+
+declare module '*.css'

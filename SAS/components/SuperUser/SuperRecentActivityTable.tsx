@@ -46,6 +46,7 @@ export default function SuperRecentActivityTable({ dateRange }: Props) {
   const [showAll, setShowAll] = useState(false);
 
   const isFilteringByDate = !!(dateRange?.from && dateRange?.to);
+  const shouldShowAll = !isFilteringByDate && showAll;
 
   const filteredRows = useMemo(() => {
     const query = q.trim().toLowerCase();
