@@ -18,17 +18,14 @@ function fmtRange(from: string, to: string) {
 export default function SuperDashboardHeader({ onDateRangeChange }: Props) {
   const [open, setOpen] = useState(false);
 
-  // draft values (YYYY-MM-DD)
   const [from, setFrom] = useState('2023-10-24');
   const [to, setTo] = useState('2023-10-30');
 
-  // applied values (what shows on button + used by dashboard)
   const [appliedFrom, setAppliedFrom] = useState('2023-10-24');
   const [appliedTo, setAppliedTo] = useState('2023-10-30');
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
-  // close popup on outside click
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
       if (!wrapRef.current) return;
@@ -38,7 +35,6 @@ export default function SuperDashboardHeader({ onDateRangeChange }: Props) {
     return () => document.removeEventListener('mousedown', onDown);
   }, []);
 
-  // ensure to >= from
   useEffect(() => {
     if (from && to && to < from) setTo(from);
   }, [from, to]);
@@ -94,11 +90,7 @@ export default function SuperDashboardHeader({ onDateRangeChange }: Props) {
             <div className="super-header__dateGrid">
               <div className="super-header__dateField">
                 <label>From</label>
-                <input
-                  type="date"
-                  value={from}
-                  onChange={(e) => setFrom(e.target.value)}
-                />
+                <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
               </div>
 
               <div className="super-header__dateField">
