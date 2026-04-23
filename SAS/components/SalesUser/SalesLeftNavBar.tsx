@@ -9,9 +9,6 @@ import {
   Settings,
   ChevronDown,
   Shield,
-  User,
-  Bell,
-  LogOut,
 } from 'lucide-react';
 
 import '../../styles/ComponentStyles/SalesLeftNavBar.css';
@@ -49,7 +46,11 @@ export default function SalesLeftNavBar({
   };
 
   return (
-    <aside className="sales-nav-container">
+    <aside
+      className="sales-nav-container"
+      data-user-name={userName}
+      data-role-label={roleLabel}
+    >
       {/* Top */}
       <div className="sales-nav-top">
         {/* Header */}
@@ -71,7 +72,7 @@ export default function SalesLeftNavBar({
 
         {/* My Shipments (single) */}
         <button
-          className={`nav-single-btn ${isActiveRoute('/sales_user/shipments') ? 'active' : ''}`}
+          className={`nav-section-header ${isActiveRoute('/sales_user/shipments') ? 'active' : ''}`}
           onClick={() => handleNavigation('/sales_user/shipments')}
         >
           <Truck className="nav-icon" />
@@ -80,11 +81,11 @@ export default function SalesLeftNavBar({
 
         {/* History (label-like single item) */}
         <button
-          className={`nav-history-btn ${isActiveRoute('/sales_user/history') ? 'active' : ''}`}
+          className={`nav-section-header ${isActiveRoute('/sales_user/history') ? 'active' : ''}`}
           onClick={() => handleNavigation('/sales_user/history')}
         >
           <Clock className="nav-icon" />
-          <span className="nav-history-text">HISTORY</span>
+          <span>History</span>
         </button>
 
         {/* Settings (dropdown) */}
@@ -106,7 +107,7 @@ export default function SalesLeftNavBar({
                 className={`nav-item ${isActiveRoute('/sales_user/settings/profile') ? 'active' : ''}`}
                 onClick={() => handleNavigation('/sales_user/settings/profile')}
               >
-                <User className="nav-item-icon" />
+                
                 <span>My Profile</span>
               </button>
 
@@ -114,14 +115,13 @@ export default function SalesLeftNavBar({
                 className={`nav-item ${isActiveRoute('/sales_user/settings/notifications') ? 'active' : ''}`}
                 onClick={() => handleNavigation('/sales_user/settings/notifications')}
               >
-                <Bell className="nav-item-icon" />
+                
                 <span>Notification Preferences</span>
               </button>
             </div>
           )}
         </div>
       </div>
-
 
     </aside>
   );

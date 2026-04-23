@@ -1,4 +1,4 @@
-{/*'use client'
+'use client'
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
@@ -17,23 +17,11 @@ const SALES_USER_STAFF_CODE = 'DG003'
 const SALES_USER_NAME = 'Kasun Fernando'
 // ────────────────────────────────────────────────────────────────────────
 
-function formatDate(date: Date | null | undefined) {
+function formatPickupDate(date: string | undefined) {
   if (!date) return '—'
-  return date.toLocaleDateString('en-US', {
+  return new Date(date).toLocaleDateString('en-US', {
     month: 'short', day: '2-digit', year: 'numeric'
   })
-}
-
-function getScheduleStatus(shipment: Shipment): { label: string; color: string } {
-  if (shipment.currentStage === 'delivered') return { label: 'Delivered', color: '#10b981' }
-  if (shipment.delayDays && shipment.delayDays > 0) return { label: `Delayed ${shipment.delayDays}d`, color: '#f59e0b' }
-  if (shipment.currentStage === 'arrived_at_port') return { label: 'Arriving Soon', color: '#10b981' }
-  if (shipment.currentStage === 'processing') return { label: 'Scheduled', color: '#6b7280' }
-  return { label: 'On Schedule', color: '#10b981' }
-}
-
-function getTransportIcon() {
-  return <Truck style={{ width: '16px', height: '16px', color: '#2563eb' }} />
 }
 
 export default function SalesUserShipmentsPage() {
@@ -63,33 +51,45 @@ export default function SalesUserShipmentsPage() {
     fetchData()
   }, [])
 
-  // Stats
+  // Stats based on real API data
   const stats = useMemo(() => ({
     total: shipments.length,
-    active: shipments.filter((s) => s.currentStage !== 'delivered').length,
-    delayed: shipments.filter((s) => s.delayDays && s.delayDays > 0).length,
-    delivered: shipments.filter((s) => s.currentStage === 'delivered').length,
+    active: shipments.filter((s) =>
+      !s.llmIdentifiedType?.toLowerCase().includes('delivered')
+    ).length,
+    delayed: shipments.filter((s) =>
+      s.pickupDateStatus === 'Past' &&
+      !s.llmIdentifiedType?.toLowerCase().includes('delivered')
+    ).length,
+    delivered: shipments.filter((s) =>
+      s.llmIdentifiedType?.toLowerCase().includes('delivered')
+    ).length,
   }), [shipments])
 
   // Filter + Search
   const filteredShipments = useMemo(() => shipments.filter((s) => {
-    if (activeFilters.currentStage && s.currentStage !== activeFilters.currentStage) return false
     if (activeFilters.transportMode && s.transportMode !== activeFilters.transportMode) return false
+    if (activeFilters.currentStage &&
+      s.llmIdentifiedType !== activeFilters.currentStage &&
+      s.currentStage !== activeFilters.currentStage) return false
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
-      const route = `${s.originCity} ${s.originCountryCode} ${s.destinationCity} ${s.destinationCountryCode}`.toLowerCase()
-      const client = `${s.consigneeName ?? ''}`.toLowerCase()
-      if (!s.cargowiseId.toLowerCase().includes(q) && !route.includes(q) && !client.includes(q)) return false
+      const client = (s.consigneeName ?? '').toLowerCase()
+      return (
+        s.cargowiseId.toLowerCase().includes(q) ||
+        client.includes(q) ||
+        (s.branch ?? '').toLowerCase().includes(q)
+      )
     }
     return true
   }), [shipments, activeFilters, searchQuery])
 
-  // Sort by ETA
+  // Sort by pickup date nearest
   const sortedShipments = useMemo(() => {
     return [...filteredShipments].sort((a, b) => {
-      if (!a.estimatedArrival) return 1
-      if (!b.estimatedArrival) return -1
-      return a.estimatedArrival.getTime() - b.estimatedArrival.getTime()
+      if (!a.llmCargoPickupDate) return 1
+      if (!b.llmCargoPickupDate) return -1
+      return new Date(a.llmCargoPickupDate).getTime() - new Date(b.llmCargoPickupDate).getTime()
     })
   }, [filteredShipments])
 
@@ -107,14 +107,14 @@ export default function SalesUserShipmentsPage() {
       ],
     },
     {
-      label: 'By Current Stage',
+      label: 'By Stage',
       key: 'currentStage',
       options: [
-        { label: 'In Transit', value: 'in_transit' },
-        { label: 'Customs Hold', value: 'customs_hold' },
-        { label: 'Arrived at Port', value: 'arrived_at_port' },
-        { label: 'Processing', value: 'processing' },
-        { label: 'Delivered', value: 'delivered' },
+        { label: 'Delivered', value: 'Delivered' },
+        { label: 'Booking Approval', value: 'Booking Approval' },
+        { label: 'Delivery Date', value: 'Delivery Date' },
+        { label: 'Delivered to CFS warehouse', value: 'Delivered to CFS warehouse' },
+        { label: 'Unknown', value: 'Unknown' },
       ],
     },
   ]
@@ -134,7 +134,7 @@ export default function SalesUserShipmentsPage() {
   return (
     <div className="p-6">
 
-      {/* Header 
+      {/* Header */}
       <div className="mb-5">
         <h1 className="text-xl font-semibold text-gray-900">Assigned Shipments</h1>
         <p className="text-sm text-gray-500 mt-0.5">
@@ -142,7 +142,7 @@ export default function SalesUserShipmentsPage() {
         </p>
       </div>
 
-      {/* Stats *
+      {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <ShipmentStatsCard
           icon={<Package className="w-5 h-5" />}
@@ -153,7 +153,7 @@ export default function SalesUserShipmentsPage() {
         />
         <ShipmentStatsCard
           icon={<Truck className="w-5 h-5" />}
-          label="In Transit"
+          label="Active Shipments"
           value={stats.active}
           iconBgClass="bg-yellow-100 text-yellow-600"
           borderColor="border-l-yellow-500"
@@ -174,15 +174,15 @@ export default function SalesUserShipmentsPage() {
         />
       </div>
 
-      {/* Table Card *
+      {/* Table Card */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
 
-        {/* Toolbar *
+        {/* Toolbar */}
         <div className="flex items-center gap-2 px-5 py-3 border-b border-gray-100">
           <ShipmentSearch
             value={searchQuery}
             onChange={(v) => { setSearchQuery(v); setCurrentPage(1) }}
-            placeholder="Search by ID, client or destination..."
+            placeholder="Search by ID, client or branch..."
           />
           <ShipmentFilter
             groups={filterGroups}
@@ -196,7 +196,7 @@ export default function SalesUserShipmentsPage() {
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
             </svg>
-            ETA (Nearest)
+            Pickup Date (Nearest)
           </div>
           <button
             onClick={() => exportAllShipmentsPDF(sortedShipments)}
@@ -207,17 +207,19 @@ export default function SalesUserShipmentsPage() {
             </svg>
             Export PDF
           </button>
-        </div
-        {/* Table *
+        </div>
+
+        {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                 <th className="text-left px-5 py-3">Shipment ID</th>
                 <th className="text-left px-5 py-3">Client Name</th>
-                <th className="text-left px-5 py-3">Destination</th>
-                <th className="text-left px-5 py-3">ETA</th>
                 <th className="text-left px-5 py-3">Status</th>
+                <th className="text-left px-5 py-3">Transport Mode</th>
+                <th className="text-left px-5 py-3">Pickup Date</th>
+                <th className="text-left px-5 py-3">Pickup Status</th>
                 <th className="text-left px-5 py-3">Action</th>
                 <th className="text-left px-5 py-3">Detail</th>
               </tr>
@@ -225,19 +227,18 @@ export default function SalesUserShipmentsPage() {
             <tbody className="divide-y divide-gray-50">
               {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-sm text-gray-400">
+                  <td colSpan={8} className="px-5 py-10 text-center text-sm text-gray-400">
                     No shipments found
                   </td>
                 </tr>
               ) : paginated.map((shipment) => {
-                const scheduleStatus = getScheduleStatus(shipment)
                 const clientInitials = (shipment.consigneeName ?? 'CL')
                   .split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
 
                 return (
                   <tr key={shipment.id} className="hover:bg-gray-50 transition-colors">
 
-                    {/* Shipment ID 
+                    {/* Shipment ID */}
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2">
                         <div style={{
@@ -245,20 +246,20 @@ export default function SalesUserShipmentsPage() {
                           background: shipment.transportMode === 'AIR' ? '#fef3c7' :
                                       shipment.transportMode === 'ROAD' ? '#f0fdf4' : '#eff6ff',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: '14px', flexShrink: 0
+                          flexShrink: 0
                         }}>
-                          {getTransportIcon()}
+                          <Truck style={{ width: '16px', height: '16px', color: '#2563eb' }} />
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-gray-900">#{shipment.cargowiseId}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {shipment.llmIdentifiedType ?? shipment.transportMode ?? '—'}
-                          </p>
+                          {shipment.branch && (
+                            <p className="text-xs text-gray-400 mt-0.5">Branch: {shipment.branch}</p>
+                          )}
                         </div>
                       </div>
                     </td>
 
-                    {/* Client Name *
+                    {/* Client Name */}
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2">
                         <div style={{
@@ -274,42 +275,65 @@ export default function SalesUserShipmentsPage() {
                           <p className="text-sm font-medium text-gray-900">
                             {shipment.consigneeName ?? '—'}
                           </p>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {shipment.consigneeEmail ?? '—'}
-                          </p>
+                          {shipment.gcCode && (
+                            <p className="text-xs text-gray-400 mt-0.5">{shipment.gcCode}</p>
+                          )}
                         </div>
                       </div>
                     </td>
 
-                    {/* Destination *
+                    {/* Status */}
                     <td className="px-5 py-3.5">
-                      <p className="text-sm text-gray-900">
-                        {shipment.destinationCity}, {shipment.destinationCountryCode}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        From {shipment.originCity}
-                      </p>
+                      <ShipmentStatusBadge status={shipment.llmIdentifiedType ?? shipment.currentStage} />
+                      {shipment.stNoteText && (
+                        <p className="text-xs text-gray-400 mt-1 max-w-xs truncate">
+                          {shipment.stNoteText}
+                        </p>
+                      )}
                     </td>
 
-
-                    {/* ETA *
+                    {/* Transport Mode */}
                     <td className="px-5 py-3.5">
-                      <p className="text-sm font-medium text-gray-900">
-                        {formatDate(shipment.estimatedArrival)}
-                      </p>
-                      <p style={{ fontSize: '11px', color: scheduleStatus.color, marginTop: '2px', fontWeight: 500 }}>
-                        {scheduleStatus.label}
-                      </p>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center',
+                        padding: '3px 10px', borderRadius: '9999px',
+                        fontSize: '12px', fontWeight: 600,
+                        background: shipment.transportMode === 'AIR' ? '#fef3c7' :
+                                    shipment.transportMode === 'ROAD' ? '#f0fdf4' : '#eff6ff',
+                        color: shipment.transportMode === 'AIR' ? '#92400e' :
+                               shipment.transportMode === 'ROAD' ? '#166534' : '#1e40af',
+                      }}>
+                        {shipment.transportMode ?? '—'}
+                      </span>
                     </td>
 
-                    {/* Status *
-                    <td className="px-5 py-3.5">
-                      <ShipmentStatusBadge status={shipment.currentStage} />
+                    {/* Pickup Date */}
+                    <td className="px-5 py-3.5 text-sm text-gray-700">
+                      {formatPickupDate(shipment.llmCargoPickupDate)}
                     </td>
 
-                    {/* Action *
+                    {/* Pickup Status */}
                     <td className="px-5 py-3.5">
-                      {shipment.currentStage !== 'delivered' ? (
+                      {shipment.pickupDateStatus ? (
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center',
+                          padding: '3px 10px', borderRadius: '9999px',
+                          fontSize: '12px', fontWeight: 600,
+                          background: shipment.pickupDateStatus === 'Future' ? '#eff6ff' :
+                                      shipment.pickupDateStatus === 'Past' ? '#fef2f2' : '#f0fdf4',
+                          color: shipment.pickupDateStatus === 'Future' ? '#1d4ed8' :
+                                 shipment.pickupDateStatus === 'Past' ? '#dc2626' : '#16a34a',
+                        }}>
+                          {shipment.pickupDateStatus}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
+                    </td>
+
+                    {/* Action */}
+                    <td className="px-5 py-3.5">
+                      {!shipment.llmIdentifiedType?.toLowerCase().includes('delivered') ? (
                         <button className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                           Take Action
                         </button>
@@ -318,7 +342,7 @@ export default function SalesUserShipmentsPage() {
                       )}
                     </td>
 
-                    {/* Detail *
+                    {/* Detail */}
                     <td className="px-5 py-3.5">
                       <button
                         onClick={() => router.push(`/admin/shipments/${shipment.id}?from=/sales_user/shipments`)}
@@ -345,4 +369,4 @@ export default function SalesUserShipmentsPage() {
       </div>
     </div>
   )
-*/}
+}

@@ -45,6 +45,19 @@ const MOCK_SYNC_HISTORY = [
 type SyncStatus = 'success' | 'failed' | 'partial'
 type ErrorFilter = 'last' | 'all'
 type HistoryFilter = 'all' | 'success' | 'failed' | 'partial'
+type SyncResult = {
+  success?: boolean
+  inserted?: number
+  updated?: number
+  errors?: number
+  errorDetails?: Array<{
+    shipment_id: string
+    field: string
+    reason: string
+    timestamp: string
+  }>
+  error?: string
+}
 
 // ─── Helpers ───
 function formatDateTime(dt: string) {
@@ -88,27 +101,41 @@ export default function SyncManagementPage() {
   const [minErrors, setMinErrors] = useState(1)
   const [settingsSaved, setSettingsSaved] = useState(false)
   const [scheduleSaved, setScheduleSaved] = useState(false)
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
   
   const now = new Date()
  
   
 
-  // Simulate sync
-  function handleSyncNow() {
-    if (isSyncing) return
-    setIsSyncing(true)
+  async function handleSyncNow() {
+  if (isSyncing) return
+  setIsSyncing(true)
+  setSyncProgress(0)
+
+  // Animate progress
+  const interval = setInterval(() => {
+    setSyncProgress((prev) => {
+      if (prev >= 90) {
+        clearInterval(interval)
+        return 90
+      }
+      return prev + 5
+    })
+  }, 150)
+
+  try {
+    const response = await fetch('/api/sync')
+    const result = await response.json()
+    clearInterval(interval)
+    setSyncProgress(100)
+    setSyncResult(result)
+  } catch {
+    clearInterval(interval)
     setSyncProgress(0)
-    const interval = setInterval(() => {
-      setSyncProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          setIsSyncing(false)
-          return 100
-        }
-        return prev + 5
-      })
-    }, 150)
+  } finally {
+    setIsSyncing(false)
   }
+}
 
   function handleSaveSettings() {
     setSettingsSaved(true)
@@ -191,6 +218,18 @@ export default function SyncManagementPage() {
           </div>
         </div>
       )}
+      {syncResult && !isSyncing && (
+  <div style={{
+    background: '#f0fdf4', border: '1px solid #86efac',
+    borderRadius: '10px', padding: '14px 20px', marginBottom: '16px',
+    display: 'flex', alignItems: 'center', gap: '10px'
+  }}>
+    <CheckCircle style={{ width: '18px', height: '18px', color: '#16a34a', flexShrink: 0 }} />
+    <span style={{ fontSize: '13px', fontWeight: 500, color: '#15803d' }}>
+      Sync completed — {syncResult.inserted} inserted, {syncResult.updated} updated, {syncResult.errors} errors
+    </span>
+  </div>
+)}
 
       {/* ── Status Banner ── */}
       {!bannerDismissed && !isSyncing && (
