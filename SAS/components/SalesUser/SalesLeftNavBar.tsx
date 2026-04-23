@@ -9,9 +9,6 @@ import {
   Settings,
   ChevronDown,
   Shield,
-  User,
-  Bell,
-  LogOut,
 } from 'lucide-react';
 
 import '../../styles/ComponentStyles/SalesLeftNavBar.css';
@@ -49,7 +46,11 @@ export default function SalesLeftNavBar({
   };
 
   return (
-    <aside className="sales-nav-container">
+    <aside
+      className="sales-nav-container"
+      data-user-name={userName}
+      data-role-label={roleLabel}
+    >
       {/* Top */}
       <div className="sales-nav-top">
         {/* Header */}

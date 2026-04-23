@@ -22,87 +22,7 @@ export default function MilestoneMap({ milestone, allMilestones, currentIndex })
   const polylineRef = useRef(null);
   const pulseRef    = useRef(null);
 
-  // ── Initialize map once ──────────────────────────────────────────────────
-  useEffect(() => {
-      // Guard: if already initialized, skip
-      if (mapInstance.current) return;
-
-      // Guard: clear any leftover leaflet ID on the DOM node
-      if (mapRef.current && mapRef.current._leaflet_id) {
-        mapRef.current._leaflet_id = null;
-      }
-
-      import("leaflet").then((L) => {
-        // Extra guard after async import
-        if (mapInstance.current) return;
-        if (!mapRef.current) return;
-
-        delete L.Icon.Default.prototype._getIconUrl;
-        L.Icon.Default.mergeOptions({
-          iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-          iconUrl:       "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-          shadowUrl:     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-        });
-
-        const map = L.map(mapRef.current, {
-          center:             [milestone.location.lat || 20, milestone.location.lng || 80],
-          zoom:               5,
-          zoomControl:        true,
-          attributionControl: false,
-          scrollWheelZoom:    false,
-        });
-
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-          maxZoom: 19,
-        }).addTo(map);
-
-        L.control.attribution({ prefix: false })
-          .addAttribution('© <a href="https://carto.com">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OSM</a>')
-          .addTo(map);
-
-        mapInstance.current = map;
-        drawAll(L, map, allMilestones, currentIndex);
-      });
-
-      return () => {
-        if (mapInstance.current) {
-          mapInstance.current.remove();
-          mapInstance.current = null;
-        }
-        if (mapRef.current) {
-          delete mapRef.current._leaflet_id;
-        }
-        markersRef.current = [];
-        polylineRef.current = null;
-        pulseRef.current = null;
-      };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-  // ── Update when milestone changes ────────────────────────────────────────
-  useEffect(() => {
-    if (!mapInstance.current) return;
-    import("leaflet").then((L) => {
-      // Clear old markers + polyline
-      markersRef.current.forEach((m) => m.remove());
-      markersRef.current = [];
-      if (polylineRef.current) { polylineRef.current.remove(); polylineRef.current = null; }
-      if (pulseRef.current)    { pulseRef.current.remove();    pulseRef.current    = null; }
-
-      drawAll(L, mapInstance.current, allMilestones, currentIndex);
-
-      // Fly to new location smoothly
-      mapInstance.current.flyTo(
-        [milestone.location.lat, milestone.location.lng],
-        5,
-        { duration: 1.2, easeLinearity: 0.4 }
-      );
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex]);
-
-  function drawAll(L, map, milestones, activeIdx) {
-    // Route polyline
+  const drawAll = (L, map, milestones, activeIdx) => {
     const latlngs = milestones.map((m) => [m.location.lat, m.location.lng]);
     polylineRef.current = L.polyline(latlngs, {
       color:     "#3b82f6",
@@ -111,7 +31,6 @@ export default function MilestoneMap({ milestone, allMilestones, currentIndex })
       dashArray: "6 5",
     }).addTo(map);
 
-    // Markers
     milestones.forEach((m, i) => {
       const isActive = i === activeIdx;
       const color    = isActive
@@ -149,7 +68,87 @@ export default function MilestoneMap({ milestone, allMilestones, currentIndex })
 
       markersRef.current.push(marker);
     });
-  }
+  };
+
+  // ── Initialize map once ──────────────────────────────────────────────────
+  useEffect(() => {
+      const mapElement = mapRef.current;
+      // Guard: if already initialized, skip
+      if (mapInstance.current) return;
+
+      // Guard: clear any leftover leaflet ID on the DOM node
+      if (mapElement && mapElement._leaflet_id) {
+        mapElement._leaflet_id = null;
+      }
+
+      import("leaflet").then((L) => {
+        // Extra guard after async import
+        if (mapInstance.current) return;
+        if (!mapElement) return;
+
+        delete L.Icon.Default.prototype._getIconUrl;
+        L.Icon.Default.mergeOptions({
+          iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+          iconUrl:       "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+          shadowUrl:     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+        });
+
+        const map = L.map(mapElement, {
+          center:             [milestone.location.lat || 20, milestone.location.lng || 80],
+          zoom:               5,
+          zoomControl:        true,
+          attributionControl: false,
+          scrollWheelZoom:    false,
+        });
+
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+          maxZoom: 19,
+        }).addTo(map);
+
+        L.control.attribution({ prefix: false })
+          .addAttribution('© <a href="https://carto.com">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OSM</a>')
+          .addTo(map);
+
+        mapInstance.current = map;
+        drawAll(L, map, allMilestones, currentIndex);
+      });
+
+      return () => {
+        if (mapInstance.current) {
+          mapInstance.current.remove();
+          mapInstance.current = null;
+        }
+        if (mapElement) {
+          delete mapElement._leaflet_id;
+        }
+        markersRef.current = [];
+        polylineRef.current = null;
+        pulseRef.current = null;
+      };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+  // ── Update when milestone changes ────────────────────────────────────────
+  useEffect(() => {
+    if (!mapInstance.current) return;
+    import("leaflet").then((L) => {
+      // Clear old markers + polyline
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
+      if (polylineRef.current) { polylineRef.current.remove(); polylineRef.current = null; }
+      if (pulseRef.current)    { pulseRef.current.remove();    pulseRef.current    = null; }
+
+      drawAll(L, mapInstance.current, allMilestones, currentIndex);
+
+      // Fly to new location smoothly
+      mapInstance.current.flyTo(
+        [milestone.location.lat, milestone.location.lng],
+        5,
+        { duration: 1.2, easeLinearity: 0.4 }
+      );
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex]);
 
   return (
     <div className="relative w-full rounded-xl overflow-hidden border border-gray-700" style={{ height: "280px" }}>

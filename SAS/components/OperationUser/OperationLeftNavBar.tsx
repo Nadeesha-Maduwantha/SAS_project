@@ -9,7 +9,6 @@ import {
   Settings,
   ChevronDown,
   Shield,
-  User,
   Clock,
 } from 'lucide-react';
 

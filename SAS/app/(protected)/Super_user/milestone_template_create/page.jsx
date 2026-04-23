@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { T, solidBtn, outlineBtn, ghostBtn, inp, lbl } from "@/styles/tokens";
+import { T, solidBtn, outlineBtn, inp, lbl } from "@/styles/tokens";
 import {
-  IcoPlus, IcoTrash, IcoX, IcoGrip,
-  SectionHead, Divider, ToggleCheck,
+  SectionHead,
   MilestoneCard, MilestoneForm, Modal,
   PAGE_KEYFRAMES,
 } from "@/app/(protected)/admin/milestone_templates_list/components/templateComponents";

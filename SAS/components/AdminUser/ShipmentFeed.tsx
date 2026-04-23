@@ -22,6 +22,19 @@ type ShipmentRow = {
   lead: string;
 };
 
+const rows: ShipmentRow[] = [
+  { id: '#DGL-82910', origin: 'Colombo (CMB)', dest: 'Singapore (SIN)', dept: 'Sea Freight', status: 'In Transit', lead: 'S. Perera' },
+  { id: '#DGL-82911', origin: 'Dubai (DXB)', dest: 'London (LHR)', dept: 'Air Freight', status: 'Customs Hold', lead: 'M. Ahmed' },
+  { id: '#DGL-82912', origin: 'Chennai (MAA)', dest: 'Hamburg (HAM)', dept: 'Road Freight', status: 'Arrived at Port', lead: 'K. Kumar' },
+  { id: '#DGL-82913', origin: 'Shanghai (PVG)', dest: 'Los Angeles (LAX)', dept: 'Sea Freight', status: 'Processing', lead: 'T. Silva' },
+  { id: '#DGL-82914', origin: 'Bangkok (BKK)', dest: 'Frankfurt (FRA)', dept: 'Air Freight', status: 'Delivered', lead: 'N. Fernando' },
+  { id: '#DGL-82915', origin: 'Mumbai (BOM)', dest: 'Dubai (DXB)', dept: 'Road Freight', status: 'In Transit', lead: 'R. Khan' },
+  { id: '#DGL-82916', origin: 'Jakarta (CGK)', dest: 'Tokyo (NRT)', dept: 'Sea Freight', status: 'Customs Hold', lead: 'A. Wijesinghe' },
+  { id: '#DGL-82917', origin: 'Doha (DOH)', dest: 'Paris (CDG)', dept: 'Air Freight', status: 'Processing', lead: 'L. Smith' },
+  { id: '#DGL-82918', origin: 'Karachi (KHI)', dest: 'Colombo (CMB)', dept: 'Road Freight', status: 'Delivered', lead: 'P. Jayawardena' },
+  { id: '#DGL-82919', origin: 'Busan (PUS)', dest: 'Rotterdam (RTM)', dept: 'Sea Freight', status: 'Arrived at Port', lead: 'D. Tanaka' },
+];
+
 const statusClass: Record<ShipmentStatus, string> = {
   'In Transit': 'status--green',
   'Customs Hold': 'status--amber',
@@ -41,19 +54,6 @@ export default function ShipmentFeed() {
   const [deptValue, setDeptValue] = useState<string>('All');
   const [statusValue, setStatusValue] = useState<string>('All');
 
-  const rows: ShipmentRow[] = [
-    { id: '#DGL-82910', origin: 'Colombo (CMB)', dest: 'Singapore (SIN)', dept: 'Sea Freight', status: 'In Transit', lead: 'S. Perera' },
-    { id: '#DGL-82911', origin: 'Dubai (DXB)', dest: 'London (LHR)', dept: 'Air Freight', status: 'Customs Hold', lead: 'M. Ahmed' },
-    { id: '#DGL-82912', origin: 'Chennai (MAA)', dest: 'Hamburg (HAM)', dept: 'Road Freight', status: 'Arrived at Port', lead: 'K. Kumar' },
-    { id: '#DGL-82913', origin: 'Shanghai (PVG)', dest: 'Los Angeles (LAX)', dept: 'Sea Freight', status: 'Processing', lead: 'T. Silva' },
-    { id: '#DGL-82914', origin: 'Bangkok (BKK)', dest: 'Frankfurt (FRA)', dept: 'Air Freight', status: 'Delivered', lead: 'N. Fernando' },
-    { id: '#DGL-82915', origin: 'Mumbai (BOM)', dest: 'Dubai (DXB)', dept: 'Road Freight', status: 'In Transit', lead: 'R. Khan' },
-    { id: '#DGL-82916', origin: 'Jakarta (CGK)', dest: 'Tokyo (NRT)', dept: 'Sea Freight', status: 'Customs Hold', lead: 'A. Wijesinghe' },
-    { id: '#DGL-82917', origin: 'Doha (DOH)', dest: 'Paris (CDG)', dept: 'Air Freight', status: 'Processing', lead: 'L. Smith' },
-    { id: '#DGL-82918', origin: 'Karachi (KHI)', dest: 'Colombo (CMB)', dept: 'Road Freight', status: 'Delivered', lead: 'P. Jayawardena' },
-    { id: '#DGL-82919', origin: 'Busan (PUS)', dest: 'Rotterdam (RTM)', dept: 'Sea Freight', status: 'Arrived at Port', lead: 'D. Tanaka' },
-  ];
-
   const isFiltering = deptValue !== 'All' || statusValue !== 'All';
 
   const filteredRows = useMemo(() => {
@@ -63,7 +63,7 @@ export default function ShipmentFeed() {
       }
       return statusValue === 'All' ? true : r.status === statusValue;
     });
-  }, [rows, filterType, deptValue, statusValue]);
+  }, [filterType, deptValue, statusValue]);
 
   const displayedRows =
     isFiltering || showAll

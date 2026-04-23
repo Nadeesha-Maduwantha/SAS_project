@@ -9,7 +9,7 @@
 "use client";
 
 import { useState } from "react";
-import { T, solidBtn, outlineBtn, ghostBtn, inp, lbl } from "@/styles/tokens";
+import { T, solidBtn, ghostBtn, inp, lbl } from "@/styles/tokens";
 // =============================================================
 //  ICONS
 // =============================================================
