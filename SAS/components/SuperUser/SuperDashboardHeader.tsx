@@ -42,10 +42,11 @@ export default function SuperDashboardHeader({ onDateRangeChange }: Props) {
   const label = useMemo(() => fmtRange(appliedFrom, appliedTo), [appliedFrom, appliedTo]);
 
   const apply = () => {
+    const nextTo = from && to && to < from ? from : to;
     setAppliedFrom(from);
-    setAppliedTo(to);
+    setAppliedTo(nextTo);
     setOpen(false);
-    onDateRangeChange?.({ from, to });
+    onDateRangeChange?.({ from, to: nextTo });
   };
 
   const clear = () => {

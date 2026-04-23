@@ -12,6 +12,7 @@ import {
   Shield,
   ShieldCheck,
   ChevronDown,
+  RefreshCw,
 } from 'lucide-react';
 
 import '../../styles/ComponentStyles/AdminLeftNavBar.css';
@@ -234,6 +235,15 @@ export default function AdminLeftNavBar() {
             </button>
           </div>
         )}
+      </div>
+      <div className="nav-section">
+        <button
+              className={`nav-section-header ${isActiveRoute('/admin/sync') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/admin/sync')}
+            >
+              <RefreshCw className="nav-icon" />
+          <span>System Configuration</span>
+        </button>
       </div>
 
       {/* Security & Audit */}

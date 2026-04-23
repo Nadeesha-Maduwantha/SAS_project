@@ -394,11 +394,21 @@ export default function ShipmentDetailPage() {
               ))}
             </div>
 
-            <div style={{ marginTop: '14px', padding: '8px 12px', background: '#fefce8', border: '1px solid #fde68a', borderRadius: '8px' }}>
-              <p style={{ fontSize: '11px', color: '#92400e', margin: 0, textAlign: 'center' }}>
-                Milestone data will connect when module is ready
+            <button
+              onClick={() => router.push(`/admin/shipment_milestones?id=${shipment.id}`)}
+              style={{
+                width: '100%', marginTop: '14px', padding: '8px 12px',
+                background: '#fefce8', border: '1px solid #fde68a',
+                borderRadius: '8px', cursor: 'pointer',
+                transition: 'background 0.15s'
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#fef3c7')}
+              onMouseLeave={e => (e.currentTarget.style.background = '#fefce8')}
+            >
+              <p style={{ fontSize: '11px', color: '#92400e', margin: 0, textAlign: 'center', fontWeight: 600 }}>
+                Milestone data →
               </p>
-            </div>
+            </button>
 
             <button style={{
               width: '100%', marginTop: '12px', padding: '8px',

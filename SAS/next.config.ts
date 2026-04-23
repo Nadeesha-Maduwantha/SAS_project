@@ -1,10 +1,3 @@
-<<<<<<< HEAD
-import type { NextConfig } from 'next';
-
-const nextConfig: NextConfig = {
-  /* your config options here */
-};
-=======
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
@@ -12,6 +5,6 @@ const nextConfig: NextConfig = {
     root: __dirname,
   },
 }
->>>>>>> dev
+
 
 export default nextConfig

@@ -105,7 +105,7 @@ export default function SuperLeftNavBar({ alertsCount = 0 }: Props) {
           </div>
         )}
       </div>
-      <div className="nav-section">
+      
 
       {/* ✅ Create Template (NEW) */}
       <button

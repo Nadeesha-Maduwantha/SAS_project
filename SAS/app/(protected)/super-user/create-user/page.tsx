@@ -52,7 +52,8 @@ export default function CreateUserPage() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to create user')
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to create user')
       }
 
       router.push('/admin/users')
