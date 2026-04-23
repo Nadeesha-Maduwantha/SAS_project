@@ -1,5 +1,4 @@
 // ─── Shipment Types ───────────────────────────────────────────
-
 export type ShipmentStatus =
   | 'in_transit'
   | 'customs_hold'
@@ -20,14 +19,12 @@ export interface CargowiseUser {
 
 export interface Shipment {
   id: string
-  cargowiseId: string
-  originCity: string
-  originCountryCode: string
-  destinationCity: string
-  destinationCountryCode: string
-  currentStage: ShipmentStatus
+  trackingNumber: string
+  status: ShipmentStatus
+  origin: Location
+  destination: Location
+  estimatedDelivery: Date
   carrier: string
-  estimatedArrival: Date | null
   createdBy: CargowiseUser
   lastUpdatedBy: CargowiseUser
   createdAt: Date
@@ -38,55 +35,81 @@ export interface Shipment {
   deliveryDate?: Date
   archivedDate?: Date
   transitDays?: number
-jobNumber?: string
-houseBillNumber?: string
-transportMode?: string
-branch?: string
-gbCode?: string
-gcCode?: string
-stDescription?: string
-stNoteText?: string
-cargoReadyDate?: Date
-cargoReceivedDate?: Date
-cargoPickupDate?: Date
-pickupDateStatus?: string
-jobLastEditTime?: Date
-llmIdentifiedType?: string
-llmNote?: string
-shipperName?: string
-shipperAddress?: string
-shipperContact?: string
-shipperPhone?: string
-consigneeName?: string
-consigneeAddress?: string
-consigneeContact?: string
-consigneeEmail?: string
 salesUserStaffCode?: string
 salesUserName?: string
 salesUserEmail?: string
+
+  jobNumber?: string
+  houseBillNumber?: string
+  transportMode?: string
+  branch?: string
+  gbCode?: string
+  gcCode?: string
+  stDescription?: string
+  stNoteText?: string
+  cargoReadyDate?: Date
+  cargoReceivedDate?: Date
+  cargoPickupDate?: Date
+  pickupDateStatus?: string
+  jobLastEditTime?: Date
+  llmIdentifiedType?: string
+  llmNote?: string
+  shipperName?: string
+  shipperAddress?: string
+  shipperContact?: string
+  shipperPhone?: string
+  consigneeName?: string
+  consigneeAddress?: string
+  consigneeContact?: string
+  consigneeEmail?: string
+  salesUserStaffCode?: string
+  salesUserName?: string
+  salesUserEmail?: string
+
 }
 
-export interface ShipmentStats {
-  total: number
-  inTransit: number
-  exceptions: number
-  deliveredToday: number
+export interface User {
+  id: string;
+  fullName: string;
+  email: string;
+  department: string;
+  role: string;
+  status: 'Active' | 'Blocked' | 'Locked';
+  lastLogin: string;
+  lastLoginIP: string;
+  lastUpdated: string;
+  lastUpdatedBy: string;
 }
 
-export interface DelayedStats {
-  totalDelayed: number
-  highPriority: number
-  avgDelayDays: number
-  customsIssues: number
+export interface UserFormData {
+  fullName: string;
+  email: string;
+  department: string;
+  role: string;
+  userAction: 'block' | 'unblock' | '';
+  resetPassword: boolean;
+  unlockAccount: boolean;
 }
 
-export interface ShipmentMilestone {
-  id: string
-  shipment_id: string
-  name: string
-  description?: string
-  scheduled_date?: Date
-  actual_date?: Date
-  status?: string
-  created_at?: Date
+// ─── Profile Types ───────────────────────────────────────────
+export interface UserProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  department: string;
+  role: "admin" | "super-user" | "sales_user" | "operation_user";
+  status: "Active" | "Inactive";
+  isVerified: boolean;
+  lastLogin: string;
+  memberSince: string;
+  avatarUrl?: string;
 }
+
+export interface PasswordChange {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+declare module '*.css'

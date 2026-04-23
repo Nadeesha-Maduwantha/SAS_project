@@ -58,6 +58,9 @@ function mapRow(row, idx) {
 function PriorityBadge({ level }) {
     const map = {
         Critical: { bg: '#fef2f2', color: '#dc2626', dot: '#dc2626' },
+        High:     { bg: '#fff7ed', color: '#ea580c', dot: '#f97316' },
+        Medium:   { bg: '#fefce8', color: '#ca8a04', dot: '#eab308' },
+        Low:      { bg: '#f0fdf4', color: '#16a34a', dot: '#22c55e' },
         High: { bg: '#fff7ed', color: '#ea580c', dot: '#f97316' },
         Medium: { bg: '#fefce8', color: '#ca8a04', dot: '#eab308' },
         Low: { bg: '#f0fdf4', color: '#16a34a', dot: '#22c55e' },

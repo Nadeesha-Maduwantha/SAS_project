@@ -17,23 +17,12 @@ const OPERATION_USER_STAFF_CODE = 'DG002'
 const OPERATION_USER_NAME = 'Amal Perera'
 // ────────────────────────────────────────────────────────────────────────
 
-
-
-function formatDate(date: Date | null | undefined) {
+function formatPickupDate(date: string | undefined) {
   if (!date) return '—'
-  return date.toLocaleDateString('en-US', {
+  return new Date(date).toLocaleDateString('en-US', {
     month: 'short', day: '2-digit', year: 'numeric'
   })
 }
-
-function getScheduleStatus(shipment: Shipment): { label: string; color: string } {
-  if (shipment.currentStage === 'delivered') return { label: 'Delivered', color: '#10b981' }
-  if (shipment.delayDays && shipment.delayDays > 0) return { label: `Delayed ${shipment.delayDays}d`, color: '#f59e0b' }
-  if (shipment.currentStage === 'arrived_at_port') return { label: 'Arriving Soon', color: '#10b981' }
-  if (shipment.currentStage === 'processing') return { label: 'Scheduled', color: '#6b7280' }
-  return { label: 'On Schedule', color: '#10b981' }
-}
-
 
 export default function OperationUserShipmentsPage() {
   const router = useRouter()
@@ -44,6 +33,7 @@ export default function OperationUserShipmentsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({
     currentStage: '',
+    transportMode: '',
   })
 
   useEffect(() => {
@@ -61,18 +51,27 @@ export default function OperationUserShipmentsPage() {
     fetchData()
   }, [])
 
-  // Stats
+  // Stats based on real API data
   const stats = useMemo(() => ({
     total: shipments.length,
-    active: shipments.filter((s) => s.currentStage !== 'delivered').length,
-    delayed: shipments.filter((s) => s.delayDays && s.delayDays > 0).length,
-    delivered: shipments.filter((s) => s.currentStage === 'delivered').length,
+    active: shipments.filter((s) =>
+      !s.llmIdentifiedType?.toLowerCase().includes('delivered')
+    ).length,
+    delayed: shipments.filter((s) =>
+      s.pickupDateStatus === 'Past' &&
+      !s.llmIdentifiedType?.toLowerCase().includes('delivered')
+    ).length,
+    delivered: shipments.filter((s) =>
+      s.llmIdentifiedType?.toLowerCase().includes('delivered')
+    ).length,
   }), [shipments])
-
 
   // Dropdown filter
   const dropdownFiltered = useMemo(() => shipments.filter((s) => {
-    if (activeFilters.currentStage && s.currentStage !== activeFilters.currentStage) return false
+    if (activeFilters.transportMode && s.transportMode !== activeFilters.transportMode) return false
+    if (activeFilters.currentStage &&
+      s.llmIdentifiedType !== activeFilters.currentStage &&
+      s.currentStage !== activeFilters.currentStage) return false
     return true
   }), [shipments, activeFilters])
 
@@ -80,16 +79,20 @@ export default function OperationUserShipmentsPage() {
   const filteredShipments = useMemo(() => dropdownFiltered.filter((s) => {
     if (!searchQuery) return true
     const q = searchQuery.toLowerCase()
-    const route = `${s.originCity} ${s.originCountryCode} ${s.destinationCity} ${s.destinationCountryCode}`.toLowerCase()
-    return s.cargowiseId.toLowerCase().includes(q) || route.includes(q)
+    const consignee = (s.consigneeName ?? '').toLowerCase()
+    return (
+      s.cargowiseId.toLowerCase().includes(q) ||
+      consignee.includes(q) ||
+      (s.branch ?? '').toLowerCase().includes(q)
+    )
   }), [dropdownFiltered, searchQuery])
 
-  // Sort by ETA nearest
+  // Sort by pickup date nearest
   const sortedShipments = useMemo(() => {
     return [...filteredShipments].sort((a, b) => {
-      if (!a.estimatedArrival) return 1
-      if (!b.estimatedArrival) return -1
-      return a.estimatedArrival.getTime() - b.estimatedArrival.getTime()
+      if (!a.llmCargoPickupDate) return 1
+      if (!b.llmCargoPickupDate) return -1
+      return new Date(a.llmCargoPickupDate).getTime() - new Date(b.llmCargoPickupDate).getTime()
     })
   }, [filteredShipments])
 
@@ -98,14 +101,23 @@ export default function OperationUserShipmentsPage() {
 
   const filterGroups = [
     {
-      label: 'By Current Stage',
+      label: 'By Department',
+      key: 'transportMode',
+      options: [
+        { label: 'Air Freight', value: 'AIR' },
+        { label: 'Sea Freight', value: 'SEA' },
+        { label: 'Road Freight', value: 'ROAD' },
+      ],
+    },
+    {
+      label: 'By Stage',
       key: 'currentStage',
       options: [
-        { label: 'In Transit', value: 'in_transit' },
-        { label: 'Customs Hold', value: 'customs_hold' },
-        { label: 'Arrived at Port', value: 'arrived_at_port' },
-        { label: 'Processing', value: 'processing' },
-        { label: 'Delivered', value: 'delivered' },
+        { label: 'Delivered', value: 'Delivered' },
+        { label: 'Booking Approval', value: 'Booking Approval' },
+        { label: 'Delivery Date', value: 'Delivery Date' },
+        { label: 'Delivered to CFS warehouse', value: 'Delivered to CFS warehouse' },
+        { label: 'Unknown', value: 'Unknown' },
       ],
     },
   ]
@@ -168,14 +180,12 @@ export default function OperationUserShipmentsPage() {
       {/* Table Card */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
 
-        
-
         {/* Toolbar */}
         <div className="flex items-center gap-2 px-5 py-3">
           <ShipmentSearch
             value={searchQuery}
             onChange={(v) => { setSearchQuery(v); setCurrentPage(1) }}
-            placeholder="Search by shipment ID or route..."
+            placeholder="Search by shipment ID, consignee or branch..."
           />
           <ShipmentFilter
             groups={filterGroups}
@@ -183,14 +193,13 @@ export default function OperationUserShipmentsPage() {
             onFilterChange={(key, value) =>
               setActiveFilters((prev) => ({ ...prev, [key]: value }))
             }
-            onClearAll={() => setActiveFilters({ currentStage: '' })}
+            onClearAll={() => setActiveFilters({ currentStage: '', transportMode: '' })}
           />
-          {/* Sort indicator */}
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
             </svg>
-            ETA (Nearest)
+            Pickup Date (Nearest)
           </div>
           <button
             onClick={() => exportAllShipmentsPDF(sortedShipments)}
@@ -209,10 +218,11 @@ export default function OperationUserShipmentsPage() {
             <thead>
               <tr className="border-y border-gray-100 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                 <th className="text-left px-5 py-3">Shipment ID</th>
-                <th className="text-left px-5 py-3">Route</th>
-                <th className="text-left px-5 py-3">Vessel / Flight</th>
-                <th className="text-left px-5 py-3">ETA</th>
+                <th className="text-left px-5 py-3">Consignee</th>
                 <th className="text-left px-5 py-3">Status</th>
+                <th className="text-left px-5 py-3">Transport Mode</th>
+                <th className="text-left px-5 py-3">Pickup Date</th>
+                <th className="text-left px-5 py-3">Pickup Status</th>
                 <th className="text-left px-5 py-3">Action</th>
                 <th className="text-left px-5 py-3">Detail</th>
               </tr>
@@ -220,90 +230,116 @@ export default function OperationUserShipmentsPage() {
             <tbody className="divide-y divide-gray-50">
               {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-sm text-gray-400">
+                  <td colSpan={8} className="px-5 py-10 text-center text-sm text-gray-400">
                     No shipments found
                   </td>
                 </tr>
-              ) : paginated.map((shipment) => {
-                const scheduleStatus = getScheduleStatus(shipment)
-                return (
-                  <tr key={shipment.id} className="hover:bg-gray-50 transition-colors">
+              ) : paginated.map((shipment) => (
+                <tr key={shipment.id} className="hover:bg-gray-50 transition-colors">
 
-                    {/* Shipment ID */}
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-2">
-                        <div style={{
-                           width: '32px', height: '32px', borderRadius: '8px',
-                           background: shipment.transportMode === 'AIR' ? '#fef3c7' :
-                                       shipment.transportMode === 'ROAD' ? '#f0fdf4' : '#eff6ff',
-                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                           flexShrink: 0
-                         }}> 
-                          <Truck style={{ width: '16px', height: '16px', color: '#2563eb' }} />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900">#{shipment.cargowiseId}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {shipment.llmIdentifiedType ?? shipment.transportMode ?? '—'}
-                          </p>
-                        </div>
+                  {/* Shipment ID */}
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center gap-2">
+                      <div style={{
+                        width: '32px', height: '32px', borderRadius: '8px',
+                        background: shipment.transportMode === 'AIR' ? '#fef3c7' :
+                                    shipment.transportMode === 'ROAD' ? '#f0fdf4' : '#eff6ff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <Truck style={{ width: '16px', height: '16px', color: '#2563eb' }} />
                       </div>
-                    </td>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">#{shipment.cargowiseId}</p>
+                        {shipment.branch && (
+                          <p className="text-xs text-gray-400 mt-0.5">Branch: {shipment.branch}</p>
+                        )}
+                      </div>
+                    </div>
+                  </td>
 
-                    {/* Route */}
-                    <td className="px-5 py-3.5">
-                      <p className="text-sm text-gray-900">
-                        {shipment.originCity} ({shipment.originCountryCode}) → {shipment.destinationCity} ({shipment.destinationCountryCode})
+                  {/* Consignee */}
+                  <td className="px-5 py-3.5">
+                    <p className="text-sm font-medium text-gray-900">
+                      {shipment.consigneeName ?? '—'}
+                    </p>
+                    {shipment.gcCode && (
+                      <p className="text-xs text-gray-400 mt-0.5">{shipment.gcCode}</p>
+                    )}
+                  </td>
+
+                  {/* Status */}
+                  <td className="px-5 py-3.5">
+                    <ShipmentStatusBadge status={shipment.llmIdentifiedType ?? shipment.currentStage} />
+                    {shipment.stNoteText && (
+                      <p className="text-xs text-gray-400 mt-1 max-w-xs truncate">
+                        {shipment.stNoteText}
                       </p>
-                      <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">
-                        {shipment.stNoteText ?? '—'}
-                      </p>
-                    </td>
+                    )}
+                  </td>
 
-                   {/* Vessel / Flight */}
-                   <td className="px-5 py-3.5">
-                   <p className="text-sm text-gray-700">{shipment.carrier}</p>
-                   </td>
+                  {/* Transport Mode */}
+                  <td className="px-5 py-3.5">
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center',
+                      padding: '3px 10px', borderRadius: '9999px',
+                      fontSize: '12px', fontWeight: 600,
+                      background: shipment.transportMode === 'AIR' ? '#fef3c7' :
+                                  shipment.transportMode === 'ROAD' ? '#f0fdf4' : '#eff6ff',
+                      color: shipment.transportMode === 'AIR' ? '#92400e' :
+                             shipment.transportMode === 'ROAD' ? '#166534' : '#1e40af',
+                    }}>
+                      {shipment.transportMode ?? '—'}
+                    </span>
+                  </td>
 
-                    {/* ETA */}
-                    <td className="px-5 py-3.5">
-                      <p className="text-sm font-medium text-gray-900">
-                        {formatDate(shipment.estimatedArrival)}
-                      </p>
-                      <p style={{ fontSize: '11px', color: scheduleStatus.color, marginTop: '2px', fontWeight: 500 }}>
-                        {scheduleStatus.label}
-                      </p>
-                    </td>
+                  {/* Pickup Date */}
+                  <td className="px-5 py-3.5 text-sm text-gray-700">
+                    {formatPickupDate(shipment.llmCargoPickupDate)}
+                  </td>
 
-                    {/* Status */}
-                    <td className="px-5 py-3.5">
-                      <ShipmentStatusBadge status={shipment.currentStage} />
-                    </td>
+                  {/* Pickup Status */}
+                  <td className="px-5 py-3.5">
+                    {shipment.pickupDateStatus ? (
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center',
+                        padding: '3px 10px', borderRadius: '9999px',
+                        fontSize: '12px', fontWeight: 600,
+                        background: shipment.pickupDateStatus === 'Future' ? '#eff6ff' :
+                                    shipment.pickupDateStatus === 'Past' ? '#fef2f2' : '#f0fdf4',
+                        color: shipment.pickupDateStatus === 'Future' ? '#1d4ed8' :
+                               shipment.pickupDateStatus === 'Past' ? '#dc2626' : '#16a34a',
+                      }}>
+                        {shipment.pickupDateStatus}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                  </td>
 
-                    {/* Action */}
-                    <td className="px-5 py-3.5">
-                      {shipment.currentStage !== 'delivered' ? (
-                        <button className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                          Take Action
-                        </button>
-                      ) : (
-                        <span className="text-xs text-gray-400 font-medium">Archive</span>
-                      )}
-                    </td>
-
-                    {/* Detail */}
-                    <td className="px-5 py-3.5">
-                      <button
-                        onClick={() => router.push(`/admin/shipments/${shipment.id}?from=/operation_user/shipments`)}
-                        className="text-xs font-medium text-blue-600 hover:underline"
-                      >
-                        View Details
+                  {/* Action */}
+                  <td className="px-5 py-3.5">
+                    {!shipment.llmIdentifiedType?.toLowerCase().includes('delivered') ? (
+                      <button className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        Take Action
                       </button>
-                    </td>
+                    ) : (
+                      <span className="text-xs text-gray-400 font-medium">Archive</span>
+                    )}
+                  </td>
 
-                  </tr>
-                )
-              })}
+                  {/* Detail */}
+                  <td className="px-5 py-3.5">
+                    <button
+                      onClick={() => router.push(`/admin/shipments/${shipment.id}?from=/operation_user/shipments`)}
+                      className="text-xs font-medium text-blue-600 hover:underline"
+                    >
+                      View Details
+                    </button>
+                  </td>
+
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
