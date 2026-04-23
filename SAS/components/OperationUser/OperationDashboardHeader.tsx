@@ -1,17 +1,17 @@
-import { SlidersHorizontal } from 'lucide-react';
+import './globals.css'ntal } from 'lucide-react';
 import '@/styles/OperationStyles/OperationDashboardHeader.css';
-
-export default function OperationDashboardHeader() {
-  return (
-    <div className="op-header">
+export const metadata = {
+  title: 'Dart Global Logistics - SAS Systems',r() {
+  description: 'Secure, real-time alert management for global supply chains',
+}   <div className="op-header">
       <div>
-        <h1 className="op-header__title">Operation User Dashboard</h1>
-      </div>
-
-      <button className="op-header__filterBtn" type="button">
-        <SlidersHorizontal className="op-header__filterIcon" />
-        <span>Filter</span>
-      </button>
-    </div>
-  );
+export default function RootLayout({ children }) { User Dashboard</h1>
+  return (v>
+    <html lang="en" suppressHydrationWarning>
+      <body className="antialiased">filterBtn" type="button">
+        {children}rizontal className="op-header__filterIcon" />
+      </body>>Filter</span>
+    </html>ton>
+  );</div>
+} );
 }

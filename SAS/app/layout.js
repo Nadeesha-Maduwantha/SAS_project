@@ -6,6 +6,16 @@ export const metadata = {
 }
 
 export default function RootLayout({ children }) {
+<<<<<<< HEAD
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className="antialiased">
+        {children}
+      </body>
+    </html>
+  )
+}
+=======
     return (
         <html lang="en" suppressHydrationWarning>
             <head>
@@ -26,3 +36,4 @@ export default function RootLayout({ children }) {
         </html>
     );
 }
+>>>>>>> 21f793f1dab44f11c2278ee83fb129acbd8148ce
