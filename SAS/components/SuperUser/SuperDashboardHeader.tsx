@@ -18,17 +18,14 @@ function fmtRange(from: string, to: string) {
 export default function SuperDashboardHeader({ onDateRangeChange }: Props) {
   const [open, setOpen] = useState(false);
 
-  // draft values (YYYY-MM-DD)
   const [from, setFrom] = useState('2023-10-24');
   const [to, setTo] = useState('2023-10-30');
 
-  // applied values (what shows on button + used by dashboard)
   const [appliedFrom, setAppliedFrom] = useState('2023-10-24');
   const [appliedTo, setAppliedTo] = useState('2023-10-30');
 
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
-  // close popup on outside click
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
       if (!wrapRef.current) return;
@@ -38,18 +35,14 @@ export default function SuperDashboardHeader({ onDateRangeChange }: Props) {
     return () => document.removeEventListener('mousedown', onDown);
   }, []);
 
-  // ensure to >= from
-  useEffect(() => {
-    if (from && to && to < from) setTo(from);
-  }, [from, to]);
-
   const label = useMemo(() => fmtRange(appliedFrom, appliedTo), [appliedFrom, appliedTo]);
 
   const apply = () => {
+    const nextTo = from && to && to < from ? from : to;
     setAppliedFrom(from);
-    setAppliedTo(to);
+    setAppliedTo(nextTo);
     setOpen(false);
-    onDateRangeChange?.({ from, to });
+    onDateRangeChange?.({ from, to: nextTo });
   };
 
   const clear = () => {
@@ -97,7 +90,13 @@ export default function SuperDashboardHeader({ onDateRangeChange }: Props) {
                 <input
                   type="date"
                   value={from}
-                  onChange={(e) => setFrom(e.target.value)}
+                  onChange={(e) => {
+                    const nextFrom = e.target.value;
+                    setFrom(nextFrom);
+                    setTo((currentTo) => (
+                      nextFrom && currentTo && currentTo < nextFrom ? nextFrom : currentTo
+                    ));
+                  }}
                 />
               </div>
 

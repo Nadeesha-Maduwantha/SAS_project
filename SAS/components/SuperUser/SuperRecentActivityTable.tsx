@@ -10,11 +10,11 @@ type Row = {
   manager: string;
   status: string;
   tone: 'blue' | 'red' | 'green' | 'amber' | 'gray';
-  etd: string; // e.g. "Oct 28, 2023"
+  etd: string;
 };
 
 type Props = {
-  dateRange?: { from: string; to: string }; // YYYY-MM-DD (empty strings allowed)
+  dateRange?: { from: string; to: string };
 };
 
 const rows: Row[] = [
@@ -23,7 +23,6 @@ const rows: Row[] = [
   { id: '#DE-11029', route: 'BER → PAR', manager: 'Marc Weber', status: 'Arrived at Port', tone: 'green', etd: 'Oct 29, 2023' },
   { id: '#FR-44201', route: 'LYO → MAD', manager: 'Ana Lopez', status: 'Processing', tone: 'amber', etd: 'Oct 30, 2023' },
   { id: '#JP-22091', route: 'TYO → SYD', manager: 'Ken Tanaka', status: 'Delivered', tone: 'gray', etd: 'Oct 22, 2023' },
-
   { id: '#JP-77432', route: 'TOK → SYD', manager: 'Kenji Tanaka', status: 'In Transit', tone: 'blue', etd: 'Nov 02, 2023' },
   { id: '#IN-56318', route: 'MUM → DXB', manager: 'Priya Sharma', status: 'Delayed', tone: 'red', etd: 'Nov 01, 2023' },
   { id: '#UK-90877', route: 'LON → AMS', manager: 'Oliver Smith', status: 'Delivered', tone: 'green', etd: 'Oct 31, 2023' },
@@ -33,13 +32,13 @@ const rows: Row[] = [
 
 function parseETD(etd: string) {
   const d = new Date(etd);
-  return isNaN(d.getTime()) ? null : d;
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 function parseYMD(ymd: string) {
   if (!ymd) return null;
   const d = new Date(`${ymd}T00:00:00`);
-  return isNaN(d.getTime()) ? null : d;
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 export default function SuperRecentActivityTable({ dateRange }: Props) {
@@ -47,6 +46,7 @@ export default function SuperRecentActivityTable({ dateRange }: Props) {
   const [showAll, setShowAll] = useState(false);
 
   const isFilteringByDate = !!(dateRange?.from && dateRange?.to);
+  const shouldShowAll = !isFilteringByDate && showAll;
 
   const filteredRows = useMemo(() => {
     const query = q.trim().toLowerCase();
@@ -55,7 +55,6 @@ export default function SuperRecentActivityTable({ dateRange }: Props) {
     const toDate = dateRange?.to ? parseYMD(dateRange.to) : null;
 
     return rows.filter((r) => {
-      // search filter
       const matchesQuery =
         !query ||
         r.id.toLowerCase().includes(query) ||
@@ -65,15 +64,12 @@ export default function SuperRecentActivityTable({ dateRange }: Props) {
         r.etd.toLowerCase().includes(query);
 
       if (!matchesQuery) return false;
-
-      // date range filter (ETD)
       if (!fromDate && !toDate) return true;
 
       const etdDate = parseETD(r.etd);
       if (!etdDate) return false;
 
       const etdMid = new Date(etdDate.getFullYear(), etdDate.getMonth(), etdDate.getDate());
-
       if (fromDate && etdMid < fromDate) return false;
 
       if (toDate) {
@@ -85,22 +81,10 @@ export default function SuperRecentActivityTable({ dateRange }: Props) {
     });
   }, [q, dateRange]);
 
-  // ✅ what to show in table
   const displayedRows = useMemo(() => {
-    // if filtering by date OR user clicked load more => show all filtered
-    if (isFilteringByDate || showAll) return filteredRows;
-
-    // default => show first 5
+    if (isFilteringByDate || shouldShowAll) return filteredRows;
     return filteredRows.slice(0, 5);
-  }, [filteredRows, isFilteringByDate, showAll]);
-
-  // ✅ if date filter is cleared, go back to normal view
-  // (your header sends from/to = '' on clear)
-  // This keeps UX clean.
-  useMemo(() => {
-    if (!isFilteringByDate) setShowAll(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFilteringByDate]);
+  }, [filteredRows, isFilteringByDate, shouldShowAll]);
 
   return (
     <div className="ra-card">
@@ -168,15 +152,10 @@ export default function SuperRecentActivityTable({ dateRange }: Props) {
         </table>
       </div>
 
-      {/* Footer button behavior */}
       {!isFilteringByDate ? (
         filteredRows.length > 5 && (
-          <button
-            className="ra-load"
-            type="button"
-            onClick={() => setShowAll((p) => !p)}
-          >
-            {showAll ? 'Show Less' : 'Load More Records'}
+          <button className="ra-load" type="button" onClick={() => setShowAll((p) => !p)}>
+            {shouldShowAll ? 'Show Less' : 'Load More Records'}
           </button>
         )
       ) : (
