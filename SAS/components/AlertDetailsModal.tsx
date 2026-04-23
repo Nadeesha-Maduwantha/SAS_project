@@ -1,23 +1,27 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     X, MapPin, Truck, AlertCircle, Clock, Package, CheckCircle2, Navigation, Anchor, Plane, Warehouse, User, FileText
 } from 'lucide-react';
+import { getMilestonesByShipmentId } from '@/lib/services/shipment.service';
+import { ShipmentMilestone } from '@/types';
 
 export interface AlertData {
     id: string;
+    shipment_id?: string;
     client: string;
     clientInitial?: string;
     clientColor?: string;
     priority: 'Critical' | 'Medium' | 'Low';
-    milestone: string;
-    milestoneIcon: 'anchor' | 'truck' | 'warehouse' | 'plane' | 'navigation';
-    issue: string;
-    delay: string;
+    milestone: string | null;
+    milestoneIcon: 'anchor' | 'truck' | 'warehouse' | 'plane' | 'navigation' | null;
+    issue: string | null;
+    delay: string | null;
     delayColor?: string;
     status: 'Get Action' | 'Action Taken' | 'Resolved';
     resolvedAt?: string;
+    createdAt?: Date;
 }
 
 interface MilestoneIconProps {
@@ -90,6 +94,22 @@ interface AlertDetailsModalProps {
 }
 
 export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailClick }: AlertDetailsModalProps) {
+    const [milestones, setMilestones] = useState<ShipmentMilestone[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (isOpen && alertData?.shipment_id) {
+            setLoading(true);
+            getMilestonesByShipmentId(alertData.shipment_id)
+                .then(setMilestones)
+                .catch(err => {
+                    console.error('Failed to fetch milestones:', err);
+                    setMilestones([]);
+                })
+                .finally(() => setLoading(false));
+        }
+    }, [isOpen, alertData?.shipment_id]);
+
     if (!isOpen || !alertData) return null;
 
     return (
@@ -178,7 +198,7 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
                                 <Clock size={14} /> Current Delay
                             </div>
                             <div style={{ fontSize: '16px', fontWeight: 700, color: alertData.delayColor || '#dc2626' }}>
-                                {alertData.delay}
+                                {alertData.delay || 'null'}
                             </div>
                         </div>
                     </div>
@@ -192,7 +212,7 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
                             Issue Description
                         </div>
                         <p style={{ fontSize: '14px', color: '#4b5563', lineHeight: '1.6', margin: 0 }}>
-                            {alertData.issue}
+                            {alertData.issue || 'null'}
                         </p>
                     </div>
 
@@ -205,36 +225,73 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
                             Location & Milestone
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                            <div style={{
-                                width: '48px', height: '48px', borderRadius: '50%', background: '#eff6ff', border: '1px solid #bfdbfe',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                            } as React.CSSProperties}>
-                                <MilestoneIcon type={alertData.milestoneIcon} />
+                        {loading ? (
+                            <div style={{ fontSize: '13px', color: '#6b7280' }}>Loading milestone data...</div>
+                        ) : milestones.length > 0 ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                {milestones.map((milestone) => (
+                                    <div key={milestone.id} style={{ display: 'flex', alignItems: 'center', gap: '16px', paddingBottom: '12px', borderBottom: '1px solid #f3f4f6' }}>
+                                        <div style={{
+                                            width: '48px', height: '48px', borderRadius: '50%', background: '#eff6ff', border: '1px solid #bfdbfe',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                                        }}>
+                                            <MilestoneIcon type={alertData.milestoneIcon} />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '14px', fontWeight: 600, color: '#111827', marginBottom: '4px' }}>
+                                                {milestone.name || 'null'}
+                                            </div>
+                                            <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                                                {milestone.status || 'Pending'}
+                                            </div>
+                                            {milestone.actual_date && (
+                                                <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
+                                                    Completed: {new Date(milestone.actual_date).toLocaleDateString()}
+                                                </div>
+                                            )}
+                                            {milestone.scheduled_date && (
+                                                <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
+                                                    Scheduled: {new Date(milestone.scheduled_date).toLocaleDateString()}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                            <div>
-                                <div style={{ fontSize: '14px', fontWeight: 600, color: '#111827', marginBottom: '4px' }}>
-                                    {alertData.milestone} Phase
+                        ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                <div style={{
+                                    width: '48px', height: '48px', borderRadius: '50%', background: '#eff6ff', border: '1px solid #bfdbfe',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}>
+                                    <MilestoneIcon type={alertData.milestoneIcon} />
                                 </div>
-                                <div style={{ fontSize: '13px', color: '#6b7280' }}>
-                                    The shipment encountered an issue during this stage of the supply chain.
+                                <div>
+                                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#111827', marginBottom: '4px' }}>
+                                        {alertData.milestone || 'null'}
+                                    </div>
+                                    <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                                        No milestone data from Supabase
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
                     </div>
 
-                    {/* Additional Metadata (Mocked) */}
+                    {/* Additional Metadata */}
                     <div style={{
                         background: '#f9fafb', borderRadius: '8px', padding: '16px',
                         display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', border: '1px solid #f3f4f6'
                     } as React.CSSProperties}>
                         <div>
-                            <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' } as React.CSSProperties}>Reported By</div>
-                            <div style={{ fontSize: '13px', color: '#111827', display: 'flex', alignItems: 'center', gap: '6px' } as React.CSSProperties}><User size={12} /> System Auto-Alert</div>
+                            <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' } as React.CSSProperties}>Shipment ID</div>
+                            <div style={{ fontSize: '13px', color: '#111827', display: 'flex', alignItems: 'center', gap: '6px' } as React.CSSProperties}>{alertData.shipment_id || 'null'}</div>
                         </div>
                         <div>
-                            <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' } as React.CSSProperties}>Date Time</div>
-                            <div style={{ fontSize: '13px', color: '#111827', display: 'flex', alignItems: 'center', gap: '6px' } as React.CSSProperties}><FileText size={12} /> 2024-02-24 - 14:00</div>
+                            <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' } as React.CSSProperties}>Created</div>
+                            <div style={{ fontSize: '13px', color: '#111827', display: 'flex', alignItems: 'center', gap: '6px' } as React.CSSProperties}>
+                                {alertData.createdAt ? new Date(alertData.createdAt).toLocaleDateString() : 'null'}
+                            </div>
                         </div>
                     </div>
 

@@ -10,6 +10,7 @@ import {
   ChevronDown,
   Shield,
   User,
+  Clock,
 } from 'lucide-react';
 
 import '../../styles/ComponentStyles/OperationLeftNavBar.css';
@@ -83,7 +84,7 @@ export default function OperationLeftNavBar({ alertsCount = 0 }: Props) {
       <button
         className={`nav-single-btn ${isActiveRoute('/operation_user/history') ? 'active' : ''}`}
         onClick={() => handleNavigation('/operation_user/history')}
-      >
+      >< Clock className="nav-icon" />
         <span className="nav-history-label">HISTORY</span>
       </button>
 

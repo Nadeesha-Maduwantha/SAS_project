@@ -6,7 +6,7 @@ export default function AdminPage() {
       <AdminLeftNavBar />
 
       <main style={{ padding: 24, flex: 1 }}>
-        <h1>Admin - Test Page</h1>
+        <h1>Admin</h1>
         <p></p>
       </main>
     </div>
