@@ -88,27 +88,41 @@ export default function SyncManagementPage() {
   const [minErrors, setMinErrors] = useState(1)
   const [settingsSaved, setSettingsSaved] = useState(false)
   const [scheduleSaved, setScheduleSaved] = useState(false)
+  const [syncResult, setSyncResult] = useState<any>(null)
   
   const now = new Date()
  
   
 
-  // Simulate sync
-  function handleSyncNow() {
-    if (isSyncing) return
-    setIsSyncing(true)
+  async function handleSyncNow() {
+  if (isSyncing) return
+  setIsSyncing(true)
+  setSyncProgress(0)
+
+  // Animate progress
+  const interval = setInterval(() => {
+    setSyncProgress((prev) => {
+      if (prev >= 90) {
+        clearInterval(interval)
+        return 90
+      }
+      return prev + 5
+    })
+  }, 150)
+
+  try {
+    const response = await fetch('/api/sync')
+    const result = await response.json()
+    clearInterval(interval)
+    setSyncProgress(100)
+    setSyncResult(result)
+  } catch (error) {
+    clearInterval(interval)
     setSyncProgress(0)
-    const interval = setInterval(() => {
-      setSyncProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          setIsSyncing(false)
-          return 100
-        }
-        return prev + 5
-      })
-    }, 150)
+  } finally {
+    setIsSyncing(false)
   }
+}
 
   function handleSaveSettings() {
     setSettingsSaved(true)
@@ -191,6 +205,18 @@ export default function SyncManagementPage() {
           </div>
         </div>
       )}
+      {syncResult && !isSyncing && (
+  <div style={{
+    background: '#f0fdf4', border: '1px solid #86efac',
+    borderRadius: '10px', padding: '14px 20px', marginBottom: '16px',
+    display: 'flex', alignItems: 'center', gap: '10px'
+  }}>
+    <CheckCircle style={{ width: '18px', height: '18px', color: '#16a34a', flexShrink: 0 }} />
+    <span style={{ fontSize: '13px', fontWeight: 500, color: '#15803d' }}>
+      Sync completed — {syncResult.inserted} inserted, {syncResult.updated} updated, {syncResult.errors} errors
+    </span>
+  </div>
+)}
 
       {/* ── Status Banner ── */}
       {!bannerDismissed && !isSyncing && (
