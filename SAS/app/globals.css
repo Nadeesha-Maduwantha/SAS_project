@@ -1,4 +1,4 @@
-@import "tailwindcss";
+ @import "tailwindcss"; 
 
 
 /* Scrollbar */
@@ -15,4 +15,6 @@
   background: #c1c1c1;
   border-radius: 4px;
 }
-
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

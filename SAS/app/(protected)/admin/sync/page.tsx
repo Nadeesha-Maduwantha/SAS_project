@@ -45,6 +45,19 @@ const MOCK_SYNC_HISTORY = [
 type SyncStatus = 'success' | 'failed' | 'partial'
 type ErrorFilter = 'last' | 'all'
 type HistoryFilter = 'all' | 'success' | 'failed' | 'partial'
+type SyncResult = {
+  success?: boolean
+  inserted?: number
+  updated?: number
+  errors?: number
+  errorDetails?: Array<{
+    shipment_id: string
+    field: string
+    reason: string
+    timestamp: string
+  }>
+  error?: string
+}
 
 // ─── Helpers ───
 function formatDateTime(dt: string) {
@@ -88,7 +101,7 @@ export default function SyncManagementPage() {
   const [minErrors, setMinErrors] = useState(1)
   const [settingsSaved, setSettingsSaved] = useState(false)
   const [scheduleSaved, setScheduleSaved] = useState(false)
-  const [syncResult, setSyncResult] = useState<any>(null)
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
   
   const now = new Date()
  
@@ -116,7 +129,7 @@ export default function SyncManagementPage() {
     clearInterval(interval)
     setSyncProgress(100)
     setSyncResult(result)
-  } catch (error) {
+  } catch {
     clearInterval(interval)
     setSyncProgress(0)
   } finally {
