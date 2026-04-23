@@ -1,7 +1,7 @@
 'use client'
 import { ShipmentStatus } from '@/types'
 
-const statusConfig: Record<ShipmentStatus, { label: string; dot: string; className: string }> = {
+const statusConfig: Record<string, { label: string; dot: string; className: string }> = {
   in_transit:          { label: 'In Transit',          dot: 'bg-blue-400',   className: 'bg-blue-50 text-blue-700 border border-blue-200' },
   customs_hold:        { label: 'Customs Hold',        dot: 'bg-red-400',    className: 'bg-red-50 text-red-700 border border-red-200' },
   arrived_at_port:     { label: 'Arrived at Port',     dot: 'bg-purple-400', className: 'bg-purple-50 text-purple-700 border border-purple-200' },
@@ -14,8 +14,12 @@ const statusConfig: Record<ShipmentStatus, { label: string; dot: string; classNa
   vessel_delay:        { label: 'Vessel Delay',        dot: 'bg-indigo-400', className: 'bg-indigo-50 text-indigo-700 border border-indigo-200' },
 }
 
-export function ShipmentStatusBadge({ status }: { status: ShipmentStatus }) {
-  const c = statusConfig[status]
+export function ShipmentStatusBadge({ status }: { status: ShipmentStatus | string }) {
+  const c = statusConfig[status] ?? {
+    label: status ?? 'Unknown',
+    className: 'bg-gray-100 text-gray-600 border border-gray-200',
+    dot: 'bg-gray-400'
+  }
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${c.className}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />

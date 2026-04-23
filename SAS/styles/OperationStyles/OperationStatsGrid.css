@@ -1,7 +1,7 @@
 @reference "tailwindcss";
 
 .op-stats {
-  @apply grid grid-cols-1 gap-6 mt-10;
+  @apply grid grid-cols-1 gap-6 mt-7;
 }
 
 @media (min-width: 768px) {
