@@ -29,4 +29,8 @@
   "devDependencies": {
     "@types/leaflet": "^1.9.21"
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 1ff3672d5ea84ba682390efd29226ec976a855c5
