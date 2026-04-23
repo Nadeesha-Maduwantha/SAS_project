@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import MilestoneMap from "@/app/components/MilestoneMap";
+import MapErrorBoundary from "@/app/components/MapErrorBoundary";
 
 // ─── Role config ──────────────────────────────────────────────────────────────
 const ROLE_CONFIG = {
@@ -171,46 +172,42 @@ function TakeActionModal({ milestone, shipment, role, onClose, onSent }) {
 export default function MilestonePage() {
   const searchParams = useSearchParams();
 
-  // ✅ ALL hooks inside the component
-  const [shipment,      setShipment]      = useState(null);
-  const [milestones,    setMilestones]    = useState([]);
-  const [loading,       setLoading]       = useState(true);
-  const [currentIndex,  setCurrentIndex]  = useState(0);
-  const [showModal,     setShowModal]     = useState(false);
+  const [shipment,       setShipment]       = useState(null);
+  const [milestones,     setMilestones]     = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [currentIndex,   setCurrentIndex]   = useState(0);
+  const [showModal,      setShowModal]      = useState(false);
   const [sentMilestones, setSentMilestones] = useState(new Set());
 
   const USER_ROLE = "admin"; // replace with real role from session later
 
-useEffect(() => {
-  const shipmentId = searchParams.get("id") ?? "605ec73e-89d5-4d18-8721-5bd694bd9528";
-  
-  fetch(`http://localhost:5000/api/shipments/${shipmentId}`)
-    .then(r => r.json())
-    .then(result => {
-      setShipment(result.data.shipment);
+  useEffect(() => {
+    const shipmentId = searchParams.get("id") ?? "605ec73e-89d5-4d18-8721-5bd694bd9528";
 
-      // Transform flat DB columns into nested location object the map expects
-      const transformed = (result.data.milestones ?? []).map((m, i) => ({
-        ...m,
-        number: m.sequence_order + 1,
-        date: m.due_date,
-        completedAt: m.completed_date,
-        critical: m.is_critical,
-        location: {
-          label: m.location_label ?? "Unknown",
-          lat:   m.location_lat  ?? 0,
-          lng:   m.location_lng  ?? 0,
-        }
-      }));
+    fetch(`http://localhost:5000/api/shipments/${shipmentId}`)
+      .then(r => r.json())
+      .then(result => {
+        setShipment(result.data.shipment);
 
-      setMilestones(transformed);
-    })
-    .catch(() => {})
-    .finally(() => setLoading(false));
+        const transformed = (result.data.milestones ?? []).map((m) => ({
+          ...m,
+          number: m.sequence_order + 1,
+          date: m.due_date,
+          completedAt: m.completed_date,
+          critical: m.is_critical,
+          location: {
+            label: m.location_label ?? "Unknown",
+            lat:   m.location_lat  ?? 0,
+            lng:   m.location_lng  ?? 0,
+          },
+        }));
+
+        setMilestones(transformed);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
-
-  // ── Loading guard ──
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <p className="text-gray-400 text-sm">Loading shipment...</p>
@@ -273,13 +270,19 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Map */}
+        {/* ✅ Map wrapped in MapErrorBoundary */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-semibold text-gray-700">Milestone Location</h2>
             <span className="text-xs text-gray-400">Updates without page reload as you navigate</span>
           </div>
-          <MilestoneMap milestone={milestone} allMilestones={milestones} currentIndex={currentIndex} />
+          <MapErrorBoundary>
+            <MilestoneMap
+              milestone={milestone}
+              allMilestones={milestones}
+              currentIndex={currentIndex}
+            />
+          </MapErrorBoundary>
         </div>
 
         {/* Milestone details */}
