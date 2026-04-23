@@ -150,9 +150,11 @@ export async function GET() {
 
     // Step 4 - Upsert in bulk
     if (mappedRecords.length > 0) {
-      const cargowiseIds = mappedRecords
-        .map((record) => record.cargowise_id)
-        .filter((id): id is string => typeof id === 'string')
+      const validMappedRecords = mappedRecords.filter(
+        (record): record is Record<string, unknown> & { cargowise_id: string } =>
+          typeof record.cargowise_id === 'string'
+      )
+      const cargowiseIds = validMappedRecords.map((record) => record.cargowise_id)
 
       const { data: existingRows, error: existingFetchError } = await supabase
         .from('shipments')
@@ -164,12 +166,12 @@ export async function GET() {
       }
 
       const existingIds = new Set((existingRows ?? []).map((row) => row.cargowise_id))
-      inserted = cargowiseIds.filter((id) => !existingIds.has(id)).length
-      updated = cargowiseIds.length - inserted
+      const pendingInserted = cargowiseIds.filter((id) => !existingIds.has(id)).length
+      const pendingUpdated = validMappedRecords.length - pendingInserted
 
       const now = new Date().toISOString()
-      const upsertPayload = mappedRecords.map((record) => {
-        const id = record.cargowise_id as string
+      const upsertPayload = validMappedRecords.map((record) => {
+        const id = record.cargowise_id
         return existingIds.has(id) ? record : { ...record, created_at: now }
       })
 
@@ -178,15 +180,19 @@ export async function GET() {
         .upsert(upsertPayload, { onConflict: 'cargowise_id' })
 
       if (upsertError) {
-        errors += mappedRecords.length
+        errors += validMappedRecords.length
+        const previewIds = cargowiseIds.slice(0, 20).join(', ')
         errorDetails.push({
           shipment_id: 'bulk_upsert',
           field: 'upsert',
-          reason: upsertError.message,
+          reason: `${upsertError.message}. Affected IDs: ${previewIds}${cargowiseIds.length > 20 ? '...' : ''}`,
           timestamp: new Date().toISOString(),
         })
         inserted = 0
         updated = 0
+      } else {
+        inserted = pendingInserted
+        updated = pendingUpdated
       }
     }
 
