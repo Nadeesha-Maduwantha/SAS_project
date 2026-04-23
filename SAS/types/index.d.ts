@@ -1,5 +1,4 @@
 // ─── Shipment Types ───────────────────────────────────────────
-
 export type ShipmentStatus =
   | 'in_transit'
   | 'customs_hold'
@@ -20,14 +19,12 @@ export interface CargowiseUser {
 
 export interface Shipment {
   id: string
-  cargowiseId: string
-  originCity: string
-  originCountryCode: string
-  destinationCity: string
-  destinationCountryCode: string
-  currentStage: ShipmentStatus
+  trackingNumber: string
+  status: ShipmentStatus
+  origin: Location
+  destination: Location
+  estimatedDelivery: Date
   carrier: string
-  estimatedArrival: Date | null
   createdBy: CargowiseUser
   lastUpdatedBy: CargowiseUser
   createdAt: Date
@@ -38,36 +35,32 @@ export interface Shipment {
   deliveryDate?: Date
   archivedDate?: Date
   transitDays?: number
-jobNumber?: string
-houseBillNumber?: string
-transportMode?: string
-branch?: string
-gbCode?: string
-gcCode?: string
-stDescription?: string
-stNoteText?: string
-cargoReadyDate?: Date
-cargoReceivedDate?: Date
-cargoPickupDate?: Date
-pickupDateStatus?: string
-jobLastEditTime?: Date
-llmIdentifiedType?: string
-llmNote?: string
-shipperName?: string
-shipperAddress?: string
-shipperContact?: string
-shipperPhone?: string
-consigneeName?: string
-consigneeAddress?: string
-consigneeContact?: string
-consigneeEmail?: string
-<<<<<<< HEAD
-
-=======
-salesUserStaffCode?: string
-salesUserName?: string
-salesUserEmail?: string
->>>>>>> 99762374183279ee8046687e9690d09ac424354d
+  jobNumber?: string
+  houseBillNumber?: string
+  transportMode?: string
+  branch?: string
+  gbCode?: string
+  gcCode?: string
+  stDescription?: string
+  stNoteText?: string
+  cargoReadyDate?: Date
+  cargoReceivedDate?: Date
+  cargoPickupDate?: Date
+  pickupDateStatus?: string
+  jobLastEditTime?: Date
+  llmIdentifiedType?: string
+  llmNote?: string
+  shipperName?: string
+  shipperAddress?: string
+  shipperContact?: string
+  shipperPhone?: string
+  consigneeName?: string
+  consigneeAddress?: string
+  consigneeContact?: string
+  consigneeEmail?: string
+  salesUserStaffCode?: string
+  salesUserName?: string
+  salesUserEmail?: string
 }
 
 export interface ShipmentStats {
@@ -82,7 +75,6 @@ export interface DelayedStats {
   highPriority: number
   avgDelayDays: number
   customsIssues: number
-
 }
 
 export interface User {

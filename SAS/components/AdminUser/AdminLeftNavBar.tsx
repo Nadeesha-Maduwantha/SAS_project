@@ -87,7 +87,6 @@ export default function AdminLeftNavBar() {
             >
               Add New User
             </button>
-
             <button
               className={`nav-item ${isActiveRoute('/admin/users/activity') ? 'active' : ''}`}
               onClick={() => handleNavigation('/admin/users/activity')}
