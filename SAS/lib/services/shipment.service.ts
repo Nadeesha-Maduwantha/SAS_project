@@ -201,9 +201,8 @@ export async function getDelayedStats() {
     .eq('pickup_date_status', 'Past')
 
   if (error) throw new Error(error.message)
-  const shipments = (data ?? []).map(mapRow)
-
-  const shipments = (data ?? [])
+  
+    const shipments = (data ?? [])
     .map(mapRow)
     .filter((s) =>
       !s.llmIdentifiedType?.toLowerCase().includes('delivered')
