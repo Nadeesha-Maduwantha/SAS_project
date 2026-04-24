@@ -8,7 +8,7 @@ export default function OperationLayout({ children }: { children: React.ReactNod
       <SuperLeftNavBar/>
       <div style={{ marginLeft: '260px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <AdminTopBar/>
-        <main style={{ flex: 1, background: '#f9fafb' }}>
+        <main style={{ flex: 1, background: '#f9fafb', padding: '24px' }}>
           {children}
         </main>
       </div>
