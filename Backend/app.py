@@ -18,6 +18,7 @@ from routes.shipments import shipments_bp
 
 load_dotenv()
 
+
 class CustomJSONProvider(DefaultJSONProvider):
     def default(self, obj):
         try:
@@ -25,51 +26,38 @@ class CustomJSONProvider(DefaultJSONProvider):
         except TypeError:
             return str(obj)
 
+
 app = Flask(__name__)
 app.json_provider_class = CustomJSONProvider
 app.json = CustomJSONProvider(app)
+
 CORS(app)
+
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
 
-# Register all blueprints
-app.register_blueprint(auth_bp, name='auth_routes')
-app.register_blueprint(users_bp, name='user_creation_routes')
-app.register_blueprint(user_edit_bp, name='user_edit_routes')
-app.register_blueprint(audit_trail_bp, name='audit_trail_routes')
-app.register_blueprint(access_logs_bp, url_prefix='/api/access-logs')
+# Register blueprints
+app.register_blueprint(auth_bp,          name='auth_routes')
+app.register_blueprint(users_bp,         name='user_creation_routes')
+app.register_blueprint(user_edit_bp,     name='user_edit_routes')
+app.register_blueprint(audit_trail_bp,   name='audit_trail_routes')
+app.register_blueprint(access_logs_bp,   url_prefix='/api/access-logs')
 app.register_blueprint(templates_bp)
 app.register_blueprint(milestones_bp)
 app.register_blueprint(shipments_bp)
+
 
 @app.route('/health', methods=['GET'])
 def health_check():
     return {'status': 'Backend is running'}, 200
 
+
 @app.route('/')
 def health():
-    return {"status": "Flask is running"}, 200
+    return {'status': 'Flask is running'}, 200
 
+if __name__ == '__main__':
+    app.run(debug=True, port=5000, use_reloader=False)
 
-from flask import Blueprint, jsonify
-from app.services.supabase_service import get_all_shipments, get_shipment_milestones
-
-shipments_bp = Blueprint('shipments', __name__)
-
-@shipments_bp.route('/shipments', methods=['GET'])
-def get_shipments():
-    try:
-        shipments = get_all_shipments()
-        return jsonify({'data': shipments, 'count': len(shipments)})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@shipments_bp.route('/shipments/<shipment_id>/milestones', methods=['GET'])
-def get_milestones(shipment_id):
-    try:
-        milestones = get_shipment_milestones(shipment_id)
-        return jsonify({'data': milestones})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000, use_reloader=False)
