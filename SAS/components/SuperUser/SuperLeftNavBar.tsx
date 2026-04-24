@@ -116,17 +116,12 @@ export default function SuperLeftNavBar({ alertsCount = 0 }: Props) {
               Create Template
             </button>
             <button
-              className={`nav-item ${isActiveRoute('/Super_user/milestone_template') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/Super_user/milestone_template')}
+              className={`nav-item ${isActiveRoute('/Super_user/current_milestone') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/Super_user/current_milestone')}
             >
-              Milestone Template
+              Current Milestones
             </button>
-            <button
-              className={`nav-item ${isActiveRoute('/Super_user/shipment_milestones') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/Super_user/shipment_milestones')}
-            >
-              Shipment Milestones
-            </button>
+
           </div>
         )}
       </div>

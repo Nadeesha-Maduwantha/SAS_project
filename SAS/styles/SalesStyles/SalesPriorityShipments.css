@@ -1,0 +1,57 @@
+@reference "tailwindcss";
+
+.sales-tableCard {
+  @apply bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden;
+}
+
+.sales-tableWrap {
+  @apply overflow-x-auto;
+}
+
+.sales-table {
+  @apply w-full text-base;
+}
+
+.sales-table thead th {
+  @apply text-left text-xs uppercase tracking-wide text-slate-500 bg-white px-7 py-5 border-b border-slate-100;
+}
+
+.sales-table tbody td {
+  @apply px-7 py-6 border-b border-slate-100 align-middle;
+}
+
+.sales-table tbody tr:hover {
+  @apply bg-slate-50;
+}
+
+.sales-strong {
+  @apply text-slate-900 font-black;
+}
+
+.sales-muted {
+  @apply text-slate-600 font-semibold;
+}
+
+.sales-client {
+  @apply flex items-center gap-4;
+}
+
+.sales-avatar {
+  @apply w-11 h-11 rounded-full bg-blue-100 text-blue-700 font-black flex items-center justify-center;
+}
+
+.sales-clientName {
+  @apply text-slate-900 font-semibold;
+}
+
+.sales-actions {
+  @apply text-right;
+}
+
+.sales-moreBtn {
+  @apply w-10 h-10 rounded-xl hover:bg-slate-100 flex items-center justify-center;
+}
+
+.sales-moreIcon {
+  @apply w-5 h-5 text-slate-400;
+}

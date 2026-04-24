@@ -96,17 +96,11 @@ export default function SalesLeftNavBar({
           {expandedSections.milestones && (
             <div className="nav-section-content">
               <button
-                className={`nav-item ${isActiveRoute('/sales_user/shipment_milestones') ? 'active' : ''}`}
-                onClick={() => handleNavigation('/sales_user/shipment_milestones')}
-              >
-                Shipment Milestones
-              </button>
-              <button
-                className={`nav-item ${isActiveRoute('/sales_user/milestone_detail') ? 'active' : ''}`}
-                onClick={() => handleNavigation('/sales_user/milestone_detail')}
-              >
-                Milestone Detail
-              </button>
+              className={`nav-item ${isActiveRoute('/Super_user/current_milestone') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/Super_user/current_milestone')}
+            >
+              Current Milestones
+            </button>
             </div>
           )}
         </div>

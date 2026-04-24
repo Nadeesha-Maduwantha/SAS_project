@@ -204,10 +204,10 @@ export default function AdminLeftNavBar() {
               Create Template
             </button>
             <button
-              className={`nav-item ${isActiveRoute('/admin/shipment_milestones') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/admin/shipment_milestones')}
+              className={`nav-item ${isActiveRoute('/admin/current_milestone') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/admin/current_milestone')}
             >
-              Shipment Milestones
+              Current Milestones
             </button>
           </div>
         )}
