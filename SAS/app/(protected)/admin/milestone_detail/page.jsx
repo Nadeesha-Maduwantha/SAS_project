@@ -144,7 +144,9 @@ export default function MilestonePage() {
         }));
         setMilestones(transformed);
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error("Failed to load shipment:", err);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -160,11 +162,16 @@ export default function MilestonePage() {
     </div>
   );
 
+  if (!loading && milestones.length === 0) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <p className="text-gray-400 text-sm">No milestones found for this shipment.</p>
+    </div>
+  );
+
   const milestone  = milestones[currentIndex];
   const status     = STATUS[milestone?.status] ?? STATUS.pending;
   const hasSent    = sentMilestones.has(milestone?.id);
-  const roleConfig = ROLE_CONFIG[USER_ROLE];
-
+  const roleConfig = ROLE_CONFIG[USER_ROLE] ?? ROLE_CONFIG["admin"];  
   const goTo       = (i) => { if (i >= 0 && i < milestones.length) setCurrentIndex(i); };
   const handleSent = () => {
     setSentMilestones(prev => new Set([...prev, milestone.id]));
@@ -304,13 +311,13 @@ export default function MilestonePage() {
       <div className="w-72 flex-shrink-0 border-l border-gray-200 bg-white overflow-y-auto flex flex-col">
         <div className="px-4 pt-5 pb-4 border-b border-gray-100">
           {milestone?.status !== "completed" ? (
-            <button
-              onClick={() => setShowEmail(true)}
-              className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white transition-colors ${roleConfig.buttonColor(milestone)}`}
-            >
-              <MailIcon />
-              {roleConfig.buttonLabel(milestone)}
-            </button>
+           <button
+            onClick={() => setShowEmail(true)}
+            className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white transition-colors ${milestone ? roleConfig.buttonColor(milestone) : "bg-gray-400"}`}
+          >
+            <MailIcon />
+            {milestone ? roleConfig.buttonLabel(milestone) : "Loading..."}
+          </button>
           ) : (
             <div className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
               <CheckIcon /> Milestone Completed

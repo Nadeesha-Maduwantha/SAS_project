@@ -20,7 +20,7 @@ const ROLE_CONFIG = {
     emailSubject: (m, s) => `${m.critical ? "[URGENT] " : ""}Action Required — ${m.name} — ${s.id ?? s.cargowise_id}`,
     emailBody:    (m, s) => {
       const name = s.operationsUser?.name ?? s.createdBy?.name ?? s.created_by_name ?? "Operations User";
-      return `Dear ${name},\n\nThis is an alert from the Admin regarding Shipment ${s.id ?? s.cargowise_id}.\n\nMilestone "${m.name}" is currently ${m.status.toUpperCase()} — expected by ${m.date}.\n\nPlease take immediate action on this milestone${m.critical ? " — this is marked CRITICAL" : ""}.\n\nShipment: ${s.id ?? s.cargowise_id}\nMilestone: ${m.name}\nExpected Date: ${m.date}\nLocation: ${m.location?.label ?? "Unknown"}\n\nKindly update CargoWise once resolved.\n\nRegards,\nSAS Admin`;
+      return `Dear ${name},\n\nThis is an alert from the Admin regarding Shipment ${s.id ?? s.cargowise_id}.\n\nMilestone "${m.name}" is currently ${m.status.toUpperCase()} — expected by ${m.date}.\n\nPlease take immediate action on this milestone${m.critical ? " — this is marked CRITICAL" : ""}.\n\nShipment: ${s.id ?? s.cargowise_id}\nMilestone: ${m.name}\nExpected Date: ${m.date}\nLocation: ${m.location?.label ?? "Unknown"}\n\nKindly update CargoWise once resolved.\n\nRegards,\nSAS Operation`;
     },
     confirmMsg:   (m, s) => {
       const name = s.operationsUser?.name ?? s.createdBy?.name ?? s.created_by_name ?? "Operations User";
@@ -144,7 +144,9 @@ export default function MilestonePage() {
         }));
         setMilestones(transformed);
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error("Failed to load shipment:", err);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -160,10 +162,16 @@ export default function MilestonePage() {
     </div>
   );
 
+  if (!loading && milestones.length === 0) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <p className="text-gray-400 text-sm">No milestones found for this shipment.</p>
+    </div>
+  );
+
   const milestone  = milestones[currentIndex];
   const status     = STATUS[milestone?.status] ?? STATUS.pending;
   const hasSent    = sentMilestones.has(milestone?.id);
-  const roleConfig = ROLE_CONFIG[USER_ROLE];
+  const roleConfig = ROLE_CONFIG[USER_ROLE] ?? ROLE_CONFIG["admin"];
 
   const goTo       = (i) => { if (i >= 0 && i < milestones.length) setCurrentIndex(i); };
   const handleSent = () => {
@@ -306,10 +314,10 @@ export default function MilestonePage() {
           {milestone?.status !== "completed" ? (
             <button
               onClick={() => setShowEmail(true)}
-              className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white transition-colors ${roleConfig.buttonColor(milestone)}`}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white transition-colors ${milestone ? roleConfig.buttonColor(milestone) : "bg-gray-400"}`}
             >
               <MailIcon />
-              {roleConfig.buttonLabel(milestone)}
+              {milestone ? roleConfig.buttonLabel(milestone) : "Loading..."}
             </button>
           ) : (
             <div className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">

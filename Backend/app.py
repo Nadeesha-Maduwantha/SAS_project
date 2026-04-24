@@ -49,5 +49,27 @@ def health_check():
 def health():
     return {"status": "Flask is running"}, 200
 
+
+from flask import Blueprint, jsonify
+from app.services.supabase_service import get_all_shipments, get_shipment_milestones
+
+shipments_bp = Blueprint('shipments', __name__)
+
+@shipments_bp.route('/shipments', methods=['GET'])
+def get_shipments():
+    try:
+        shipments = get_all_shipments()
+        return jsonify({'data': shipments, 'count': len(shipments)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@shipments_bp.route('/shipments/<shipment_id>/milestones', methods=['GET'])
+def get_milestones(shipment_id):
+    try:
+        milestones = get_shipment_milestones(shipment_id)
+        return jsonify({'data': milestones})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000, use_reloader=False)
