@@ -17,7 +17,7 @@ export default function ProgressLogs() {
           <div className="logs-card__sub">User attributions &amp; audit trail</div>
         </div>
 
-        <button className="logs-card__link">Live View</button>
+        {/* <button className="logs-card__link">Live View</button> */}
       </div>
 
       <div className="logs-tableWrap">
