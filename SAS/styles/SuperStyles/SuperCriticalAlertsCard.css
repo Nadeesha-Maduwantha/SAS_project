@@ -1,0 +1,82 @@
+@reference "tailwindcss";
+
+.ca-card {
+  @apply bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col;
+}
+
+.ca-head {
+  @apply flex items-center justify-between;
+}
+
+.ca-title {
+  @apply text-base font-black text-slate-900;
+}
+
+.ca-link {
+  @apply text-sm font-bold text-blue-600 hover:text-blue-700;
+}
+
+.ca-list {
+  @apply mt-5 flex flex-col gap-4;
+}
+
+.ca-item {
+  @apply rounded-2xl p-4 border flex gap-3;
+}
+
+.ca-item__icon {
+  @apply w-8 h-8 rounded-xl flex items-center justify-center shrink-0;
+}
+
+.ca-item__iconSvg {
+  @apply w-4 h-4;
+}
+
+.ca-item__t {
+  @apply text-sm font-extrabold text-slate-900;
+}
+
+.ca-item__d {
+  @apply mt-1 text-xs text-slate-600 leading-relaxed;
+}
+
+/* tones */
+.ca-item--red {
+  @apply bg-red-50 border-red-200;
+}
+.ca-item--red .ca-item__icon {
+  @apply bg-red-100;
+}
+.ca-item--red .ca-item__iconSvg {
+  @apply text-red-600;
+}
+.ca-item--red .ca-item__t {
+  @apply text-red-700;
+}
+
+.ca-item--amber {
+  @apply bg-amber-50 border-amber-200;
+}
+.ca-item--amber .ca-item__icon {
+  @apply bg-amber-100;
+}
+.ca-item--amber .ca-item__iconSvg {
+  @apply text-amber-600;
+}
+.ca-item--amber .ca-item__t {
+  @apply text-amber-700;
+}
+
+.ca-item--gray {
+  @apply bg-slate-50 border-slate-200;
+}
+.ca-item--gray .ca-item__icon {
+  @apply bg-slate-100;
+}
+.ca-item--gray .ca-item__iconSvg {
+  @apply text-slate-600;
+}
+
+.ca-mark {
+  @apply mt-6 w-full py-3 rounded-xl bg-slate-100 text-slate-700 font-bold hover:bg-slate-200 transition;
+}

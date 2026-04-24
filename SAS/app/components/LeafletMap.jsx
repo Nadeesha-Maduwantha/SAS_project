@@ -1,19 +1,9 @@
 "use client";
 
-// ─────────────────────────────────────────────────────────────
-//  LeafletMap.jsx
-//  Place at: app/(protected)/admin/department_overview/LeafletMap.jsx
-//
-//  Props:
-//    pins        – { lat, lng, id, label, status, route }[]
-//    routes      – { from:[lat,lng], to:[lat,lng], id, status }[]
-//    selectedPin – string | null
-//    onPinClick  – (id: string) => void
-// ─────────────────────────────────────────────────────────────
-
 import { useEffect, useRef } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
-// Status → colour mapping (must match page.jsx SHIP_STATUS keys)
 const STATUS_COLOR = {
   on_track: "#16A34A",
   at_risk:  "#D97706",
@@ -34,13 +24,7 @@ export default function LeafletMap({ pins = [], routes = [], selectedPin, onPinC
 
   // ── Bootstrap Leaflet once ──────────────────────────────────
   useEffect(() => {
-    if (mapRef.current) return; // already initialised
-
-    const L = window.L;
-    if (!L) {
-      console.error("LeafletMap: Leaflet (window.L) not found. Make sure leaflet.css and leaflet.js are loaded.");
-      return;
-    }
+    if (mapRef.current) return;
 
     // Fix default marker icon paths broken by webpack
     delete L.Icon.Default.prototype._getIconUrl;
@@ -51,9 +35,9 @@ export default function LeafletMap({ pins = [], routes = [], selectedPin, onPinC
     });
 
     const map = L.map(containerRef.current, {
-      center:    [20, 20],
-      zoom:      2,
-      zoomControl: true,
+      center:          [20, 20],
+      zoom:            2,
+      zoomControl:     true,
       scrollWheelZoom: true,
     });
 
@@ -72,9 +56,8 @@ export default function LeafletMap({ pins = [], routes = [], selectedPin, onPinC
 
   // ── Draw / redraw pins and routes when data changes ─────────
   useEffect(() => {
-    const L   = window.L;
     const map = mapRef.current;
-    if (!L || !map) return;
+    if (!map) return;
 
     // Clear previous layers
     markersRef.current.forEach(m => m.remove());
@@ -84,7 +67,7 @@ export default function LeafletMap({ pins = [], routes = [], selectedPin, onPinC
 
     // Draw route lines first (behind pins)
     routes.forEach(r => {
-      const color   = colorFor(r.status);
+      const color      = colorFor(r.status);
       const isSelected = r.id === selectedPin;
       const line = L.polyline([r.from, r.to], {
         color,

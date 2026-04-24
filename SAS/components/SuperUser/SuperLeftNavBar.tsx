@@ -3,15 +3,8 @@
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
-  LayoutGrid,
-  FileText,
-  Bell,
-  Clock,
-  Settings,
-  ChevronDown,
-  Shield,
-  Users,
-  Plus,
+  LayoutGrid, FileText, Bell, Settings,
+  ChevronDown, Shield, Users, MapPin,
 } from 'lucide-react';
 
 import '../../styles/ComponentStyles/SuperLeftNavBar.css';
@@ -25,23 +18,18 @@ export default function SuperLeftNavBar({ alertsCount = 0 }: Props) {
   const pathname = usePathname();
 
   const [expandedSections, setExpandedSections] = useState({
-    shipments: true,
-    alerts: true,
+    shipments: false,
+    alerts: false,
+    milestones: false,
     userManagement: false,
-    history: false,
     settings: false,
   });
 
   const toggleSection = (section: keyof typeof expandedSections) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [section]: !prev[section],
-    }));
+    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
-  const handleNavigation = (path: string) => {
-    router.push(path);
-  };
+  const handleNavigation = (path: string) => router.push(path);
 
   const isActiveRoute = (path: string) => {
     if (!pathname) return false;
@@ -50,9 +38,10 @@ export default function SuperLeftNavBar({ alertsCount = 0 }: Props) {
 
   return (
     <div className="super-nav-container">
+
       {/* Header */}
       <div className="nav-header">
-        <div className="nav-logo" onClick={() => handleNavigation('/super_user/dashboard')}>
+        <div className="nav-logo" onClick={() => handleNavigation('/Super_user/dashboard')}>
           <Shield className="logo-icon" />
           <span className="logo-text">SAS Alert</span>
         </div>
@@ -60,8 +49,8 @@ export default function SuperLeftNavBar({ alertsCount = 0 }: Props) {
 
       {/* Dashboard */}
       <button
-        className={`nav-dashboard-btn ${isActiveRoute('/super_user/dashboard') ? 'active' : ''}`}
-        onClick={() => handleNavigation('/super_user/dashboard')}
+        className={`nav-dashboard-btn ${isActiveRoute('/Super_user/dashboard') ? 'active' : ''}`}
+        onClick={() => handleNavigation('/Super_user/dashboard')}
       >
         <LayoutGrid className="nav-icon" />
         <span>My Dashboard</span>
@@ -69,161 +58,99 @@ export default function SuperLeftNavBar({ alertsCount = 0 }: Props) {
 
       {/* Shipments */}
       <div className="nav-section">
-        <button
-          className="nav-section-header"
-          onClick={() => toggleSection('shipments')}
-        >
+        <button className="nav-section-header" onClick={() => toggleSection('shipments')}>
           <FileText className="nav-icon" />
           <span>Shipments</span>
-          <ChevronDown
-            className={`chevron-icon ${expandedSections.shipments ? 'expanded' : ''}`}
-          />
+          <ChevronDown className={`chevron-icon ${expandedSections.shipments ? 'expanded' : ''}`} />
         </button>
-
         {expandedSections.shipments && (
           <div className="nav-section-content">
             <button
-              className={`nav-item ${isActiveRoute('/Super_user/shipments') && !pathname.includes('/archive') && !pathname.includes('/delayed') ? 'active' : ''}`}
+              className={`nav-item ${isActiveRoute('/Super_user/shipments') ? 'active' : ''}`}
               onClick={() => handleNavigation('/Super_user/shipments')}
             >
               Active Shipments
             </button>
-
-            <button
-              className={`nav-item ${isActiveRoute('/Super_user/shipments/delayed') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/Super_user/shipments/delayed')}
-            >
-              Critical Milestones
-            </button>
-
-            <button
-              className={`nav-item ${isActiveRoute('/Super_user/shipments/archive') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/Super_user/shipments/archive')}
-            >
-              Archive
-            </button>
           </div>
         )}
-      </div>
-      
-
-      {/* ✅ Create Template (NEW) */}
-      <button
-        className="nav-section-header"
-        onClick={() => handleNavigation('/Super_user/templates')}
-      >
-        <Plus className="nav-icon" />
-        <span>Create Template</span>
-      </button>
       </div>
 
       {/* Alerts */}
       <div className="nav-section">
-        <button
-          className="nav-section-header"
-          onClick={() => toggleSection('alerts')}
-        >
+        <button className="nav-section-header" onClick={() => toggleSection('alerts')}>
           <Bell className="nav-icon" />
           <span>Alerts{alertsCount > 0 ? ` (${alertsCount})` : ''}</span>
-          <ChevronDown
-            className={`chevron-icon ${expandedSections.alerts ? 'expanded' : ''}`}
-          />
+          <ChevronDown className={`chevron-icon ${expandedSections.alerts ? 'expanded' : ''}`} />
         </button>
-
         {expandedSections.alerts && (
           <div className="nav-section-content">
             <button
-              className={`nav-item ${isActiveRoute('/Super_user/alerts') && !pathname.includes('/my-alerts') && !pathname.includes('/resolved') ? 'active' : ''}`}
+              className={`nav-item ${isActiveRoute('/Super_user/alerts') ? 'active' : ''}`}
               onClick={() => handleNavigation('/Super_user/alerts')}
             >
               All Alerts
             </button>
+          </div>
+        )}
+      </div>
 
+      {/* Milestones */}
+      <div className="nav-section">
+        <button className="nav-section-header" onClick={() => toggleSection('milestones')}>
+          <MapPin className="nav-icon" />
+          <span>Milestones</span>
+          <ChevronDown className={`chevron-icon ${expandedSections.milestones ? 'expanded' : ''}`} />
+        </button>
+        {expandedSections.milestones && (
+          <div className="nav-section-content">
             <button
-              className={`nav-item ${isActiveRoute('/Super_user/alerts/my-alerts') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/Super_user/alerts/my-alerts')}
+              className={`nav-item ${isActiveRoute('/Super_user/milestone_templates_list') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/Super_user/milestone_templates_list')}
             >
-              My Alerts
+              Templates List
             </button>
-
             <button
-              className={`nav-item ${isActiveRoute('/Super_user/alerts/resolved') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/Super_user/alerts/resolved')}
+              className={`nav-item ${isActiveRoute('/Super_user/milestone_template_create') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/Super_user/milestone_template_create')}
             >
-              Resolved
+              Create Template
+            </button>
+            <button
+              className={`nav-item ${isActiveRoute('/Super_user/milestone_template') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/Super_user/milestone_template')}
+            >
+              Milestone Template
+            </button>
+            <button
+              className={`nav-item ${isActiveRoute('/Super_user/shipment_milestones') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/Super_user/shipment_milestones')}
+            >
+              Shipment Milestones
             </button>
           </div>
         )}
       </div>
+
       {/* User Management */}
-<div className="nav-section">
-  <button
-    className="nav-section-header"
-    onClick={() => toggleSection('userManagement')}
-  >
-    <Users className="nav-icon" />
-    <span>User Management</span>
-    <ChevronDown
-      className={`chevron-icon ${expandedSections.userManagement ? 'expanded' : ''}`}
-    />
-  </button>
-
-  {expandedSections.userManagement && (
-    <div className="nav-section-content">
-      <button
-        className={`nav-item ${isActiveRoute('/super_user/users') && !pathname.includes('add-user') && !pathname.includes('activity') ? 'active' : ''}`}
-        onClick={() => handleNavigation('/super_user/users')}
-      >
-        All Users
-      </button>
-
-      {/* ✅ NEW ITEM */}
-      <button
-        className={`nav-item ${isActiveRoute('/super_user/users/add-user') ? 'active' : ''}`}
-        onClick={() => handleNavigation('/super_user/users/add-user')}
-      >
-        Add New User
-      </button>
-
-      <button
-        className={`nav-item ${isActiveRoute('/super_user/users/activity') ? 'active' : ''}`}
-        onClick={() => handleNavigation('/super_user/users/activity')}
-      >
-        Activity Logs
-      </button>
-    </div>
-  )}
-</div>
-
-      
-
-      {/* History */}
       <div className="nav-section">
-        <button
-          className="nav-section-header"
-          onClick={() => toggleSection('history')}
-        >
-          <Clock className="nav-icon" />
-          <span>History</span>
-          <ChevronDown
-            className={`chevron-icon ${expandedSections.history ? 'expanded' : ''}`}
-          />
+        <button className="nav-section-header" onClick={() => toggleSection('userManagement')}>
+          <Users className="nav-icon" />
+          <span>User Management</span>
+          <ChevronDown className={`chevron-icon ${expandedSections.userManagement ? 'expanded' : ''}`} />
         </button>
-
-        {expandedSections.history && (
+        {expandedSections.userManagement && (
           <div className="nav-section-content">
             <button
-              className={`nav-item ${isActiveRoute('/super_user/history/department') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/super_user/history/department')}
+              className={`nav-item ${isActiveRoute('/Super_user/create-user') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/Super_user/create-user')}
             >
-              Department History
+              Add New User
             </button>
-
             <button
-              className={`nav-item ${isActiveRoute('/super_user/history/team-activity') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/super_user/history/team-activity')}
+              className={`nav-item ${isActiveRoute('/Super_user/edit-user') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/Super_user/edit-user')}
             >
-              Team Activity
+              Edit User
             </button>
           </div>
         )}
@@ -231,35 +158,23 @@ export default function SuperLeftNavBar({ alertsCount = 0 }: Props) {
 
       {/* Settings */}
       <div className="nav-section">
-        <button
-          className="nav-section-header"
-          onClick={() => toggleSection('settings')}
-        >
+        <button className="nav-section-header" onClick={() => toggleSection('settings')}>
           <Settings className="nav-icon" />
           <span>Settings</span>
-          <ChevronDown
-            className={`chevron-icon ${expandedSections.settings ? 'expanded' : ''}`}
-          />
+          <ChevronDown className={`chevron-icon ${expandedSections.settings ? 'expanded' : ''}`} />
         </button>
-
         {expandedSections.settings && (
           <div className="nav-section-content">
             <button
-              className={`nav-item ${isActiveRoute('/super_user/settings/profile') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/super_user/settings/profile')}
+              className={`nav-item ${isActiveRoute('/Super_user/profile') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/Super_user/profile')}
             >
               My Profile
-            </button>
-
-            <button
-              className={`nav-item ${isActiveRoute('/super_user/settings/notifications') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/super_user/settings/notifications')}
-            >
-              Notification Preferences
             </button>
           </div>
         )}
       </div>
+
     </div>
   );
 }
