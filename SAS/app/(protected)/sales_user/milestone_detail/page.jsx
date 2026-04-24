@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import MilestoneMap from "@/app/components/MilestoneMap";
 import EmailComposeModal from "@/components/EmailComposeModal";
 
-// ─── Role config ──────────────────────────────────────────────────────────────
+// ─── Role config ───────────────────────────────────────────────────────────────
 const ROLE_CONFIG = {
   admin: {
     recipient:    (s) => ({
@@ -93,14 +93,14 @@ const ROLE_CONFIG = {
   },
 };
 
-// ─── Status config ────────────────────────────────────────────────────────────
+// ─── Status config ─────────────────────────────────────────────────────────────
 const STATUS = {
   completed: { label: "Completed", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", dot: "bg-emerald-500" },
   overdue:   { label: "Overdue",   bg: "bg-red-50",     text: "text-red-700",     border: "border-red-200",     dot: "bg-red-500"     },
   pending:   { label: "Pending",   bg: "bg-gray-100",   text: "text-gray-500",    border: "border-gray-200",    dot: "bg-gray-400"    },
 };
 
-// ─── Icons ────────────────────────────────────────────────────────────────────
+// ─── Icons ─────────────────────────────────────────────────────────────────────
 const ChevronLeft  = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>;
 const ChevronRight = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>;
 const MailIcon     = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>;
@@ -110,7 +110,7 @@ const CalendarIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill=
 const AlertIcon    = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
 const CheckIcon    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Page ──────────────────────────────────────────────────────────────────────
 export default function MilestonePage() {
   const searchParams = useSearchParams();
 
@@ -144,7 +144,9 @@ export default function MilestonePage() {
         }));
         setMilestones(transformed);
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error("Failed to load shipment:", err);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -160,21 +162,26 @@ export default function MilestonePage() {
     </div>
   );
 
+  if (milestones.length === 0) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <p className="text-gray-400 text-sm">No milestones found for this shipment.</p>
+    </div>
+  );
+
   const milestone  = milestones[currentIndex];
   const status     = STATUS[milestone?.status] ?? STATUS.pending;
   const hasSent    = sentMilestones.has(milestone?.id);
-  const roleConfig = ROLE_CONFIG[USER_ROLE];
+  const roleConfig = ROLE_CONFIG[USER_ROLE] ?? ROLE_CONFIG["admin"];
 
-  const goTo       = (i) => { if (i >= 0 && i < milestones.length) setCurrentIndex(i); };
+  const goTo = (i) => { if (i >= 0 && i < milestones.length) setCurrentIndex(i); };
   const handleSent = () => {
     setSentMilestones(prev => new Set([...prev, milestone.id]));
     setShowEmail(false);
   };
 
-  // Build alertData for EmailComposeModal
   const alertData = milestone && shipment ? {
-    id:       shipment.id ?? shipment.cargowise_id ?? "",
-    client:   shipment.consignee_name ?? shipment.consigneeName ?? shipment.id ?? "",
+    id:     shipment.id ?? shipment.cargowise_id ?? "",
+    client: shipment.consignee_name ?? shipment.consigneeName ?? shipment.id ?? "",
   } : null;
 
   return (
@@ -306,10 +313,10 @@ export default function MilestonePage() {
           {milestone?.status !== "completed" ? (
             <button
               onClick={() => setShowEmail(true)}
-              className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white transition-colors ${roleConfig.buttonColor(milestone)}`}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white transition-colors ${milestone ? roleConfig.buttonColor(milestone) : "bg-gray-400"}`}
             >
               <MailIcon />
-              {roleConfig.buttonLabel(milestone)}
+              {milestone ? roleConfig.buttonLabel(milestone) : "Loading..."}
             </button>
           ) : (
             <div className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
