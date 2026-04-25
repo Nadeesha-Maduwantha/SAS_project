@@ -1,5 +1,7 @@
-import { supabase } from '@/lib/supabase'
 import { Shipment, ShipmentStatus, ShipmentMilestone } from '@/types'
+import { supabase } from '@/lib/supabase'
+
+const FLASK_API = 'http://localhost:5000'
 
 interface ShipmentRow {
   id: string
@@ -52,12 +54,11 @@ interface ShipmentRow {
   sales_user_name: string | null
   sales_user_email: string | null
   js_pk: string | null
-llm_cargo_pickup_date: string | null
-running_date_time: string | null
-note_number: number | null
+  llm_cargo_pickup_date: string | null
+  running_date_time: string | null
+  note_number: number | null
 }
 
-// Maps Supabase row → your Shipment type
 function mapRow(row: ShipmentRow): Shipment {
   return {
     id: row.id,
@@ -75,7 +76,6 @@ function mapRow(row: ShipmentRow): Shipment {
     deliveryDate: row.delivery_date ? new Date(row.delivery_date) : undefined,
     archivedDate: row.archived_date ? new Date(row.archived_date) : undefined,
     transitDays: row.transit_days ?? undefined,
-    // CargoWise real API fields
     jobNumber: row.job_number ?? undefined,
     houseBillNumber: row.house_bill_number ?? undefined,
     transportMode: row.transport_mode ?? undefined,
@@ -92,10 +92,9 @@ function mapRow(row: ShipmentRow): Shipment {
     llmIdentifiedType: row.llm_identified_type ?? undefined,
     llmNote: row.llm_note ?? undefined,
     jsPk: row.js_pk ?? undefined,
-llmCargoPickupDate: row.llm_cargo_pickup_date ?? undefined,
-runningDateTime: row.running_date_time ? new Date(row.running_date_time) : null,
-noteNumber: row.note_number ?? null,
-    // Shipper & Consignee
+    llmCargoPickupDate: row.llm_cargo_pickup_date ?? undefined,
+    runningDateTime: row.running_date_time ? new Date(row.running_date_time) : null,
+    noteNumber: row.note_number ?? null,
     shipperName: row.shipper_name ?? undefined,
     shipperAddress: row.shipper_address ?? undefined,
     shipperContact: row.shipper_contact ?? undefined,
@@ -104,7 +103,6 @@ noteNumber: row.note_number ?? null,
     consigneeAddress: row.consignee_address ?? undefined,
     consigneeContact: row.consignee_contact ?? undefined,
     consigneeEmail: row.consignee_email ?? undefined,
-    // CargoWise user info
     createdBy: {
       staffCode: row.created_by_staff_code,
       name: row.created_by_name,
@@ -117,219 +115,105 @@ noteNumber: row.note_number ?? null,
     },
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
-
     salesUserStaffCode: row.sales_user_staff_code ?? undefined,
     salesUserName: row.sales_user_name ?? undefined,
     salesUserEmail: row.sales_user_email ?? undefined,
   }
 }
 
+// ─── Shipment Functions ───────────────────────────────────────────
+
 export async function getAllShipments(): Promise<Shipment[]> {
-  const { data, error } = await supabase
-    .from('shipments')
-    .select('*')
-
-  console.log('DATA:', data)
-  console.log('ERROR:', error)
-
-  if (error) throw new Error(error.message)
-  return data.map(mapRow)
+  const response = await fetch(`${FLASK_API}/api/shipments`)
+  const result = await response.json()
+  if (result.error) throw new Error(result.error)
+  return (result.data ?? []).map(mapRow)
 }
 
 export async function getDelayedShipments(): Promise<Shipment[]> {
-  const { data, error } = await supabase
-    .from('shipments')
-    .select('*')
-    .eq('pickup_date_status', 'Delayed')
-
-  if (error) throw new Error(error.message)
-  return (data ?? [])
-    .map(mapRow)
-    .filter((s) =>
-      !s.llmIdentifiedType?.toLowerCase().includes('delivered')
-    )
+  const response = await fetch(`${FLASK_API}/api/shipments/delayed`)
+  const result = await response.json()
+  if (result.error) throw new Error(result.error)
+  return (result.data ?? []).map(mapRow)
 }
 
 export async function getArchivedShipments(): Promise<Shipment[]> {
-  const { data, error } = await supabase
-    .from('shipments')
-    .select('*')
-
-  if (error) throw new Error(error.message)
-  return (data ?? [])
-    .map(mapRow)
-    .filter((s) =>
-      s.llmIdentifiedType?.toLowerCase().includes('delivered')
-    )
+  const response = await fetch(`${FLASK_API}/api/shipments/archived`)
+  const result = await response.json()
+  if (result.error) throw new Error(result.error)
+  return (result.data ?? []).map(mapRow)
 }
 
 export async function getShipmentById(id: string): Promise<Shipment | null> {
-  const { data, error } = await supabase
-    .from('shipments')
-    .select('*')
-    .eq('id', id)
-    .single()
-
-  if (error) return null
-  return mapRow(data)
+  const response = await fetch(`${FLASK_API}/api/shipments/${id}`)
+  const result = await response.json()
+  if (result.error) return null
+  return mapRow(result.data.shipment)
 }
 
 export async function getShipmentStats() {
-  const { data, error } = await supabase
-    .from('shipments')
-    .select('current_stage, is_priority, delivery_date, archived_date')
-
-  if (error) throw new Error(error.message)
-
-  const today = new Date().toDateString()
-
-  return {
-    total: data.length,
-    inTransit: data.filter((s) => s.current_stage === 'in_transit').length,
-    exceptions: data.filter((s) => s.is_priority).length,
-    deliveredToday: data.filter((s) =>
-      s.delivery_date &&
-      new Date(s.delivery_date).toDateString() === today
-    ).length,
-  }
+  const response = await fetch(`${FLASK_API}/api/shipments/stats`)
+  const result = await response.json()
+  if (result.error) throw new Error(result.error)
+  return result.data
 }
 
 export async function getDelayedStats() {
-  const { data, error } = await supabase
-    .from('shipments')
-    .select('*')
-    .eq('pickup_date_status', 'Delayed')
-
-  if (error) throw new Error(error.message)
-
-  const shipments = (data ?? [])
-    .map(mapRow)
-    .filter((s) =>
-      !s.llmIdentifiedType?.toLowerCase().includes('delivered')
-    )
-
-  // Calculate average delay days from llm_cargo_pickup_date
-const today = new Date()
-const delayDaysArray = shipments
-  .filter((s) => s.llmCargoPickupDate)
-  .map((s) => {
-    const pickupDate = new Date(s.llmCargoPickupDate!)
-    const diff = Math.floor(
-      (today.getTime() - pickupDate.getTime()) / (1000 * 60 * 60 * 24)
-    )
-    return diff > 0 ? diff : 0
-  })
-
-const avgDelayDays = delayDaysArray.length > 0
-  ? Math.round(delayDaysArray.reduce((a, b) => a + b, 0) / delayDaysArray.length)
-  : 0
-
-return {
-  totalDelayed: shipments.length,
-  highPriority: shipments.filter((s) => {
-    const note = s.llmNote?.toLowerCase() ?? ''
-    return (
-      note.includes('urgent') ||
-      note.includes('critical') ||
-      note.includes('immediate') ||
-      note.includes('asap') ||
-      note.includes('priority')
-    )
-  }).length,
-  avgDelayDays,
-  customsIssues: shipments.filter((s) =>
-    s.llmIdentifiedType?.toLowerCase().includes('customs') ||
-    s.stNoteText?.toLowerCase().includes('customs')
-  ).length,
+  const response = await fetch(`${FLASK_API}/api/shipments/stats/delayed`)
+  const result = await response.json()
+  if (result.error) throw new Error(result.error)
+  return {
+    totalDelayed: result.data.total_delayed,
+    highPriority: result.data.high_priority,
+    avgDelayDays: result.data.avg_delay_days,
+    customsIssues: result.data.customs_issues,
+  }
 }
-}
+
 export async function getActiveShipmentsByDepartment(department: string): Promise<Shipment[]> {
-  const { data, error } = await supabase
-    .from('shipments')
-    .select('*')
-    .eq('transport_mode', department)
-
-  if (error) throw new Error(error.message)
-  return (data ?? [])
-    .map(mapRow)
-    .filter((s) => !s.llmIdentifiedType?.toLowerCase().includes('delivered'))
+  const response = await fetch(`${FLASK_API}/api/shipments/department/${department}`)
+  const result = await response.json()
+  if (result.error) throw new Error(result.error)
+  return (result.data ?? []).map(mapRow)
 }
 
 export async function getArchivedShipmentsByDepartment(department: string): Promise<Shipment[]> {
-  const { data, error } = await supabase
-    .from('shipments')
-    .select('*')
-    .eq('transport_mode', department)
-
-  if (error) throw new Error(error.message)
-  return (data ?? [])
-    .map(mapRow)
-    .filter((s) =>
-      s.llmIdentifiedType?.toLowerCase().includes('delivered')
-    )
+  const response = await fetch(`${FLASK_API}/api/shipments/archived`)
+  const result = await response.json()
+  if (result.error) throw new Error(result.error)
+  return (result.data ?? []).map(mapRow).filter((s) =>
+    s.transportMode === department
+  )
 }
 
 export async function getDepartmentStats(department: string) {
-  const { data, error } = await supabase
-    .from('shipments')
-    .select('*')
-    .eq('transport_mode', department)
-
-  if (error) throw new Error(error.message)
-  const shipments = (data ?? []).map(mapRow)
-
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
+  const response = await fetch(`${FLASK_API}/api/shipments/stats/department/${department}`)
+  const result = await response.json()
+  if (result.error) throw new Error(result.error)
   return {
-    onTime: shipments.filter((s) =>
-  s.pickupDateStatus === 'Future' &&
-  !s.llmIdentifiedType?.toLowerCase().includes('delivered')
-).length,
-    delayed: shipments.filter((s) =>
-      s.pickupDateStatus === 'Delayed' &&
-      !s.llmIdentifiedType?.toLowerCase().includes('delivered')
-    ).length,
-    atRisk: shipments.filter((s) => {
-      const note = s.llmNote?.toLowerCase() ?? ''
-      return (
-        note.includes('risk') ||
-        note.includes('delay') ||
-        note.includes('issue') ||
-        note.includes('problem') ||
-        note.includes('urgent')
-      )
-    }).length,
-    deliveredToday: shipments.filter((s) => {
-      if (!s.llmIdentifiedType?.toLowerCase().includes('delivered')) return false
-      if (!s.llmCargoPickupDate) return false
-      const deliveredDate = new Date(s.llmCargoPickupDate)
-      deliveredDate.setHours(0, 0, 0, 0)
-      return deliveredDate.getTime() === today.getTime()
-    }).length,
+    onTime: result.data.on_time,
+    delayed: result.data.delayed,
+    atRisk: result.data.at_risk,
+    deliveredToday: result.data.delivered_today,
   }
 }
 
 export async function getShipmentsByOperationUser(
   staffCode: string
 ): Promise<Shipment[]> {
-  const { data, error } = await supabase
-    .from('shipments')
-    .select('*')
-
-  if (error) throw new Error(error.message)
-  return (data ?? []).map(mapRow)
+  const response = await fetch(`${FLASK_API}/api/shipments`)
+  const result = await response.json()
+  if (result.error) throw new Error(result.error)
+  return (result.data ?? []).map(mapRow)
 }
 
 export async function getShipmentsBySalesUser(
   staffCode: string
 ): Promise<Shipment[]> {
-  const { data, error } = await supabase
-    .from('shipments')
-    .select('*')
-
-  if (error) throw new Error(error.message)
-  return data.map(mapRow)
+  const response = await fetch(`${FLASK_API}/api/shipments`)
+  const result = await response.json()
+  if (result.error) throw new Error(result.error)
+  return (result.data ?? []).map(mapRow)
 }
 
 // ─── Milestone Functions ───────────────────────────────────────────
