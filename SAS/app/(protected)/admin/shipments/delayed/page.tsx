@@ -34,6 +34,12 @@ export default function DelayedShipmentsPage() {
     return true
   })
 
+  const pageSize = 10
+  const paginated = filteredShipments.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  )
+
   const filterGroups = [
     {
       label: 'By Department',
@@ -172,7 +178,7 @@ export default function DelayedShipmentsPage() {
                     No delayed shipments found
                   </td>
                 </tr>
-              ) : filteredShipments.map((shipment) => (
+              ) : paginated.map((shipment) => (
                 <tr key={shipment.id} className="hover:bg-gray-50 transition-colors">
 
                   {/* Shipment ID */}

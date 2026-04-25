@@ -350,7 +350,7 @@ export default function ShipmentDetailPage() {
               {[
                 { label: 'Cargo Ready', date: shipment.cargoReadyDate },
                 { label: 'Cargo Received', date: shipment.cargoReceivedDate },
-                { label: 'Cargo Pickup', date: shipment.cargoPickupDate },
+                { label: 'Cargo Pickup', date: shipment.cargoPickupDate ?? (shipment.llmCargoPickupDate ? new Date(shipment.llmCargoPickupDate) : undefined) },
               ].map((item, i) => (
                 <div key={i} style={{ background: '#f9fafb', borderRadius: '8px', padding: '12px 14px' }}>
                   <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 4px', fontWeight: 500 }}>{item.label}</p>
