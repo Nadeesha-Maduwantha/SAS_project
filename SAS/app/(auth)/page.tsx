@@ -1,41 +1,56 @@
 'use client';
 
 import { useState, FormEvent, ChangeEvent } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberDevice, setRememberDevice] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log({ email, password, rememberDevice });
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.user) {
+        router.push('/dashboard');
+      } else {
+        setError(data.error || 'Login failed. Please verify credentials.');
+      }
+    } catch (err) {
+      console.error('Login Error:', err);
+      setError('Connection failed. Please ensure the backend is running.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value);
-  };
-
-  const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setPassword(e.target.value);
-  };
-
-  const handleRememberChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setRememberDevice(e.target.checked);
-  };
+  const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value);
+  const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value);
+  const handleRememberChange = (e: ChangeEvent<HTMLInputElement>) => setRememberDevice(e.target.checked);
 
   return (
     <div className="flex min-h-screen">
       {/* Left Side - Brand Section */}
       <div className="hidden lg:flex lg:w-2/3 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-600 text-white p-12 flex-col justify-between relative overflow-hidden">
-        {/* Decorative circles */}
         <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-700 rounded-full opacity-20 blur-3xl"></div>
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500 rounded-full opacity-20 blur-3xl"></div>
-        
+
         <div className="relative z-10">
           <h1 className="text-sm font-semibold tracking-wider mb-20">SAS SYSTEMS</h1>
-          
           <div className="max-w-xl">
             <h2 className="text-5xl font-bold mb-6 leading-tight">Dart Global Logistic</h2>
             <p className="text-lg text-blue-100 leading-relaxed">
@@ -108,7 +123,14 @@ export default function LoginPage() {
               />
             </div>
 
-            {/* Remember Device Checkbox */}
+            {/* Error Message */}
+            {error && (
+              <div className="text-red-500 text-sm text-center font-medium bg-red-50 py-2 rounded-md">
+                {error}
+              </div>
+            )}
+
+            {/* Remember Device */}
             <div className="flex items-center">
               <input
                 type="checkbox"
@@ -125,9 +147,12 @@ export default function LoginPage() {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              disabled={loading}
+              className={`w-full text-white py-3 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+              }`}
             >
-              Sign In to Dashboard
+              {loading ? 'Signing In...' : 'Sign In to Dashboard'}
             </button>
           </form>
         </div>

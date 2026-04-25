@@ -5,13 +5,11 @@ import { useRouter, usePathname } from 'next/navigation';
 import {
   LayoutGrid,
   Truck,
-  Clock,
+  Bell,
   Settings,
   ChevronDown,
   Shield,
-  User,
-  Bell,
-  LogOut,
+  MapPin,
 } from 'lucide-react';
 
 import '../../styles/ComponentStyles/SalesLeftNavBar.css';
@@ -29,6 +27,7 @@ export default function SalesLeftNavBar({
   const pathname = usePathname();
 
   const [expandedSections, setExpandedSections] = useState({
+    milestones: false,
     settings: false,
   });
 
@@ -50,8 +49,8 @@ export default function SalesLeftNavBar({
 
   return (
     <aside className="sales-nav-container">
-      {/* Top */}
       <div className="sales-nav-top">
+
         {/* Header */}
         <div className="nav-header">
           <div className="nav-logo" onClick={() => handleNavigation('/sales_user/dashboard')}>
@@ -69,7 +68,7 @@ export default function SalesLeftNavBar({
           <span>My Dashboard</span>
         </button>
 
-        {/* My Shipments (single) */}
+        {/* My Shipments */}
         <button
           className={`nav-section-header ${isActiveRoute('/sales_user/shipments') ? 'active' : ''}`}
           onClick={() => handleNavigation('/sales_user/shipments')}
@@ -78,16 +77,35 @@ export default function SalesLeftNavBar({
           <span>My Shipments</span>
         </button>
 
-        {/* History (label-like single item) */}
+        {/* My Alerts */}
         <button
-          className={`nav-section-header ${isActiveRoute('/sales_user/history') ? 'active' : ''}`}
-          onClick={() => handleNavigation('/sales_user/history')}
+          className={`nav-section-header ${isActiveRoute('/sales_user/alerts') ? 'active' : ''}`}
+          onClick={() => handleNavigation('/sales_user/alerts')}
         >
-          <Clock className="nav-icon" />
-          <span>History</span>
+          <Bell className="nav-icon" />
+          <span>My Alerts</span>
         </button>
 
-        {/* Settings (dropdown) */}
+        {/* Milestones */}
+        <div className="nav-section">
+          <button className="nav-section-header" onClick={() => toggleSection('milestones')}>
+            <MapPin className="nav-icon" />
+            <span>Milestones</span>
+            <ChevronDown className={`chevron-icon ${expandedSections.milestones ? 'expanded' : ''}`} />
+          </button>
+          {expandedSections.milestones && (
+            <div className="nav-section-content">
+              <button
+              className={`nav-item ${isActiveRoute('/sales_user/current_milestone') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/sales_user/current_milestone')}
+            >
+              Current Milestones
+            </button>
+            </div>
+          )}
+        </div>
+
+        {/* Settings */}
         <div className="nav-section">
           <button
             className="nav-section-header"
@@ -103,25 +121,16 @@ export default function SalesLeftNavBar({
           {expandedSections.settings && (
             <div className="nav-section-content">
               <button
-                className={`nav-item ${isActiveRoute('/sales_user/settings/profile') ? 'active' : ''}`}
-                onClick={() => handleNavigation('/sales_user/settings/profile')}
+                className={`nav-item ${isActiveRoute('/sales_user/profile') ? 'active' : ''}`}
+                onClick={() => handleNavigation('/sales_user/profile')}
               >
-                
                 <span>My Profile</span>
-              </button>
-
-              <button
-                className={`nav-item ${isActiveRoute('/sales_user/settings/notifications') ? 'active' : ''}`}
-                onClick={() => handleNavigation('/sales_user/settings/notifications')}
-              >
-                
-                <span>Notification Preferences</span>
               </button>
             </div>
           )}
         </div>
-      </div>
 
+      </div>
     </aside>
   );
 }
