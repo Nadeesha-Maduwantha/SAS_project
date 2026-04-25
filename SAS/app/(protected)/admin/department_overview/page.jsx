@@ -1,21 +1,11 @@
 "use client";
 
-// =============================================================
-//  File path: app/(protected)/admin/department_overview/page.jsx
-//  Route:     /admin/department_overview?dept=Operations
-//
-//  Setup:
-//    1. npm install react-leaflet leaflet
-//    2. In app/layout.jsx add:
-//         import 'leaflet/dist/leaflet.css';
-// =============================================================
-
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
+import MapErrorBoundary from "@/app/components/MapErrorBoundary";
 
-// Leaflet must NOT render on server — use dynamic import with ssr:false
-const LeafletMap = dynamic(() => import("./LeafletMap"), { ssr: false });
+const LeafletMap = dynamic(() => import("@/app/components/LeafletMap"), { ssr: false });
 
 // ── Design tokens ─────────────────────────────────────────────
 const T = {
@@ -46,7 +36,6 @@ const T = {
   mono:        "'JetBrains Mono', monospace",
 };
 
-// ── Data ───────────────────────────────────────────────────────
 const DEPARTMENTS = ["Operations", "Sales"];
 
 const DEPT_DATA = {
@@ -72,14 +61,14 @@ const DEPT_DATA = {
       { id: "SHP-2025-0015", client: "Fresh Produce Ltd",  route: "LK → AE",  type: "Air", status: "overdue",  milestone: "Arrival at Destination",   priority: "critical", eta: "2025-01-18", assignee: "Kasun Fernando"     },
     ],
     mapPins: [
-      { lat: 6.9,   lng: 79.9,   id: "SHP-2025-0042", label: "Apex Electronics",   status: "overdue",  route: "LK → JP"  },
-      { lat: 25.2,  lng: 55.3,   id: "SHP-2025-0038", label: "Oceanic Traders",    status: "on_track", route: "LK → UAE" },
-      { lat: 35.7,  lng: 140.4,  id: "SHP-2025-0035", label: "GlobalTech",         status: "on_track", route: "LK → JP"  },
-      { lat: -33.9, lng: 151.2,  id: "SHP-2025-0031", label: "Marine Supplies",    status: "at_risk",  route: "LK → AU"  },
-      { lat: 51.5,  lng: -0.1,   id: "SHP-2025-0028", label: "Spice Export",       status: "on_track", route: "LK → UK"  },
-      { lat: 48.9,  lng: 2.3,    id: "SHP-2025-0025", label: "Ceylon Textiles",    status: "on_track", route: "LK → FR"  },
-      { lat: 1.3,   lng: 103.8,  id: "SHP-2025-0020", label: "TechParts",          status: "at_risk",  route: "LK → SG"  },
-      { lat: 40.7,  lng: -74.0,  id: "SHP-2025-0015", label: "Fresh Produce",      status: "overdue",  route: "LK → USA" },
+      { lat: 6.9,   lng: 79.9,   id: "SHP-2025-0042", label: "Apex Electronics", status: "overdue",  route: "LK → JP"  },
+      { lat: 25.2,  lng: 55.3,   id: "SHP-2025-0038", label: "Oceanic Traders",  status: "on_track", route: "LK → UAE" },
+      { lat: 35.7,  lng: 140.4,  id: "SHP-2025-0035", label: "GlobalTech",       status: "on_track", route: "LK → JP"  },
+      { lat: -33.9, lng: 151.2,  id: "SHP-2025-0031", label: "Marine Supplies",  status: "at_risk",  route: "LK → AU"  },
+      { lat: 51.5,  lng: -0.1,   id: "SHP-2025-0028", label: "Spice Export",     status: "on_track", route: "LK → UK"  },
+      { lat: 48.9,  lng: 2.3,    id: "SHP-2025-0025", label: "Ceylon Textiles",  status: "on_track", route: "LK → FR"  },
+      { lat: 1.3,   lng: 103.8,  id: "SHP-2025-0020", label: "TechParts",        status: "at_risk",  route: "LK → SG"  },
+      { lat: 40.7,  lng: -74.0,  id: "SHP-2025-0015", label: "Fresh Produce",    status: "overdue",  route: "LK → USA" },
     ],
     routes: [
       { from: [6.9, 79.9], to: [35.7,  140.4], id: "SHP-2025-0042", status: "overdue"  },
@@ -130,7 +119,6 @@ const PRIORITY = {
   normal:   { label: "Normal",   color: T.gray500, bg: T.gray100, border: T.gray300     },
 };
 
-// ── Icons ──────────────────────────────────────────────────────
 const IcoShip  = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 21c.6.5 1.2 1 2.5 1C7 22 7 20 9.5 20c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/><path d="M19 13V7l-7-3L5 7v6"/><polyline points="12 4 12 10"/></svg>;
 const IcoAlert = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
 const IcoTeam  = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
@@ -138,7 +126,6 @@ const IcoCheck = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="non
 const IcoMap   = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>;
 const IcoMail  = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>;
 
-// ── Stat Card ──────────────────────────────────────────────────
 function StatCard({ icon, label, value, sub, color, bg, border }) {
   const [hov, setHov] = useState(false);
   return (
@@ -153,7 +140,6 @@ function StatCard({ icon, label, value, sub, color, bg, border }) {
   );
 }
 
-// ── Team Row ───────────────────────────────────────────────────
 function TeamRow({ member, deptColor }) {
   const sc = { active: { color: T.green, bg: T.greenBg, border: T.greenBorder, label: "Active" }, busy: { color: T.amber, bg: T.amberBg, border: T.amberBorder, label: "Busy" }, away: { color: T.gray400, bg: T.gray100, border: T.gray300, label: "Away" } }[member.status];
   const initials = member.name.split(" ").map(w => w[0]).join("").slice(0, 2);
@@ -177,11 +163,9 @@ function TeamRow({ member, deptColor }) {
   );
 }
 
-// ── Table styles ───────────────────────────────────────────────
 const td = { padding: "12px 14px", verticalAlign: "middle", borderBottom: `1px solid ${T.gray100}` };
 const th = { padding: "10px 14px", textAlign: "left", fontSize: "10px", fontWeight: "700", color: T.gray500, letterSpacing: "0.07em", textTransform: "uppercase", borderBottom: `1px solid ${T.gray200}`, background: T.gray50, whiteSpace: "nowrap" };
 
-// ── Shipment Row ───────────────────────────────────────────────
 function ShipRow({ ship, router }) {
   const [hov, setHov] = useState(false);
   const ss = SHIP_STATUS[ship.status];
@@ -210,9 +194,6 @@ function ShipRow({ ship, router }) {
   );
 }
 
-// ══════════════════════════════════════════════════════════════
-//  PAGE
-// ══════════════════════════════════════════════════════════════
 export default function DepartmentOverviewPage() {
   const router       = useRouter();
   const searchParams = useSearchParams();
@@ -252,7 +233,6 @@ export default function DepartmentOverviewPage() {
             <span style={{ fontSize: "12px", color: T.gray400, display: "flex", alignItems: "center", gap: "4px" }}><IcoMail /> {dept.headEmail}</span>
           </div>
         </div>
-        {/* Department tabs */}
         <div style={{ display: "flex", gap: "6px", background: T.gray100, padding: "4px", borderRadius: "10px" }}>
           {DEPARTMENTS.map(d => {
             const isActive = activeDept === d;
@@ -293,17 +273,18 @@ export default function DepartmentOverviewPage() {
             )}
           </div>
 
-          {/* Leaflet map — 400px tall, rounded */}
+          {/* ✅ Single LeafletMap instance, wrapped in MapErrorBoundary */}
           <div style={{ height: "400px", borderRadius: "10px", overflow: "hidden", border: `1px solid ${T.gray200}` }}>
-            <LeafletMap
-              pins={dept.mapPins}
-              routes={dept.routes}
-              selectedPin={selectedPin}
-              onPinClick={(id) => setSelectedPin(prev => prev === id ? null : id)}
-            />
+            <MapErrorBoundary>
+              <LeafletMap
+                pins={dept.mapPins}
+                routes={dept.routes}
+                selectedPin={selectedPin}
+                onPinClick={(id) => setSelectedPin(prev => prev === id ? null : id)}
+              />
+            </MapErrorBoundary>
           </div>
 
-          {/* Callout when pin selected */}
           {pinnedShip && (
             <div style={{ marginTop: "12px", padding: "12px 16px", background: T.blueBg, border: `1px solid ${T.blueBorder}`, borderRadius: "10px", display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap", animation: "fadeIn 0.18s ease" }}>
               <span style={{ fontFamily: T.mono, fontSize: "11px", color: T.blue, fontWeight: "600" }}>{pinnedShip.id}</span>

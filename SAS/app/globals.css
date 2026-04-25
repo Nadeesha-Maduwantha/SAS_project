@@ -1,6 +1,4 @@
 @import "tailwindcss";
-
->>>>>>> dev
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 4px;
@@ -15,4 +13,3 @@
   background: #c1c1c1;
   border-radius: 4px;
 }
->>>>>>> dev

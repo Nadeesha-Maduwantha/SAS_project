@@ -50,23 +50,23 @@ export default function ShipmentMilestonesPage() {
 
   const shipmentId = searchParams.get("id");
   const jobNumber  = searchParams.get("job");
+  const missingShipmentError = !shipmentId && !jobNumber
+    ? "No shipment ID provided in the URL."
+    : null;
 
   // ── State ──────────────────────────────────────────────────
   const [shipment,   setShipment]   = useState(null);
   const [milestones, setMilestones] = useState([]);  // ← real milestones from DB
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState(null);
+  const [loading,    setLoading]    = useState(!missingShipmentError);
+  const [error,      setError]      = useState(missingShipmentError);
 
   // ── Fetch ──────────────────────────────────────────────────
   useEffect(() => {
-    if (!shipmentId && !jobNumber) {
-      setError("No shipment ID provided in the URL.");
-      setLoading(false);
-      return;
-    }
+    if (missingShipmentError) return;
 
     const fetchShipment = async () => {
       try {
+        setError(null);
         const url = shipmentId
           ? `http://localhost:5000/api/shipments/${shipmentId}`
           : `http://localhost:5000/api/shipments/job/${jobNumber}`;
@@ -81,7 +81,7 @@ export default function ShipmentMilestonesPage() {
         } else {
           setError(result.error || "Shipment not found");
         }
-      } catch (err) {
+      } catch {
         setError("Could not connect to server. Is Flask running on port 5000?");
       } finally {
         setLoading(false);
@@ -89,7 +89,7 @@ export default function ShipmentMilestonesPage() {
     };
 
     fetchShipment();
-  }, [shipmentId, jobNumber]);
+  }, [missingShipmentError, shipmentId, jobNumber]);
 
   // ── Map DB milestones to what MilestonesTable expects ──────
   const mappedMilestones = milestones.map((m, index) => {

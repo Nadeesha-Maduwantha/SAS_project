@@ -121,11 +121,8 @@ const SORT_OPTIONS   = ["Default (Current First)", "Ascending (1 → 9)", "Desce
 
 // ── Filter Dropdown ───────────────────────────────────────────
 
-function FilterDropdown({ statusFilter, setStatusFilter, sortOrder, setSortOrder, onClose }) {
-  const [statusOpen, setStatusOpen] = useState(false);
-  const [sortOpen,   setSortOpen]   = useState(false);
-
-  const OptionPane = ({ options, selected, onSelect }) => (
+function FilterOptionPane({ options, selected, onSelect, onClose }) {
+  return (
     <div style={{
       borderLeft:   `1px solid ${T.gray200}`,
       padding:      "8px 0",
@@ -158,8 +155,10 @@ function FilterDropdown({ statusFilter, setStatusFilter, sortOrder, setSortOrder
       ))}
     </div>
   );
+}
 
-  const MenuRow = ({ label, isOpen, onClick }) => (
+function FilterMenuRow({ label, isOpen, onClick }) {
+  return (
     <div
       onClick={onClick}
       style={{
@@ -181,6 +180,11 @@ function FilterDropdown({ statusFilter, setStatusFilter, sortOrder, setSortOrder
       <span style={{ color: isOpen ? T.blue : T.gray400 }}><IcoChevronRight /></span>
     </div>
   );
+}
+
+function FilterDropdown({ statusFilter, setStatusFilter, sortOrder, setSortOrder, onClose }) {
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [sortOpen,   setSortOpen]   = useState(false);
 
   return (
     <div style={{
@@ -196,11 +200,11 @@ function FilterDropdown({ statusFilter, setStatusFilter, sortOrder, setSortOrder
       minWidth:     "180px",
     }}>
       <div style={{ padding: "8px 0", minWidth: "180px" }}>
-        <MenuRow label="Status"  isOpen={statusOpen} onClick={() => { setStatusOpen(o => !o); setSortOpen(false); }} />
-        <MenuRow label="Sort By" isOpen={sortOpen}   onClick={() => { setSortOpen(o => !o); setStatusOpen(false); }} />
+        <FilterMenuRow label="Status"  isOpen={statusOpen} onClick={() => { setStatusOpen(o => !o); setSortOpen(false); }} />
+        <FilterMenuRow label="Sort By" isOpen={sortOpen}   onClick={() => { setSortOpen(o => !o); setStatusOpen(false); }} />
       </div>
-      {statusOpen && <OptionPane options={STATUS_OPTIONS} selected={statusFilter} onSelect={setStatusFilter} />}
-      {sortOpen   && <OptionPane options={SORT_OPTIONS}   selected={sortOrder}    onSelect={setSortOrder}    />}
+      {statusOpen && <FilterOptionPane options={STATUS_OPTIONS} selected={statusFilter} onSelect={setStatusFilter} onClose={onClose} />}
+      {sortOpen   && <FilterOptionPane options={SORT_OPTIONS}   selected={sortOrder}    onSelect={setSortOrder}    onClose={onClose} />}
     </div>
   );
 }
@@ -386,16 +390,6 @@ export default function MilestonesTable({ role, shipment, milestones, contacts }
       sales_user:      contacts.client,
     };
     const recipient = recipientMap[role] || contacts.operationsUser;
-
-    // Build query params so the mail creation page can pre-fill fields
-    const params = new URLSearchParams({
-      to:          recipient?.email        ?? "",
-      toName:      recipient?.name         ?? "",
-      subject:     buildSubject(role, milestone, shipment),
-      shipmentId:  shipment.id,
-      milestone:   milestone.name,
-      role,
-    });
 
     // ── Navigate to milestone detail page where the alert can be sent ──
     router.push(`/admin/milestone_detail?milestoneId=${milestone.id}&shipmentId=${shipment.id}`);

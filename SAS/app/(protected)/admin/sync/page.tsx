@@ -45,6 +45,19 @@ const MOCK_SYNC_HISTORY = [
 type SyncStatus = 'success' | 'failed' | 'partial'
 type ErrorFilter = 'last' | 'all'
 type HistoryFilter = 'all' | 'success' | 'failed' | 'partial'
+type SyncResult = {
+  success?: boolean
+  inserted?: number
+  updated?: number
+  errors?: number
+  errorDetails?: Array<{
+    shipment_id: string
+    field: string
+    reason: string
+    timestamp: string
+  }>
+  error?: string
+}
 
 // ─── Helpers ───
 function formatDateTime(dt: string) {
