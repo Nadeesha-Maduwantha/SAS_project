@@ -58,7 +58,7 @@ export default function SalesUserShipmentsPage() {
       !s.llmIdentifiedType?.toLowerCase().includes('delivered')
     ).length,
     delayed: shipments.filter((s) =>
-      s.pickupDateStatus === 'Past' &&
+      s.pickupDateStatus === 'Delayed' &&
       !s.llmIdentifiedType?.toLowerCase().includes('delivered')
     ).length,
     delivered: shipments.filter((s) =>
@@ -68,21 +68,31 @@ export default function SalesUserShipmentsPage() {
 
   // Filter + Search
   const filteredShipments = useMemo(() => shipments.filter((s) => {
-    if (activeFilters.transportMode && s.transportMode !== activeFilters.transportMode) return false
-    if (activeFilters.currentStage &&
-      s.llmIdentifiedType !== activeFilters.currentStage &&
-      s.currentStage !== activeFilters.currentStage) return false
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase()
-      const client = (s.consigneeName ?? '').toLowerCase()
-      return (
-        s.cargowiseId.toLowerCase().includes(q) ||
-        client.includes(q) ||
-        (s.branch ?? '').toLowerCase().includes(q)
-      )
-    }
-    return true
-  }), [shipments, activeFilters, searchQuery])
+  if (activeFilters.transportMode && s.transportMode !== activeFilters.transportMode) return false
+  if (activeFilters.currentStage === 'Delayed') {
+    return (
+      s.pickupDateStatus === 'Delayed' &&
+      !s.llmIdentifiedType?.toLowerCase().includes('delivered')
+    )
+  }
+  if (activeFilters.currentStage === 'Delivered') {
+    return s.llmIdentifiedType?.toLowerCase().includes('delivered') ?? false
+  }
+  if (activeFilters.currentStage &&
+    s.llmIdentifiedType !== activeFilters.currentStage &&
+    s.currentStage !== activeFilters.currentStage) return false
+
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase()
+    const client = (s.consigneeName ?? '').toLowerCase()
+    return (
+      s.cargowiseId.toLowerCase().includes(q) ||
+      client.includes(q) ||
+      (s.branch ?? '').toLowerCase().includes(q)
+    )
+  }
+  return true
+}), [shipments, activeFilters, searchQuery])
 
   // Sort by pickup date nearest
   const sortedShipments = useMemo(() => {
@@ -115,6 +125,7 @@ export default function SalesUserShipmentsPage() {
         { label: 'Delivery Date', value: 'Delivery Date' },
         { label: 'Delivered to CFS warehouse', value: 'Delivered to CFS warehouse' },
         { label: 'Unknown', value: 'Unknown' },
+        { label: 'Delayed Shipments', value: 'Delayed' },
       ],
     },
   ]

@@ -90,8 +90,8 @@ export default function OperationLeftNavBar({ alertsCount = 0 }: Props) {
         {expandedSections.milestones && (
           <div className="nav-section-content">
             <button
-              className={`nav-item ${isActiveRoute('/Super_user/current_milestone') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/Super_user/current_milestone')}
+              className={`nav-item ${isActiveRoute('/operation_user/current_milestone') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/operation_user/current_milestone')}
             >
               Current Milestones
             </button>

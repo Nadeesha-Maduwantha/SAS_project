@@ -71,7 +71,7 @@ export default function AllShipmentsPage() {
       s.llmIdentifiedType?.toLowerCase().includes('delivered')
     ).length,
     delayed: shipments.filter((s) =>
-    s.pickupDateStatus === 'Past' &&
+    s.pickupDateStatus === 'Delayed' &&
     !s.llmIdentifiedType?.toLowerCase().includes('delivered')
   ).length,
   }
