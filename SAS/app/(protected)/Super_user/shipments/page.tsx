@@ -62,12 +62,18 @@ export default function SuperUserActiveShipmentsPage() {
   })
 
   const filteredShipments = tabFiltered.filter((s) => {
-    if (activeFilters.currentStage &&
-      s.llmIdentifiedType !== activeFilters.currentStage &&
-      s.currentStage !== activeFilters.currentStage) return false
-    if (searchQuery && !s.cargowiseId.toLowerCase().includes(searchQuery.toLowerCase())) return false
-    return true
-  })
+  if (activeFilters.currentStage === 'Delayed') {
+    return (
+      s.pickupDateStatus === 'Delayed' &&
+      !s.llmIdentifiedType?.toLowerCase().includes('delivered')
+    )
+  }
+  if (activeFilters.currentStage &&
+    s.llmIdentifiedType !== activeFilters.currentStage &&
+    s.currentStage !== activeFilters.currentStage) return false
+  if (searchQuery && !s.cargowiseId.toLowerCase().includes(searchQuery.toLowerCase())) return false
+  return true
+})
 
   const pageSize = 10
   const paginated = filteredShipments.slice((currentPage - 1) * pageSize, currentPage * pageSize)
@@ -81,6 +87,7 @@ export default function SuperUserActiveShipmentsPage() {
         { label: 'Delivery Date', value: 'Delivery Date' },
         { label: 'Delivered to CFS warehouse', value: 'Delivered to CFS warehouse' },
         { label: 'Unknown', value: 'Unknown' },
+        { label: 'Delayed Shipments', value: 'Delayed' },
       ],
     },
   ]

@@ -140,7 +140,7 @@ export async function getDelayedShipments(): Promise<Shipment[]> {
   const { data, error } = await supabase
     .from('shipments')
     .select('*')
-    .eq('pickup_date_status', 'Past')
+    .eq('pickup_date_status', 'Delayed')
 
   if (error) throw new Error(error.message)
   return (data ?? [])
@@ -198,7 +198,7 @@ export async function getDelayedStats() {
   const { data, error } = await supabase
     .from('shipments')
     .select('*')
-    .eq('pickup_date_status', 'Past')
+    .eq('pickup_date_status', 'Delayed')
 
   if (error) throw new Error(error.message)
 
@@ -287,7 +287,7 @@ export async function getDepartmentStats(department: string) {
   !s.llmIdentifiedType?.toLowerCase().includes('delivered')
 ).length,
     delayed: shipments.filter((s) =>
-      s.pickupDateStatus === 'Past' &&
+      s.pickupDateStatus === 'Delayed' &&
       !s.llmIdentifiedType?.toLowerCase().includes('delivered')
     ).length,
     atRisk: shipments.filter((s) => {

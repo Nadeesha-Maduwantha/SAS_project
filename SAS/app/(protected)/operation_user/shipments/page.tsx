@@ -58,7 +58,7 @@ export default function OperationUserShipmentsPage() {
       !s.llmIdentifiedType?.toLowerCase().includes('delivered')
     ).length,
     delayed: shipments.filter((s) =>
-      s.pickupDateStatus === 'Past' &&
+      s.pickupDateStatus === 'Delayed' &&
       !s.llmIdentifiedType?.toLowerCase().includes('delivered')
     ).length,
     delivered: shipments.filter((s) =>
@@ -68,12 +68,21 @@ export default function OperationUserShipmentsPage() {
 
   // Dropdown filter
   const dropdownFiltered = useMemo(() => shipments.filter((s) => {
-    if (activeFilters.transportMode && s.transportMode !== activeFilters.transportMode) return false
-    if (activeFilters.currentStage &&
-      s.llmIdentifiedType !== activeFilters.currentStage &&
-      s.currentStage !== activeFilters.currentStage) return false
-    return true
-  }), [shipments, activeFilters])
+  if (activeFilters.transportMode && s.transportMode !== activeFilters.transportMode) return false
+  if (activeFilters.currentStage === 'Delayed') {
+    return (
+      s.pickupDateStatus === 'Delayed' &&
+      !s.llmIdentifiedType?.toLowerCase().includes('delivered')
+    )
+  }
+  if (activeFilters.currentStage === 'Delivered') {
+    return s.llmIdentifiedType?.toLowerCase().includes('delivered') ?? false
+  }
+  if (activeFilters.currentStage &&
+    s.llmIdentifiedType !== activeFilters.currentStage &&
+    s.currentStage !== activeFilters.currentStage) return false
+  return true
+}), [shipments, activeFilters])
 
   // Search filter
   const filteredShipments = useMemo(() => dropdownFiltered.filter((s) => {
@@ -118,6 +127,7 @@ export default function OperationUserShipmentsPage() {
         { label: 'Delivery Date', value: 'Delivery Date' },
         { label: 'Delivered to CFS warehouse', value: 'Delivered to CFS warehouse' },
         { label: 'Unknown', value: 'Unknown' },
+        { label: 'Delayed Shipments', value: 'Delayed' }, 
       ],
     },
   ]
