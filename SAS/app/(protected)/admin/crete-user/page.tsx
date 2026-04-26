@@ -1,5 +1,5 @@
 'use client'
-import SuperLeftNavBar from '@/components/SuperUser/SuperLeftNavBar'
+import AdminLeftNavBar from '@/components/AdminUser/AdminLeftNavBar';
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'

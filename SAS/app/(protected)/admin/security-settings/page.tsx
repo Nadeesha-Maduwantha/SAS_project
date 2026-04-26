@@ -6,6 +6,7 @@ import PasswordPolicySection from "@/components/AdminUser/SecuritySettings/Passw
 import TwoFactorAuthSection from "@/components/AdminUser/SecuritySettings/TwoFactorAuth";
 import SessionManagementSection from "@/components/AdminUser/SecuritySettings/SessionManagement";
 import LoginSecuritySection from "@/components/AdminUser/SecuritySettings/LoginSecurity";
+import AdminLeftNavBar from '@/components/AdminUser/AdminLeftNavBar';
 import SecurityNotificationsSection from "@/components/AdminUser/SecuritySettings/SecurityNotifications";
 
 // ─── Default Data ─────────────────────────────────────────────────────────────
