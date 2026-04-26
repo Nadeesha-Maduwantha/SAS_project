@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { Shipment, ShipmentStatus } from '@/types'
+import { Shipment, ShipmentStatus, ShipmentMilestone } from '@/types'
 
 interface ShipmentRow {
   id: string
@@ -329,5 +329,28 @@ export async function getShipmentsBySalesUser(
     .select('*')
 
   if (error) throw new Error(error.message)
-  return (data ?? []).map(mapRow)
+  return data.map(mapRow)
+}
+
+// ─── Milestone Functions ───────────────────────────────────────────
+
+export async function getMilestonesByShipmentId(shipmentId: string): Promise<ShipmentMilestone[]> {
+  const { data, error } = await supabase
+    .from('shipment_milestones')
+    .select('id, shipment_id, name, scheduled_date, actual_date, status, created_at')
+    .eq('shipment_id', shipmentId)
+    .order('created_at', { ascending: true })
+
+  if (error) throw new Error(error.message)
+  return data || []
+}
+
+export async function getAllMilestones(): Promise<ShipmentMilestone[]> {
+  const { data, error } = await supabase
+    .from('shipment_milestones')
+    .select('id, shipment_id, name, scheduled_date, actual_date, status, created_at')
+    .order('created_at', { ascending: false })
+
+  if (error) throw new Error(error.message)
+  return data || []
 }

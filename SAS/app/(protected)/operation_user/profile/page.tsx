@@ -1,4 +1,5 @@
 import ProfilePage from "@/components/profile/ProfilePage";
+import OperationLeftNavBar from '@/components/OperationUser/OperationLeftNavBar';
 import { UserProfile } from "@/types/profile";
 
 const mockOperationUser: UserProfile = {

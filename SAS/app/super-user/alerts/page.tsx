@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     AlertCircle,
     Clock,
@@ -23,88 +23,33 @@ import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import EmailComposeModal from '@/components/EmailComposeModal';
 import AlertDetailsModal, { AlertData } from '@/components/AlertDetailsModal';
+import { getAllShipments } from '@/lib/services/shipment.service';
 
-// ─── Data ────────────────────────────────────────────────────────────────────
-const ALERTS: AlertData[] = [
-    {
-        id: '#SHP-9921',
-        client: 'TechParts Inc.',
-        clientInitial: 'T',
-        clientColor: '#3b82f6',
-        priority: 'Critical',
-        milestone: 'Port Arrival',
-        milestoneIcon: 'anchor',
-        issue: 'Customs clearance documentation missing...',
-        delay: '3 Days',
-        delayColor: '#ef4444',
-        status: 'Get Action',
-    },
-    {
-        id: '#SHP-9024',
-        client: 'Global Tech',
-        clientInitial: 'G',
-        clientColor: '#3b82f6',
-        priority: 'Medium',
-        milestone: 'Customs Clearance',
-        milestoneIcon: 'anchor',
-        issue: 'Missing commercial invoice paperwork',
-        delay: '2 Days',
-        delayColor: '#ef4444',
-        status: 'Action Taken',
-    },
-    {
-        id: '#SHP-8842',
-        client: 'Retail Max',
-        clientInitial: 'R',
-        clientColor: '#10b981',
-        priority: 'Low',
-        milestone: 'Transit to Port',
-        milestoneIcon: 'truck',
-        issue: 'Driver delayed due to weather conditions',
-        delay: '12 Hours',
-        delayColor: '#6b7280',
-        status: 'Action Taken',
-    },
-    {
-        id: '#SHP-7731',
-        client: 'FreshFoods Co.',
-        clientInitial: 'F',
-        clientColor: '#f59e0b',
-        priority: 'Medium',
-        milestone: 'Warehousing',
-        milestoneIcon: 'warehouse',
-        issue: 'Pallet damage reported during unloading',
-        delay: '2 Hours',
-        delayColor: '#6b7280',
-        status: 'Get Action',
-    },
-    {
-        id: '#SHP-6210',
-        client: 'AutoMotive Ltd.',
-        clientInitial: 'A',
-        clientColor: '#8b5cf6',
-        priority: 'Low',
-        milestone: 'Departure',
-        milestoneIcon: 'plane',
-        issue: 'Minor delay in loading sequence',
-        delay: '30 Min',
-        delayColor: '#6b7280',
-        status: 'Resolved',
-    },
-    {
-        id: '#SHP-5692',
-        client: 'MediCare Supply',
-        clientInitial: 'M',
-        clientColor: '#ec4899',
-        priority: 'Critical',
-        milestone: 'Last Mile',
-        milestoneIcon: 'navigation',
-        issue: 'Temperature excursion in refrigerated unit',
-        delay: '1 Day',
-        delayColor: '#ef4444',
-        status: 'Get Action',
-    },
-];
+// ─── Convert Shipment to AlertData ────────────────────────────────────────────
+async function loadAlertsFromSupabase(): Promise<AlertData[]> {
+    try {
+        const shipments = await getAllShipments();
+        
+        return shipments.map((shipment) => ({
+            id: shipment.id,
+            shipment_id: shipment.id,
+            client: shipment.shipperName || 'null',
+            clientInitial: shipment.shipperName?.charAt(0) || 'N',
+            clientColor: '#3b82f6',
+            priority: shipment.isPriority ? 'Critical' : shipment.delayDays && shipment.delayDays > 1 ? 'Medium' : 'Low',
+            milestone: shipment.currentStage || null,
+            milestoneIcon: 'anchor' as const,
+            issue: shipment.delayReason || null,
+            delay: shipment.delayDays ? `${shipment.delayDays} Days` : null,
+            delayColor: shipment.delayDays && shipment.delayDays > 2 ? '#ef4444' : '#f97316',
+            status: 'Get Action' as const,
+            createdAt: shipment.createdAt,
+        }));
+    } catch (error) {
+        console.error('Error loading alerts:', error);
+        return [];
+    }
+}
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
 function PriorityBadge({ level }: { level: AlertData['priority'] }) {
@@ -184,7 +129,16 @@ export default function AlertDashboardPage() {
     const [search, setSearch] = useState('');
     const [composeModalData, setComposeModalData] = useState<AlertData | null>(null);
     const [viewModalData, setViewModalData] = useState<AlertData | null>(null);
-    const [alertsList, setAlertsList] = useState<AlertData[]>(ALERTS);
+    const [alertsList, setAlertsList] = useState<AlertData[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    // Load alerts from Supabase
+    useEffect(() => {
+        loadAlertsFromSupabase().then(alerts => {
+            setAlertsList(alerts);
+            setLoading(false);
+        });
+    }, []);
 
     const filtered = alertsList.filter((a) => {
         const matchPriority = priorityFilter === 'All Priorities' || a.priority === priorityFilter;
@@ -206,22 +160,22 @@ export default function AlertDashboardPage() {
         {
             icon: <AlertCircle size={26} color="#ef4444" />,
             iconBg: '#fef2f2',
-            count: 14,
+            count: alertsList.filter(a => a.priority === 'Critical').length,
             label: 'Critical Alerts',
             borderColor: '#fca5a5',
         },
         {
             icon: <Clock size={26} color="#f97316" />,
             iconBg: '#fff7ed',
-            count: 42,
+            count: alertsList.filter(a => a.status === 'Get Action').length,
             label: 'Pending Review',
             borderColor: '#fdba74',
         },
         {
             icon: <CheckCircle2 size={26} color="#22c55e" />,
             iconBg: '#f0fdf4',
-            count: 8,
-            label: 'Resolved Today',
+            count: alertsList.filter(a => a.status === 'Resolved').length,
+            label: 'Resolved',
             borderColor: '#86efac',
         },
     ];
@@ -241,7 +195,7 @@ export default function AlertDashboardPage() {
                                 Alert Dashboard
                             </h1>
                             <p style={{ fontSize: '13.5px', color: '#6b7280', marginTop: '4px' }}>
-                                Overview of shipment delays and critical issues requiring attention.
+                                {loading ? 'Loading alerts from Supabase...' : `${alertsList.length} shipment(s) with alerts`}
                             </p>
                         </div>
                         <button style={{
@@ -309,6 +263,18 @@ export default function AlertDashboardPage() {
                         border: '1px solid #f0f0f0',
                         overflow: 'hidden',
                     } as React.CSSProperties}>
+                        {loading ? (
+                            <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
+                                <Clock size={32} style={{ margin: '0 auto 16px', opacity: 0.5 }} />
+                                <p>Loading alerts from Supabase...</p>
+                            </div>
+                        ) : alertsList.length === 0 ? (
+                            <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>
+                                <CheckCircle2 size={32} style={{ margin: '0 auto 16px', opacity: 0.5 }} />
+                                <p>No alerts found. All shipments are on track!</p>
+                            </div>
+                        ) : (
+                        <>
                         {/* Toolbar */}
                         <div style={{
                             display: 'flex',
@@ -527,13 +493,15 @@ export default function AlertDashboardPage() {
                             borderTop: '1px solid #f0f0f0',
                         } as React.CSSProperties}>
                             <span style={{ fontSize: '13px', color: '#9ca3af' }}>
-                                Showing 1 to {filtered.length} of 42 results
+                                Showing 1 to {filtered.length} of {alertsList.length} results
                             </span>
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <PageBtn label="Previous" icon={<ChevronLeft size={13} />} />
                                 <PageBtn label="Next" icon={<ChevronRight size={13} />} right />
                             </div>
                         </div>
+                        </>
+                        )}
                     </div>
                 </main>
             </div>

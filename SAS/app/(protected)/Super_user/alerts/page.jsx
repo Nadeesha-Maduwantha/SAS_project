@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     AlertCircle,
     Clock,
@@ -19,78 +19,40 @@ import {
     LayoutGrid,
     ChevronLeft,
     ChevronRight,
+    RefreshCw,
 } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
+import { supabase } from '@/lib/supabase';
 
-// ─── Data ────────────────────────────────────────────────────────────────────
-const ALERTS = [
-    {
-        id: '#SHP-9921',
-        client: 'TechParts Inc.',
-        clientInitial: 'T',
-        clientColor: '#3b82f6',
-        priority: 'Critical',
-        milestone: 'Port Arrival',
-        milestoneIcon: 'anchor',
-        issue: 'Customs clearance documentation missing...',
-        delay: '3 Days',
-        delayColor: '#ef4444',
-        status: 'Open',
-    },
-    {
-        id: '#SHP-8842',
-        client: 'Global Retailers',
-        clientInitial: 'G',
-        clientColor: '#22c55e',
-        priority: 'High',
-        milestone: 'In Transit',
-        milestoneIcon: 'truck',
-        issue: 'Driver delayed due to weather conditions',
-        delay: '12 Hours',
-        delayColor: '#f97316',
-        status: 'Processing',
-    },
-    {
-        id: '#SHP-7731',
-        client: 'FreshFoods Co.',
-        clientInitial: 'F',
-        clientColor: '#f59e0b',
-        priority: 'Medium',
-        milestone: 'Warehousing',
-        milestoneIcon: 'warehouse',
-        issue: 'Pallet damage reported during unloading',
-        delay: '2 Hours',
-        delayColor: '#6b7280',
-        status: 'Investigating',
-    },
-    {
-        id: '#SHP-6210',
-        client: 'AutoMotive Ltd.',
-        clientInitial: 'A',
-        clientColor: '#8b5cf6',
-        priority: 'Low',
-        milestone: 'Departure',
-        milestoneIcon: 'plane',
-        issue: 'Minor delay in loading sequence',
-        delay: '30 Min',
-        delayColor: '#6b7280',
-        status: 'Resolved',
-    },
-    {
-        id: '#SHP-5692',
-        client: 'MediCare Supply',
-        clientInitial: 'M',
-        clientColor: '#ec4899',
-        priority: 'Critical',
-        milestone: 'Last Mile',
-        milestoneIcon: 'navigation',
-        issue: 'Temperature excursion in refrigerated unit',
-        delay: '1 Day',
-        delayColor: '#ef4444',
-        status: 'Open',
-    },
-];
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+const CLIENT_COLORS = ['#3b82f6','#22c55e','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#f97316','#84cc16'];
+
+function getMilestoneIcon(name = '') {
+    const n = name.toLowerCase();
+    if (n.includes('port') || n.includes('arrival') || n.includes('anchor')) return 'anchor';
+    if (n.includes('transit') || n.includes('truck') || n.includes('road')) return 'truck';
+    if (n.includes('warehouse') || n.includes('storage')) return 'warehouse';
+    if (n.includes('departure') || n.includes('flight') || n.includes('air')) return 'plane';
+    return 'navigation';
+}
+
+function mapRow(row, idx) {
+    const initial = String(row.shipment_id || '?')[0].toUpperCase();
+    return {
+        id: String(row.shipment_id),
+        client: String(row.shipment_id),
+        clientInitial: initial,
+        clientColor: CLIENT_COLORS[idx % CLIENT_COLORS.length],
+        priority: row.priority || 'Medium',
+        milestone: row.name || '—',
+        milestoneIcon: getMilestoneIcon(row.name),
+        issue: row.description || row.notes || '—',
+        delay: row.delay || '—',
+        delayColor: row.priority === 'Critical' ? '#ef4444' : row.priority === 'High' ? '#f97316' : '#6b7280',
+        status: row.status || 'Open',
+    };
+}
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
 function PriorityBadge({ level }) {
@@ -169,19 +131,37 @@ function ClientAvatar({ initial, color, name }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AlertDashboardPage() {
-    const [viewMode, setViewMode] = useState('table'); // 'table' | 'cards'
+    const [viewMode, setViewMode] = useState('table');
     const [priorityFilter, setPriorityFilter] = useState('All Priorities');
     const [statusFilter, setStatusFilter] = useState('All Statuses');
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState([]);
+    const [alerts, setAlerts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    const filtered = ALERTS.filter((a) => {
+    const fetchAlerts = async () => {
+        setLoading(true);
+        setError(null);
+        const { data, error: err } = await supabase
+            .from('shipment_milestones')
+            .select('shipment_id, name, status, priority, description, notes, delay');
+        if (err) {
+            setError(err.message);
+        } else {
+            setAlerts((data || []).map(mapRow));
+        }
+        setLoading(false);
+    };
+
+    useEffect(() => { fetchAlerts(); }, []);
+
+    const filtered = alerts.filter((a) => {
         const matchPriority = priorityFilter === 'All Priorities' || a.priority === priorityFilter;
         const matchStatus = statusFilter === 'All Statuses' || a.status === statusFilter;
         const matchSearch = search === '' ||
             a.id.toLowerCase().includes(search.toLowerCase()) ||
-            a.client.toLowerCase().includes(search.toLowerCase()) ||
-            a.issue.toLowerCase().includes(search.toLowerCase());
+            a.milestone.toLowerCase().includes(search.toLowerCase());
         return matchPriority && matchStatus && matchSearch;
     });
 
@@ -189,26 +169,30 @@ export default function AlertDashboardPage() {
         setSelected((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
     };
 
+    const highPriority = alerts.filter(a => a.priority === 'Critical' || a.priority === 'High').length;
+    const pending = alerts.filter(a => a.status === 'Open' || a.status === 'Processing').length;
+    const resolved = alerts.filter(a => a.status === 'Resolved').length;
+
     const statsCards = [
         {
             icon: <AlertCircle size={26} color="#ef4444" />,
             iconBg: '#fef2f2',
-            count: 14,
+            count: highPriority,
             label: 'High Priority Alerts',
             borderColor: '#fca5a5',
         },
         {
             icon: <Clock size={26} color="#f97316" />,
             iconBg: '#fff7ed',
-            count: 42,
+            count: pending,
             label: 'Pending Review',
             borderColor: '#fdba74',
         },
         {
             icon: <CheckCircle2 size={26} color="#22c55e" />,
             iconBg: '#f0fdf4',
-            count: 8,
-            label: 'Resolved Today',
+            count: resolved,
+            label: 'Resolved',
             borderColor: '#86efac',
         },
     ];
