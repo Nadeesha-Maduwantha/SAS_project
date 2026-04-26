@@ -14,7 +14,7 @@
     "jspdf-autotable": "^5.0.7",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.574.0",
-    "next": "^16.2.1",
+    "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-leaflet": "^5.0.0"
@@ -25,17 +25,11 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-<<<<<<< HEAD
-    "eslint": "^10.0.1",
-    "eslint-config-next": "^12.0.4",
-    "tailwindcss": "^4",
-=======
     "autoprefixer": "^10.5.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "postcss": "^8.5.10",
     "tailwindcss": "^4.2.4",
->>>>>>> 21f793f1dab44f11c2278ee83fb129acbd8148ce
     "typescript": "^5"
   }
 }
