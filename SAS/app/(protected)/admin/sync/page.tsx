@@ -101,7 +101,7 @@ export default function SyncManagementPage() {
   const [minErrors, setMinErrors] = useState(1)
   const [settingsSaved, setSettingsSaved] = useState(false)
   const [scheduleSaved, setScheduleSaved] = useState(false)
-  const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
+  const [syncResult, setSyncResult] = useState<any>(null)
   
   const now = new Date()
  
@@ -129,7 +129,7 @@ export default function SyncManagementPage() {
     clearInterval(interval)
     setSyncProgress(100)
     setSyncResult(result)
-  } catch {
+  } catch (error) {
     clearInterval(interval)
     setSyncProgress(0)
   } finally {

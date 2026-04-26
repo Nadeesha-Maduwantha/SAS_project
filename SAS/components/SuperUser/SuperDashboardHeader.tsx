@@ -35,6 +35,10 @@ export default function SuperDashboardHeader({ onDateRangeChange }: Props) {
     return () => document.removeEventListener('mousedown', onDown);
   }, []);
 
+  useEffect(() => {
+    if (from && to && to < from) setTo(from);
+  }, [from, to]);
+
   const label = useMemo(() => fmtRange(appliedFrom, appliedTo), [appliedFrom, appliedTo]);
 
   const apply = () => {
@@ -87,17 +91,7 @@ export default function SuperDashboardHeader({ onDateRangeChange }: Props) {
             <div className="super-header__dateGrid">
               <div className="super-header__dateField">
                 <label>From</label>
-                <input
-                  type="date"
-                  value={from}
-                  onChange={(e) => {
-                    const nextFrom = e.target.value;
-                    setFrom(nextFrom);
-                    setTo((currentTo) => (
-                      nextFrom && currentTo && currentTo < nextFrom ? nextFrom : currentTo
-                    ));
-                  }}
-                />
+                <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
               </div>
 
               <div className="super-header__dateField">

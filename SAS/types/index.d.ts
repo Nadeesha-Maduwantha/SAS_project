@@ -19,14 +19,12 @@ export interface CargowiseUser {
 
 export interface Shipment {
   id: string
-  cargowiseId: string
-  originCity: string
-  originCountryCode: string
-  destinationCity: string
-  destinationCountryCode: string
-  currentStage: ShipmentStatus
+  trackingNumber: string
+  status: ShipmentStatus
+  origin: Location
+  destination: Location
+  estimatedDelivery: Date
   carrier: string
-  estimatedArrival: Date | null
   createdBy: CargowiseUser
   lastUpdatedBy: CargowiseUser
   createdAt: Date
@@ -37,38 +35,10 @@ export interface Shipment {
   deliveryDate?: Date
   archivedDate?: Date
   transitDays?: number
-<<<<<<< HEAD
-jobNumber?: string
-houseBillNumber?: string
-transportMode?: string
-branch?: string
-gbCode?: string
-gcCode?: string
-stDescription?: string
-stNoteText?: string
-cargoReadyDate?: Date
-cargoReceivedDate?: Date
-cargoPickupDate?: Date
-pickupDateStatus?: string
-jobLastEditTime?: Date
-llmIdentifiedType?: string
-llmNote?: string
-shipperName?: string
-shipperAddress?: string
-shipperContact?: string
-shipperPhone?: string
-consigneeName?: string
-consigneeAddress?: string
-consigneeContact?: string
-consigneeEmail?: string
-<<<<<<< HEAD
-
-=======
 salesUserStaffCode?: string
 salesUserName?: string
 salesUserEmail?: string
->>>>>>> 99762374183279ee8046687e9690d09ac424354d
-=======
+
   jobNumber?: string
   houseBillNumber?: string
   transportMode?: string
@@ -95,29 +65,7 @@ salesUserEmail?: string
   salesUserStaffCode?: string
   salesUserName?: string
   salesUserEmail?: string
-  jsPk?: string
-  llmCargoPickupDate?: string
-  runningDateTime?: Date | null
-  noteNumber?: number | null
->>>>>>> 21f793f1dab44f11c2278ee83fb129acbd8148ce
-}
 
-export interface ShipmentStats {
-  total: number
-  inTransit: number
-  exceptions: number
-  deliveredToday: number
-}
-
-export interface DelayedStats {
-  totalDelayed: number
-  highPriority: number
-  avgDelayDays: number
-  customsIssues: number
-<<<<<<< HEAD
-
-=======
->>>>>>> 21f793f1dab44f11c2278ee83fb129acbd8148ce
 }
 
 export interface User {
@@ -144,10 +92,6 @@ export interface UserFormData {
 }
 
 // ─── Profile Types ───────────────────────────────────────────
-<<<<<<< HEAD
-
-=======
->>>>>>> 21f793f1dab44f11c2278ee83fb129acbd8148ce
 export interface UserProfile {
   id: string;
   fullName: string;
@@ -166,10 +110,6 @@ export interface PasswordChange {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
-<<<<<<< HEAD
-}
-=======
 }
 
 declare module '*.css'
->>>>>>> 21f793f1dab44f11c2278ee83fb129acbd8148ce

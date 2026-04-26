@@ -107,6 +107,15 @@ export default function SuperLeftNavBar({ alertsCount = 0 }: Props) {
       </div>
       
 
+      {/* ✅ Create Template (NEW) */}
+      <button
+        className="nav-section-header"
+        onClick={() => handleNavigation('/Super_user/templates')}
+      >
+        <Plus className="nav-icon" />
+        <span>Create Template</span>
+      </button>
+      </div>
 
       {/* Alerts */}
       <div className="nav-section">
