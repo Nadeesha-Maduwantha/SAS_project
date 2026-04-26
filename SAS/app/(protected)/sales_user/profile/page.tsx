@@ -1,4 +1,5 @@
 import ProfilePage from "@/components/profile/ProfilePage";
+import SalesLeftNavBar from '@/components/SalesUser/SalesLeftNavBar';
 import { UserProfile } from "@/types/profile";
 
 const mockSalesUser: UserProfile = {

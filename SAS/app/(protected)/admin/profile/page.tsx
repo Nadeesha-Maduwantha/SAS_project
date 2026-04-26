@@ -1,4 +1,5 @@
 import ProfilePage from "@/components/profile/ProfilePage";
+import AdminLeftNavBar from '@/components/AdminUser/AdminLeftNavBar';
 import { UserProfile } from "@/types/profile";
 
 // Mock data - replace with real API fetch
