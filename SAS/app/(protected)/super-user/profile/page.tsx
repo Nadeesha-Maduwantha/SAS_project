@@ -1,4 +1,5 @@
 import ProfilePage from "@/components/profile/ProfilePage";
+import SuperLeftNavBar from '@/components/SuperUser/SuperLeftNavBar'
 import { UserProfile } from "@/types/profile";
 
 const mockSuperUser: UserProfile = {

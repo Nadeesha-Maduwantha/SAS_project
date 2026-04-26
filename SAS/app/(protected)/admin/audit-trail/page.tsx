@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import AuditTrailStats from "@/components/AdminUser/AuditTrail/AuditTrailStats";
 import AuditTrailFilters from "@/components/AdminUser/AuditTrail/AuditTrailFilters";
+import AdminLeftNavBar from '@/components/AdminUser/AdminLeftNavBar';
 import AuditTrailTable from "@/components/AdminUser/AuditTrail/AuditTrailTable";
 import { AuditTrailEvent, AuditFilters, AuditTrailStatsData } from "@/types/audit-trail";
 
