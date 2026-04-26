@@ -133,3 +133,52 @@ def get_errors():
         return jsonify({'data': errors})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+from apscheduler.triggers.cron import CronTrigger
+
+@sync_bp.route('/api/sync/schedule', methods=['GET'])
+def get_schedule():
+    try:
+        from services.supabase_service import get_sync_settings
+        settings = get_sync_settings()
+        return jsonify({'data': settings}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@sync_bp.route('/api/sync/schedule', methods=['POST'])
+def save_schedule():
+    try:
+        from flask import request
+        from services.supabase_service import save_sync_settings
+        from app import scheduler, run_sync_job
+
+        data = request.get_json()
+        schedule_time = data.get('schedule_time')  # format: "HH:MM"
+
+        if not schedule_time:
+            return jsonify({'error': 'schedule_time is required'}), 400
+
+        hour, minute = schedule_time.split(':')
+
+        # Save to database
+        save_sync_settings(
+            schedule_hours=hour,
+            schedule_minute=int(minute)
+        )
+
+        # Add new job to scheduler
+        scheduler.add_job(
+            run_sync_job,
+            CronTrigger(hour=hour, minute=int(minute), timezone='Asia/Colombo'),
+            id='custom_sync',
+            replace_existing=True
+        )
+
+        return jsonify({
+            'success': True,
+            'message': f'Schedule saved — sync will run at {schedule_time} Sri Lanka time'
+        }), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

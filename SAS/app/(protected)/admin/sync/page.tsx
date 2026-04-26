@@ -55,6 +55,7 @@ export default function SyncManagementPage() {
   const [errorsPage, setErrorsPage] = useState(1)
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
   const [scheduleTime, setScheduleTime] = useState('08:00')
+  const [customScheduleTime, setCustomScheduleTime] = useState<string | null>(null)
   const [alertOnFailure, setAlertOnFailure] = useState(true)
   const [alertOnValidation, setAlertOnValidation] = useState(true)
   const [minErrors, setMinErrors] = useState(1)
@@ -72,6 +73,7 @@ export default function SyncManagementPage() {
   useEffect(() => {
     fetchSyncLogs()
     fetchSyncErrors()
+    fetchSchedule()
   }, [])
 
   async function fetchSyncLogs() {
@@ -97,6 +99,25 @@ export default function SyncManagementPage() {
       }
     } catch (error) {
       console.error('Failed to fetch sync errors:', error)
+    }
+  }
+
+  async function fetchSchedule() {
+    try {
+      const response = await fetch('http://localhost:5000/api/sync/schedule')
+      const result = await response.json()
+      if (result.data) {
+        const hours = result.data.schedule_hours
+        const minute = result.data.schedule_minute
+        // Only show custom time if it's not the default fixed schedule
+        if (hours !== '0,6,12,18') {
+          const formattedTime = `${String(hours).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+          setScheduleTime(formattedTime)
+          setCustomScheduleTime(formattedTime)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch schedule:', error)
     }
   }
 
@@ -133,9 +154,22 @@ export default function SyncManagementPage() {
     setTimeout(() => setSettingsSaved(false), 2000)
   }
 
-  function handleSaveSchedule() {
-    setScheduleSaved(true)
-    setTimeout(() => setScheduleSaved(false), 2000)
+  async function handleSaveSchedule() {
+    try {
+      const response = await fetch('http://localhost:5000/api/sync/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schedule_time: scheduleTime })
+      })
+      const result = await response.json()
+      if (result.success) {
+        setCustomScheduleTime(scheduleTime)
+        setScheduleSaved(true)
+        setTimeout(() => setScheduleSaved(false), 2000)
+      }
+    } catch (error) {
+      console.error('Failed to save schedule:', error)
+    }
   }
 
   const latestSync = syncHistory[0]
@@ -534,13 +568,20 @@ export default function SyncManagementPage() {
             </div>
 
             <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '12px 14px', marginBottom: '14px' }}>
-              <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 2px' }}>Current Schedule</p>
+              <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 2px' }}>Fixed Schedule</p>
               <p style={{ fontSize: '13px', fontWeight: 600, color: '#111827', margin: 0 }}>Auto sync at 6AM, 12PM, 6PM, 12AM</p>
             </div>
 
+            {customScheduleTime && (
+              <div style={{ background: '#eff6ff', borderRadius: '8px', padding: '12px 14px', marginBottom: '14px' }}>
+                <p style={{ fontSize: '12px', color: '#3b82f6', margin: '0 0 2px' }}>Custom Schedule</p>
+                <p style={{ fontSize: '13px', fontWeight: 600, color: '#1d4ed8', margin: 0 }}>Also syncs at {customScheduleTime} Sri Lanka time</p>
+              </div>
+            )}
+
             <div style={{ marginBottom: '12px' }}>
               <label style={{ fontSize: '12px', fontWeight: 500, color: '#374151', display: 'block', marginBottom: '6px' }}>
-                Manual Sync Time
+                Add Custom Sync Time
               </label>
               <input
                 type="time"

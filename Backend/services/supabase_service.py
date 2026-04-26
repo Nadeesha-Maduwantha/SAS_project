@@ -69,3 +69,15 @@ def get_sync_errors(sync_id=None):
     if isinstance(data, dict):
         return [data]
     return data if data else []
+
+def get_sync_settings():
+    response = supabase.table('sync_settings').select('*').limit(1).execute()
+    return response.data[0] if response.data else None
+
+def save_sync_settings(schedule_hours, schedule_minute):
+    response = supabase.table('sync_settings').update({
+        'schedule_hours': schedule_hours,
+        'schedule_minute': schedule_minute,
+        'updated_at': 'now()'
+    }).neq('id', '00000000-0000-0000-0000-000000000000').execute()
+    return response.data

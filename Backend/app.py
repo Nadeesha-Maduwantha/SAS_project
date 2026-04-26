@@ -164,10 +164,31 @@ def health():
 scheduler = BackgroundScheduler()
 scheduler.add_job(
     run_sync_job,
-    CronTrigger(hour='0,6,12,18', minute=0, timezone='Asia/Colombo')
+    CronTrigger(hour='0,6,12,18', minute=0, timezone='Asia/Colombo'),
+    id='fixed_sync'
 )
+
+# Load custom schedule from database if exists
+try:
+    from services.supabase_service import get_sync_settings
+    settings = get_sync_settings()
+    if settings:
+        scheduler.add_job(
+            run_sync_job,
+            CronTrigger(
+                hour=settings['schedule_hours'],
+                minute=settings['schedule_minute'],
+                timezone='Asia/Colombo'
+            ),
+            id='custom_sync',
+            replace_existing=True
+        )
+        print(f"Custom sync loaded: {settings['schedule_hours']}:{settings['schedule_minute']}")
+except Exception as e:
+    print(f'Could not load custom schedule: {e}')
+
 scheduler.start()
-print('Scheduler started — sync runs every 6 hours')
+print('Scheduler started — fixed sync at 6AM, 12PM, 6PM, 12AM Sri Lanka time')
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000, use_reloader=False)
