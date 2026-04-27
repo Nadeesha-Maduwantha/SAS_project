@@ -13,3 +13,11 @@ def get_supabase() -> Client:
     
     print(f"Connecting to Supabase: {url}")  # ← debug print
     return create_client(url, key)
+
+def get_shipment_milestones(shipment_id):
+    response = supabase.table('shipment_milestones') \
+        .select('*') \
+        .eq('shipment_id', shipment_id) \
+        .order('sequence_order') \
+        .execute()
+    return response.data if response.data else []

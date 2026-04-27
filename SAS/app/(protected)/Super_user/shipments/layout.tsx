@@ -1,17 +1,10 @@
-import SuperLeftNavBar from '@/components/SuperUser/SuperLeftNavBar'
-import '@/styles/SuperStyles/SuperDashboardLayout.css'
+import type { ReactNode } from 'react';
+import '@/styles/AdminStyles/AdminLayout.css';
 
-type ShipmentsLayoutProps = {
-  children: React.ReactNode
-}
+type Props = {
+  children: ReactNode;
+};
 
-export default function SuperUserShipmentsLayout({ children }: ShipmentsLayoutProps) {
-  return (
-    <div className="super-layout">
-      <SuperLeftNavBar />
-      <div className="super-content">
-        <div className="super-inner">{children}</div>
-      </div>
-    </div>
-  )
+export default function AdminShipmentsLayout({ children }: Props) {
+  return <>{children}</>;
 }

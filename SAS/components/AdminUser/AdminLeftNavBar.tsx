@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   ChevronDown,
   RefreshCw,
+  MapPin,
 } from 'lucide-react';
 
 import '../../styles/ComponentStyles/AdminLeftNavBar.css';
@@ -26,7 +27,7 @@ export default function AdminLeftNavBar() {
     departmentManagement: false,
     shipments: false,
     alerts: false,
-    systemConfig: false,
+    milestones: false,
     securityAudit: false,
   });
 
@@ -76,21 +77,20 @@ export default function AdminLeftNavBar() {
         {expandedSections.userManagement && (
           <div className="nav-section-content">
             <button
-              className={`nav-item ${isActiveRoute('/admin/users/edit-user') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/admin/users/edit-user')}
-            >
-              Edit User
-            </button>
-
-            <button
-              className={`nav-item ${isActiveRoute('/admin/users/add-user') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/admin/users/add-user')}
+              className={`nav-item ${isActiveRoute('/admin/create_user') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/admin/create_user')}
             >
               Add New User
             </button>
             <button
-              className={`nav-item ${isActiveRoute('/admin/users/activity') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/admin/users/activity')}
+              className={`nav-item ${isActiveRoute('/admin/edit-user') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/admin/edit-user')}
+            >
+              Edit User
+            </button>
+            <button
+              className={`nav-item ${isActiveRoute('/admin/access-logs') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/admin/access-logs')}
             >
               Activity Logs
             </button>
@@ -114,17 +114,10 @@ export default function AdminLeftNavBar() {
         {expandedSections.departmentManagement && (
           <div className="nav-section-content">
             <button
-              className={`nav-item ${isActiveRoute('/admin/departments') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/admin/departments')}
+              className={`nav-item ${isActiveRoute('/admin/department_overview') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/admin/department_overview')}
             >
               Departments
-            </button>
-
-            <button
-              className={`nav-item ${isActiveRoute('/admin/departments/assign') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/admin/departments/assign')}
-            >
-              Assign Managers
             </button>
           </div>
         )}
@@ -152,14 +145,12 @@ export default function AdminLeftNavBar() {
             >
               Active Shipments
             </button>
-
             <button
               className={`nav-item ${isActiveRoute('/admin/shipments/delayed') ? 'active' : ''}`}
               onClick={() => handleNavigation('/admin/shipments/delayed')}
             >
-              Delayed shipment
+              Delayed Shipments
             </button>
-
             <button
               className={`nav-item ${isActiveRoute('/admin/shipments/archive') ? 'active' : ''}`}
               onClick={() => handleNavigation('/admin/shipments/archive')}
@@ -181,68 +172,55 @@ export default function AdminLeftNavBar() {
         {expandedSections.alerts && (
           <div className="nav-section-content">
             <button
-              className={`nav-item ${
-                isActiveRoute('/admin/alerts') &&
-                !pathname.includes('/urgent') &&
-                !pathname.includes('/resolved')
-                  ? 'active'
-                  : ''
-              }`}
+              className={`nav-item ${isActiveRoute('/admin/alerts') ? 'active' : ''}`}
               onClick={() => handleNavigation('/admin/alerts')}
             >
               All Alerts
             </button>
-
-            <button
-              className={`nav-item ${isActiveRoute('/admin/alerts/urgent') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/admin/alerts/urgent')}
-            >
-              Urgent Alerts
-            </button>
-
-            <button
-              className={`nav-item ${isActiveRoute('/admin/alerts/resolved') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/admin/alerts/resolved')}
-            >
-              Resolved Alerts
-            </button>
           </div>
         )}
       </div>
 
-      {/* System Configuration */}
+      {/* Milestones */}
       <div className="nav-section">
-        <button className="nav-section-header" onClick={() => toggleSection('systemConfig')}>
-          <SlidersHorizontal className="nav-icon" />
-          <span>System Configuration</span>
-          <ChevronDown className={`chevron-icon ${expandedSections.systemConfig ? 'expanded' : ''}`} />
+        <button className="nav-section-header" onClick={() => toggleSection('milestones')}>
+          <MapPin className="nav-icon" />
+          <span>Milestones</span>
+          <ChevronDown className={`chevron-icon ${expandedSections.milestones ? 'expanded' : ''}`} />
         </button>
 
-        {expandedSections.systemConfig && (
+        {expandedSections.milestones && (
           <div className="nav-section-content">
             <button
-              className={`nav-item ${isActiveRoute('/admin/config') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/admin/config')}
+              className={`nav-item ${isActiveRoute('/admin/milestone_templates_list') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/admin/milestone_templates_list')}
             >
-              Settings
+              Templates List
             </button>
-
             <button
-              className={`nav-item ${isActiveRoute('/admin/config/rules') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/admin/config/rules')}
+              className={`nav-item ${isActiveRoute('/admin/milestone_template_create') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/admin/milestone_template_create')}
             >
-              Alert Rules
+              Create Template
+            </button>
+            <button
+              className={`nav-item ${isActiveRoute('/admin/current_milestone') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/admin/current_milestone')}
+            >
+              Current Milestones
             </button>
           </div>
         )}
       </div>
+
+      {/* Sync */}
       <div className="nav-section">
         <button
-              className={`nav-section-header ${isActiveRoute('/admin/sync') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/admin/sync')}
-            >
-              <RefreshCw className="nav-icon" />
-          <span>System Configuration</span>
+          className={`nav-section-header ${isActiveRoute('/admin/sync') ? 'active' : ''}`}
+          onClick={() => handleNavigation('/admin/sync')}
+        >
+          <RefreshCw className="nav-icon" />
+          <span>Sync</span>
         </button>
       </div>
 
@@ -257,17 +235,16 @@ export default function AdminLeftNavBar() {
         {expandedSections.securityAudit && (
           <div className="nav-section-content">
             <button
-              className={`nav-item ${isActiveRoute('/admin/audit') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/admin/audit')}
+              className={`nav-item ${isActiveRoute('/admin/audit-trail') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/admin/audit-trail')}
             >
               Audit Logs
             </button>
-
             <button
-              className={`nav-item ${isActiveRoute('/admin/audit/access') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/admin/audit/access')}
+              className={`nav-item ${isActiveRoute('/admin/security-settings') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/admin/security-settings')}
             >
-              Access Control
+              Security Settings
             </button>
           </div>
         )}
