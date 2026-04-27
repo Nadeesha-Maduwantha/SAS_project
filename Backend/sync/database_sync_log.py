@@ -140,3 +140,5 @@ def get_last_sync(sync_type: str) -> dict:
         return response.data or {}
     except Exception:
         return {}
+    
+#added to temp_dev
