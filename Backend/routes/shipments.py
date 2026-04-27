@@ -28,6 +28,62 @@ def get_all_shipments():
         return jsonify({"data": response.data}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+
+
+@shipments_bp.route('/api/shipments/current-milestones', methods=['GET'])
+def get_current_milestones():
+    try:
+        # Get all shipments
+        shipments_response = (
+            supabase.table('shipments')
+            .select(
+                'id, job_number, house_bill_number, transport_mode, branch,'
+                'consignee_name, consignee_email,'
+                'origin_city, origin_country_code,'
+                'destination_city, destination_country_code,'
+                'current_stage, carrier, is_priority,'
+                'created_by_name, sales_user_name'
+            )
+            .order('created_at', desc=True)
+            .execute()
+        )
+
+        if not shipments_response.data:
+            return jsonify({"data": []}), 200
+
+        # Get all non-completed milestones ordered by sequence
+        milestones_response = (
+            supabase.table('shipment_milestones')
+            .select('*')
+            .neq('status', 'completed')
+            .order('sequence_order')
+            .execute()
+        )
+
+        # Build a map: shipment_id → current milestone (first non-completed)
+        milestone_map = {}
+        for m in (milestones_response.data or []):
+            sid = m['shipment_id']
+            if sid not in milestone_map:
+                milestone_map[sid] = m  # first one = current (lowest sequence)
+
+        # Combine shipments with their current milestone
+        result = []
+        for s in shipments_response.data:
+            current = milestone_map.get(s['id'])
+            result.append({
+                "shipment": s,
+                "current_milestone": current  # None if all completed or no milestones
+            })
+
+        return jsonify({"data": result}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
 
 @shipments_bp.route('/api/shipments/<shipment_id>', methods=['GET'])
 def get_shipment(shipment_id):
