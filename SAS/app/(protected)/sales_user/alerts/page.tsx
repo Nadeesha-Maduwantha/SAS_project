@@ -194,6 +194,25 @@ export default function AlertDashboardPage() {
         setComposeOpen(true);
     };
 
+    const updateAlertStatus = async (alertId: string, newStatus: string) => {
+        const shipmentId = alertId.split('-').slice(0, -1).join('-');
+        
+        const { error } = await supabase
+            .from('shipment_milestones')
+            .update({ status: newStatus })
+            .eq('shipment_id', shipmentId);
+
+        if (error) {
+            console.error('Error updating status:', error);
+            return false;
+        }
+
+        setAlerts(prev => prev.map(alert => 
+            alert.id === alertId ? { ...alert, status: newStatus as Alert['status'] } : alert
+        ));
+        return true;
+    };
+
     const fetchAlerts = async () => {
         setLoading(true);
         setError(null);
@@ -351,7 +370,16 @@ export default function AlertDashboardPage() {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 <ActionBtn icon={<Eye size={14} />}  title="View"  onClick={() => openDetails(alert)} />
                                                 <ActionBtn icon={<Mail size={14} />} title="Email" onClick={() => openCompose(toAlertData(alert))} />
-                                                <input type="checkbox" onClick={(e) => e.stopPropagation()} />
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={alert.status === 'Action Taken'}
+                                                    onChange={async (e) => {
+                                                        e.stopPropagation();
+                                                        const newStatus = e.target.checked ? 'Action Taken' : 'Get Action';
+                                                        await updateAlertStatus(alert.id, newStatus);
+                                                    }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
                                             </div>
                                         </td>
                                     </tr>
@@ -377,7 +405,21 @@ export default function AlertDashboardPage() {
                                 <div style={{ marginTop: '12px', fontSize: '12.5px', color: '#6b7280', lineHeight: 1.5 }}>{alert.issue}</div>
                                 <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <StatusBadge status={alert.status} />
-                                    <span style={{ fontWeight: 700, fontSize: '13px', color: alert.delayColor }}>⏱ {alert.delay}</span>
+                                    <span style={{ fontWeight: 700, fontSize: '13px', color: alert.delayColor }}>{alert.delay === '—' ? '' : alert.delay}</span>
+                                </div>
+                                <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '6px' }} onClick={(e) => e.stopPropagation()}>
+                                    <ActionBtn icon={<Eye size={14} />}  title="View"  onClick={() => openDetails(alert)} />
+                                    <ActionBtn icon={<Mail size={14} />} title="Email" onClick={() => openCompose(toAlertData(alert))} />
+                                    <input 
+                                        type="checkbox" 
+                                        checked={alert.status === 'Action Taken'}
+                                        onChange={async (e) => {
+                                            e.stopPropagation();
+                                            const newStatus = e.target.checked ? 'Action Taken' : 'Get Action';
+                                            await updateAlertStatus(alert.id, newStatus);
+                                        }}
+                                        style={{ marginLeft: '4px', cursor: 'pointer' }}
+                                    />
                                 </div>
                             </div>
                         ))}
