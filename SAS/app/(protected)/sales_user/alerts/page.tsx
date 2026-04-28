@@ -316,7 +316,6 @@ export default function AlertDashboardPage() {
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                                 <tr style={{ background: '#f9fafb', borderBottom: '1px solid #f0f0f0' }}>
-                                    <th style={thStyle}><input type="checkbox" /></th>
                                     <th style={thStyle}>SHIPMENT ID</th>
                                     <th style={thStyle}>ASSIGNED TO</th>
                                     <th style={thStyle}>PRIORITY</th>
@@ -335,9 +334,6 @@ export default function AlertDashboardPage() {
                                         onMouseEnter={(e) => { if (!selected.includes(alert.id)) e.currentTarget.style.background = '#fafbff'; }}
                                         onMouseLeave={(e) => { if (!selected.includes(alert.id)) e.currentTarget.style.background = 'white'; }}
                                     >
-                                        <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                                            <input type="checkbox" checked={selected.includes(alert.id)} onChange={() => toggleRow(alert.id)} />
-                                        </td>
                                         <td style={{ ...tdStyle, fontWeight: 600, fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>{alert.client}</td>
                                         <td style={tdStyle}><ClientAvatar initial={alert.clientInitial} color={alert.clientColor} name={alert.client} /></td>
                                         <td style={tdStyle}><PriorityBadge level={alert.priority} /></td>
@@ -355,7 +351,7 @@ export default function AlertDashboardPage() {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 <ActionBtn icon={<Eye size={14} />}  title="View"  onClick={() => openDetails(alert)} />
                                                 <ActionBtn icon={<Mail size={14} />} title="Email" onClick={() => openCompose(toAlertData(alert))} />
-                                                <ActionBtn icon={<MoreHorizontal size={14} />} title="More" />
+                                                <input type="checkbox" onClick={(e) => e.stopPropagation()} />
                                             </div>
                                         </td>
                                     </tr>
