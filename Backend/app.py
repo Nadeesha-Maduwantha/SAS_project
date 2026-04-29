@@ -15,6 +15,7 @@ from routes.access_logs import access_logs_bp
 from routes.templates import templates_bp
 from routes.milestones import milestones_bp
 from routes.shipments import shipments_bp
+from routes.alerts import alerts_bp
 
 # Sync routes
 from routes.database_sync_routes import sync_bp        # ← fix 1: correct filename
@@ -48,6 +49,7 @@ app.register_blueprint(access_logs_bp, url_prefix='/api/access-logs')
 app.register_blueprint(templates_bp)
 app.register_blueprint(milestones_bp)
 app.register_blueprint(shipments_bp)
+app.register_blueprint(alerts_bp)
 app.register_blueprint(sync_bp)        # ← fix 3: moved here, after app is created
 
 
