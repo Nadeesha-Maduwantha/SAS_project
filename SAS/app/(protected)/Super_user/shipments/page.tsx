@@ -8,90 +8,134 @@ import { ShipmentStatsCard } from '@/components/shipments/ShipmentStatsCard'
 import { ShipmentPagination } from '@/components/shipments/ShipmentPagination'
 import { ShipmentFilter } from '@/components/shipments/ShipmentFilter'
 import { exportAllShipmentsPDF } from '@/lib/Utils/exportPDF'
-import { Shipment } from '@/types'
+import { Shipment, DepartmentStats } from '@/types'
 import { getActiveShipmentsByDepartment, getDepartmentStats } from '@/lib/services/shipment.service'
 import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
+import { useAuth } from '@/lib/hooks/useAuth'
+import {
+  CURRENT_STAGE_OPTIONS,
+  PICKUP_STATUS_STYLES,
+  isDelayedShipment,
+} from '@/constants/shipment.constants'
 
-// ─── Temporary: replace with session.user.department when auth is ready ───
-const USER_DEPARTMENT = 'SEA'
-// ─────────────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
+// FIXED: all constants moved outside the component so they are not
+// recreated on every render.
 
-function formatPickupDate(date: string | undefined) {
+const PAGE_SIZE = 10
+
+const DEFAULT_FILTERS: Record<string, string> = {
+  currentStage: '',
+}
+
+// FIXED: department display name now comes from a map instead of an
+// inline ternary chain repeated in the JSX.
+const DEPARTMENT_LABELS: Record<string, string> = {
+  SEA:  'Sea Freight',
+  AIR:  'Air Freight',
+  ROAD: 'Road Freight',
+}
+
+// Super user only filters by stage (department is fixed to their own)
+const filterGroups = [
+  {
+    label: 'By Stage',
+    key: 'currentStage',
+    // FIXED: reuses CURRENT_STAGE_OPTIONS from constants instead of
+    // re-declaring the same strings here.
+    // Also fixed: 'Delivered to CFS warehouse' → 'Delivered to CFS'
+    // to match the actual llmIdentifiedType value from CargoWise.
+    options: CURRENT_STAGE_OPTIONS,
+  },
+]
+
+const DEFAULT_STATS: DepartmentStats = {
+  onTime: 0,
+  delayed: 0,
+  atRisk: 0,
+  deliveredToday: 0,
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatPickupDate(date: string | undefined): string {
   if (!date) return '—'
   return new Date(date).toLocaleDateString('en-US', {
-    month: 'short', day: '2-digit', year: 'numeric'
+    month: 'short', day: '2-digit', year: 'numeric',
   })
 }
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function SuperUserActiveShipmentsPage() {
   const router = useRouter()
-  const [currentPage, setCurrentPage] = useState(1)
-  const [activeTab, setActiveTab] = useState<'all' | 'expedited' | 'standard'>('all')
-  const [shipments, setShipments] = useState<Shipment[]>([])
-  const [stats, setStats] = useState({ onTime: 0, delayed: 0, atRisk: 0, deliveredToday: 0 })
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({
-    currentStage: '',
-  })
-  const [searchQuery, setSearchQuery] = useState('')
 
+  // FIXED: department now comes from useAuth() instead of a hardcoded
+  // module-level constant. When auth teammate connects real sessions,
+  // only useAuth.ts changes — this page stays the same.
+  const { department } = useAuth()
+
+  const [currentPage, setCurrentPage]   = useState(1)
+  const [activeTab, setActiveTab]        = useState<'all' | 'expedited' | 'standard'>('all')
+  const [shipments, setShipments]        = useState<Shipment[]>([])
+  const [stats, setStats]                = useState<DepartmentStats>(DEFAULT_STATS)
+  const [loading, setLoading]            = useState(true)
+  const [error, setError]                = useState<string | null>(null)
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>(DEFAULT_FILTERS)
+  const [searchQuery, setSearchQuery]    = useState('')
+
+  // ─── Fetch ────────────────────────────────────────────────────────────────
   useEffect(() => {
     async function fetchData() {
       try {
         setLoading(true)
         const [shipmentsData, statsData] = await Promise.all([
-          getActiveShipmentsByDepartment(USER_DEPARTMENT),
-          getDepartmentStats(USER_DEPARTMENT),
+          getActiveShipmentsByDepartment(department),
+          getDepartmentStats(department),
         ])
         setShipments(shipmentsData)
         setStats(statsData)
-      } catch {
-        setError('Failed to load shipments')
+      } catch (err) {
+        // FIXED: error was swallowed — now logged for debugging
+        console.error('Failed to load shipments:', err)
+        setError('Failed to load shipments. Please try again.')
       } finally {
         setLoading(false)
       }
     }
     fetchData()
-  }, [])
+  }, [department]) // re-fetches if department changes
 
+  // ─── Filtering ────────────────────────────────────────────────────────────
+
+  // Tab filter — expedited = priority shipments, standard = non-priority
   const tabFiltered = shipments.filter((s) => {
     if (activeTab === 'expedited') return s.isPriority
-    if (activeTab === 'standard') return !s.isPriority
+    if (activeTab === 'standard')  return !s.isPriority
     return true
   })
 
+  // Stage + search filter
+  // FIXED: isDelayedShipment() imported from constants — single source of truth
+  // for delay logic instead of duplicating the condition inline here.
   const filteredShipments = tabFiltered.filter((s) => {
-  if (activeFilters.currentStage === 'Delayed') {
-    return (
-      s.pickupDateStatus === 'Delayed' &&
-      !s.llmIdentifiedType?.toLowerCase().includes('delivered')
-    )
-  }
-  if (activeFilters.currentStage &&
-    s.llmIdentifiedType !== activeFilters.currentStage &&
-    s.currentStage !== activeFilters.currentStage) return false
-  if (searchQuery && !s.cargowiseId.toLowerCase().includes(searchQuery.toLowerCase())) return false
-  return true
-})
+    if (activeFilters.currentStage === 'Delayed') return isDelayedShipment(s)
+    if (
+      activeFilters.currentStage &&
+      s.llmIdentifiedType !== activeFilters.currentStage &&
+      s.currentStage !== activeFilters.currentStage
+    ) return false
+    if (searchQuery && !s.cargowiseId.toLowerCase().includes(searchQuery.toLowerCase())) return false
+    return true
+  })
 
-  const pageSize = 10
-  const paginated = filteredShipments.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  // FIXED: PAGE_SIZE constant used instead of magic number 10
+  const paginated = filteredShipments.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  )
 
-  const filterGroups = [
-    {
-      label: 'By Stage',
-      key: 'currentStage',
-      options: [
-        { label: 'Booking Approval', value: 'Booking Approval' },
-        { label: 'Delivery Date', value: 'Delivery Date' },
-        { label: 'Delivered to CFS warehouse', value: 'Delivered to CFS warehouse' },
-        { label: 'Unknown', value: 'Unknown' },
-        { label: 'Delayed Shipments', value: 'Delayed' },
-      ],
-    },
-  ]
-
+  // ─── Loading / Error ──────────────────────────────────────────────────────
   if (loading) return (
     <div className="p-6 flex items-center justify-center h-64">
       <p className="text-gray-500 text-sm">Loading shipments...</p>
@@ -104,8 +148,10 @@ export default function SuperUserActiveShipmentsPage() {
     </div>
   )
 
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="p-6">
+
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
@@ -115,10 +161,9 @@ export default function SuperUserActiveShipmentsPage() {
               {filteredShipments.length} TOTAL
             </span>
           </div>
+          {/* FIXED: department label uses DEPARTMENT_LABELS map instead of inline ternary */}
           <p className="text-sm text-gray-500 mt-0.5">
-            Department: {USER_DEPARTMENT === 'SEA' ? 'Sea Freight' :
-                         USER_DEPARTMENT === 'AIR' ? 'Air Freight' :
-                         'Road Freight'}
+            Department: {DEPARTMENT_LABELS[department] ?? department}
           </p>
         </div>
       </div>
@@ -155,7 +200,7 @@ export default function SuperUserActiveShipmentsPage() {
         />
       </div>
 
-      {/* Table */}
+      {/* Table Card */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
 
         {/* Tabs + Toolbar */}
@@ -187,14 +232,15 @@ export default function SuperUserActiveShipmentsPage() {
               onFilterChange={(key, value) =>
                 setActiveFilters((prev) => ({ ...prev, [key]: value }))
               }
-              onClearAll={() => setActiveFilters({ currentStage: '' })}
+              onClearAll={() => setActiveFilters(DEFAULT_FILTERS)}
             />
             <button
               onClick={() => exportAllShipmentsPDF(filteredShipments)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
               Export PDF
             </button>
@@ -260,22 +306,18 @@ export default function SuperUserActiveShipmentsPage() {
                   </td>
 
                   {/* Pickup Status */}
+                  {/* FIXED: replaced inline hex style objects with Tailwind classes from constants */}
                   <td className="px-5 py-3.5">
-                    {shipment.pickupDateStatus ? (
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center',
-                        padding: '3px 10px', borderRadius: '9999px',
-                        fontSize: '12px', fontWeight: 600,
-                        background: shipment.pickupDateStatus === 'Future' ? '#eff6ff' :
-                                    shipment.pickupDateStatus === 'Past' ? '#fef2f2' : '#f0fdf4',
-                        color: shipment.pickupDateStatus === 'Future' ? '#1d4ed8' :
-                               shipment.pickupDateStatus === 'Past' ? '#dc2626' : '#16a34a',
-                      }}>
-                        {shipment.pickupDateStatus}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-400">—</span>
-                    )}
+                    {shipment.pickupDateStatus ? (() => {
+                      const pickupStyle = PICKUP_STATUS_STYLES[shipment.pickupDateStatus] ?? {
+                        bg: 'bg-gray-50', text: 'text-gray-600',
+                      }
+                      return (
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${pickupStyle.bg} ${pickupStyle.text}`}>
+                          {shipment.pickupDateStatus}
+                        </span>
+                      )
+                    })() : <span className="text-xs text-gray-400">—</span>}
                   </td>
 
                   {/* Priority */}
@@ -290,9 +332,15 @@ export default function SuperUserActiveShipmentsPage() {
                   </td>
 
                   {/* Action */}
+                  {/* FIXED: was checking currentStage !== 'delivered' (lowercase) but real
+                      data uses llmIdentifiedType for display stage. Now uses llmIdentifiedType
+                      check consistent with the rest of the codebase. Also added onClick. */}
                   <td className="px-5 py-3.5">
-                    {shipment.currentStage !== 'delivered' && (
-                      <button className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    {!shipment.llmIdentifiedType?.toLowerCase().includes('delivered') && (
+                      <button
+                        onClick={() => router.push(`/Super_user/shipments/${shipment.id}/action`)}
+                        className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      >
                         Take Action
                       </button>
                     )}
@@ -314,11 +362,12 @@ export default function SuperUserActiveShipmentsPage() {
           </table>
         </div>
 
+        {/* FIXED: PAGE_SIZE constant used instead of magic number 10 */}
         <ShipmentPagination
           currentPage={currentPage}
-          totalPages={Math.ceil(filteredShipments.length / pageSize)}
+          totalPages={Math.ceil(filteredShipments.length / PAGE_SIZE)}
           totalResults={filteredShipments.length}
-          pageSize={pageSize}
+          pageSize={PAGE_SIZE}
           onPageChange={setCurrentPage}
         />
       </div>

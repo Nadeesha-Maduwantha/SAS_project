@@ -1,7 +1,11 @@
-import { Shipment, ShipmentStatus, ShipmentMilestone } from '@/types'
+import { Shipment, ShipmentMilestone, ShipmentStats, DelayedStats, DepartmentStats } from '@/types'
 import { supabase } from '@/lib/supabase'
 
-const FLASK_API = 'http://localhost:5000'
+// FIXED: no longer hardcoded — reads from environment variable.
+// Add NEXT_PUBLIC_API_URL=http://localhost:5000 to your .env.local
+const FLASK_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000'
+
+// ─── Row Type ─────────────────────────────────────────────────────────────────
 
 interface ShipmentRow {
   id: string
@@ -59,6 +63,8 @@ interface ShipmentRow {
   note_number: number | null
 }
 
+// ─── Mapper ───────────────────────────────────────────────────────────────────
+
 function mapRow(row: ShipmentRow): Shipment {
   return {
     id: row.id,
@@ -67,7 +73,7 @@ function mapRow(row: ShipmentRow): Shipment {
     originCountryCode: row.origin_country_code,
     destinationCity: row.destination_city,
     destinationCountryCode: row.destination_country_code,
-    currentStage: row.current_stage as ShipmentStatus,
+    currentStage: row.current_stage,
     carrier: row.carrier,
     estimatedArrival: row.estimated_arrival ? new Date(row.estimated_arrival) : null,
     isPriority: row.is_priority,
@@ -121,102 +127,117 @@ function mapRow(row: ShipmentRow): Shipment {
   }
 }
 
-// ─── Shipment Functions ───────────────────────────────────────────
-
-export async function getAllShipments(): Promise<Shipment[]> {
-  const response = await fetch(`${FLASK_API}/api/shipments`)
+// ─── Shared Fetch Helper ──────────────────────────────────────────────────────
+// FIXED: centralised fetch with response.ok check so all shipment endpoints
+// get consistent error handling instead of silently returning bad data.
+async function fetchFlask<T>(path: string): Promise<T> {
+  const response = await fetch(`${FLASK_API}${path}`)
+  if (!response.ok) {
+    throw new Error(`Flask API error ${response.status} on ${path}`)
+  }
   const result = await response.json()
   if (result.error) throw new Error(result.error)
-  return (result.data ?? []).map(mapRow)
+  return result.data as T
+}
+
+// ─── Shipment Functions ───────────────────────────────────────────────────────
+
+export async function getAllShipments(): Promise<Shipment[]> {
+  const data = await fetchFlask<ShipmentRow[]>('/api/shipments')
+  return (data ?? []).map(mapRow)
 }
 
 export async function getDelayedShipments(): Promise<Shipment[]> {
-  const response = await fetch(`${FLASK_API}/api/shipments/delayed`)
-  const result = await response.json()
-  if (result.error) throw new Error(result.error)
-  return (result.data ?? []).map(mapRow)
+  const data = await fetchFlask<ShipmentRow[]>('/api/shipments/delayed')
+  return (data ?? []).map(mapRow)
 }
 
 export async function getArchivedShipments(): Promise<Shipment[]> {
-  const response = await fetch(`${FLASK_API}/api/shipments/archived`)
-  const result = await response.json()
-  if (result.error) throw new Error(result.error)
-  return (result.data ?? []).map(mapRow)
+  const data = await fetchFlask<ShipmentRow[]>('/api/shipments/archived')
+  return (data ?? []).map(mapRow)
 }
 
 export async function getShipmentById(id: string): Promise<Shipment | null> {
-  const response = await fetch(`${FLASK_API}/api/shipments/${id}`)
-  const result = await response.json()
-  if (result.error) return null
-  return mapRow(result.data.shipment)
+  try {
+    const data = await fetchFlask<{ shipment: ShipmentRow }>(`/api/shipments/${id}`)
+    return mapRow(data.shipment)
+  } catch {
+    return null
+  }
 }
 
-export async function getShipmentStats() {
-  const response = await fetch(`${FLASK_API}/api/shipments/stats`)
-  const result = await response.json()
-  if (result.error) throw new Error(result.error)
-  return result.data
+export async function getShipmentStats(): Promise<ShipmentStats> {
+  return fetchFlask<ShipmentStats>('/api/shipments/stats')
 }
 
-export async function getDelayedStats() {
-  const response = await fetch(`${FLASK_API}/api/shipments/stats/delayed`)
-  const result = await response.json()
-  if (result.error) throw new Error(result.error)
+export async function getDelayedStats(): Promise<DelayedStats> {
+  const data = await fetchFlask<{
+    total_delayed: number
+    high_priority: number
+    avg_delay_days: number
+    customs_issues: number
+  }>('/api/shipments/stats/delayed')
   return {
-    totalDelayed: result.data.total_delayed,
-    highPriority: result.data.high_priority,
-    avgDelayDays: result.data.avg_delay_days,
-    customsIssues: result.data.customs_issues,
+    totalDelayed: data.total_delayed,
+    highPriority: data.high_priority,
+    avgDelayDays: data.avg_delay_days,
+    customsIssues: data.customs_issues,
   }
 }
 
 export async function getActiveShipmentsByDepartment(department: string): Promise<Shipment[]> {
-  const response = await fetch(`${FLASK_API}/api/shipments/department/${department}`)
-  const result = await response.json()
-  if (result.error) throw new Error(result.error)
-  return (result.data ?? []).map(mapRow)
+  const data = await fetchFlask<ShipmentRow[]>(`/api/shipments/department/${department}`)
+  return (data ?? []).map(mapRow)
 }
 
+// FIXED: archived department filter now done server-side via dedicated endpoint
+// instead of fetching all archived shipments and filtering in JavaScript
 export async function getArchivedShipmentsByDepartment(department: string): Promise<Shipment[]> {
-  const response = await fetch(`${FLASK_API}/api/shipments/archived`)
-  const result = await response.json()
-  if (result.error) throw new Error(result.error)
-  return (result.data ?? []).map(mapRow).filter((s) =>
-    s.transportMode === department
-  )
+  const data = await fetchFlask<ShipmentRow[]>(`/api/shipments/archived/department/${department}`)
+  return (data ?? []).map(mapRow)
 }
 
-export async function getDepartmentStats(department: string) {
-  const response = await fetch(`${FLASK_API}/api/shipments/stats/department/${department}`)
-  const result = await response.json()
-  if (result.error) throw new Error(result.error)
+export async function getDepartmentStats(department: string): Promise<DepartmentStats> {
+  const data = await fetchFlask<{
+    on_time: number
+    delayed: number
+    at_risk: number
+    delivered_today: number
+  }>(`/api/shipments/stats/department/${department}`)
   return {
-    onTime: result.data.on_time,
-    delayed: result.data.delayed,
-    atRisk: result.data.at_risk,
-    deliveredToday: result.data.delivered_today,
+    onTime: data.on_time,
+    delayed: data.delayed,
+    atRisk: data.at_risk,
+    deliveredToday: data.delivered_today,
   }
 }
 
-export async function getShipmentsByOperationUser(
-  staffCode: string
-): Promise<Shipment[]> {
-  const response = await fetch(`${FLASK_API}/api/shipments`)
-  const result = await response.json()
-  if (result.error) throw new Error(result.error)
-  return (result.data ?? []).map(mapRow)
+// NOTE: staffCode filter is intentionally skipped for now because the mock
+// auth hook returns a placeholder staffCode ('STAFF001') that doesn't match
+// any created_by_staff_code value in the database.
+// All shipments are returned so the operation user page is not empty.
+// TODO: re-enable the staffCode filter below once real authentication is
+// connected and staffCode comes from a real session:
+//   fetchFlask(`/api/shipments?created_by_staff_code=${encodeURIComponent(staffCode)}`)
+export async function getShipmentsByOperationUser(staffCode: string): Promise<Shipment[]> {
+  const data = await fetchFlask<ShipmentRow[]>('/api/shipments')
+  return (data ?? []).map(mapRow)
 }
 
-export async function getShipmentsBySalesUser(
-  staffCode: string
-): Promise<Shipment[]> {
-  const response = await fetch(`${FLASK_API}/api/shipments`)
-  const result = await response.json()
-  if (result.error) throw new Error(result.error)
-  return (result.data ?? []).map(mapRow)
+// NOTE: staffCode filter is intentionally skipped for now because the company
+// has not yet provided sales user staff codes in the CargoWise data.
+// All shipments are returned so the sales user page is not empty.
+// TODO: re-enable the staffCode filter below once real sales_user_staff_code
+// values exist in the database:
+//   fetchFlask(`/api/shipments?sales_user_staff_code=${encodeURIComponent(staffCode)}`)
+export async function getShipmentsBySalesUser(staffCode: string): Promise<Shipment[]> {
+  const data = await fetchFlask<ShipmentRow[]>('/api/shipments')
+  return (data ?? []).map(mapRow)
 }
 
-// ─── Milestone Functions ───────────────────────────────────────────
+// ─── Milestone Functions ──────────────────────────────────────────────────────
+// NOT CHANGED — these belong to the milestone module (teammate's work).
+// Left exactly as originally written.
 
 export async function getMilestonesByShipmentId(shipmentId: string): Promise<ShipmentMilestone[]> {
   const { data, error } = await supabase

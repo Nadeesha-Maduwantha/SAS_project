@@ -9,49 +9,81 @@ import { ShipmentPagination } from '@/components/shipments/ShipmentPagination'
 import { exportArchivedShipmentsPDF } from '@/lib/Utils/exportPDF'
 import { Shipment } from '@/types'
 import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
+import { useAuth } from '@/lib/hooks/useAuth'
+import { PICKUP_STATUS_STYLES } from '@/constants/shipment.constants'
 
-// ─── Temporary: replace with session.user.department when auth is ready ───
-const USER_DEPARTMENT = 'SEA'
-// ─────────────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
+// FIXED: PAGE_SIZE moved outside component — was recreated on every render.
 
-function formatPickupDate(date: string | undefined) {
+const PAGE_SIZE = 10
+
+// FIXED: department display label uses a map instead of an inline ternary chain
+const DEPARTMENT_LABELS: Record<string, string> = {
+  SEA:  'Sea Freight',
+  AIR:  'Air Freight',
+  ROAD: 'Road Freight',
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatPickupDate(date: string | undefined): string {
   if (!date) return '—'
   return new Date(date).toLocaleDateString('en-US', {
-    month: 'short', day: '2-digit', year: 'numeric'
+    month: 'short', day: '2-digit', year: 'numeric',
   })
 }
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function SuperUserArchiveShipmentsPage() {
   const router = useRouter()
+
+  // FIXED: department now comes from useAuth() instead of a hardcoded
+  // module-level constant. When auth teammate connects real sessions,
+  // only useAuth.ts changes — this page stays the same.
+  const { department } = useAuth()
+
   const [currentPage, setCurrentPage] = useState(1)
-  const [shipments, setShipments] = useState<Shipment[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [shipments, setShipments]     = useState<Shipment[]>([])
+  const [loading, setLoading]         = useState(true)
+  const [error, setError]             = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+
+  // ─── Fetch ────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true)
+        // Uses the fixed getArchivedShipmentsByDepartment() which now calls
+        // /api/shipments/archived/department/<mode> on Flask instead of
+        // fetching all archived shipments and filtering in JavaScript.
+        const data = await getArchivedShipmentsByDepartment(department)
+        setShipments(data)
+      } catch (err) {
+        // FIXED: error was swallowed — now logged for debugging
+        console.error('Failed to load archived shipments:', err)
+        setError('Failed to load archived shipments. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [department]) // re-fetches if department changes
+
+  // ─── Filtering & Pagination ───────────────────────────────────────────────
 
   const filteredShipments = shipments.filter((s) => {
     if (searchQuery && !s.cargowiseId.toLowerCase().includes(searchQuery.toLowerCase())) return false
     return true
   })
 
-  const pageSize = 10
-  const paginated = filteredShipments.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  // FIXED: PAGE_SIZE constant used instead of magic number 10
+  const paginated = filteredShipments.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  )
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true)
-        const data = await getArchivedShipmentsByDepartment(USER_DEPARTMENT)
-        setShipments(data)
-      } catch {
-        setError('Failed to load archived shipments')
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchData()
-  }, [])
-
+  // ─── Loading / Error ──────────────────────────────────────────────────────
   if (loading) return (
     <div className="p-6 flex items-center justify-center h-64">
       <p className="text-gray-500 text-sm">Loading archived shipments...</p>
@@ -64,17 +96,19 @@ export default function SuperUserArchiveShipmentsPage() {
     </div>
   )
 
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="p-6">
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Archive Shipments</h1>
+          {/* FIXED: department label uses DEPARTMENT_LABELS map instead of inline ternary */}
           <p className="text-sm text-gray-500 mt-0.5">
             Viewing historical records and completed operations —{' '}
             <span className="font-medium text-gray-700">
-              {USER_DEPARTMENT === 'SEA' ? 'Sea Freight' :
-               USER_DEPARTMENT === 'AIR' ? 'Air Freight' : 'Road Freight'}
+              {DEPARTMENT_LABELS[department] ?? department}
             </span>
           </p>
         </div>
@@ -88,14 +122,15 @@ export default function SuperUserArchiveShipmentsPage() {
             className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
             Export PDF
           </button>
         </div>
       </div>
 
-      {/* Completed Records Count */}
+      {/* Record Count */}
       <div className="flex items-center gap-3 mb-4">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
           Completed Records
@@ -169,22 +204,18 @@ export default function SuperUserArchiveShipmentsPage() {
                   </td>
 
                   {/* Pickup Status */}
+                  {/* FIXED: replaced inline hex style objects with Tailwind classes from constants */}
                   <td className="px-5 py-3.5">
-                    {shipment.pickupDateStatus ? (
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center',
-                        padding: '3px 10px', borderRadius: '9999px',
-                        fontSize: '12px', fontWeight: 600,
-                        background: shipment.pickupDateStatus === 'Future' ? '#eff6ff' :
-                                    shipment.pickupDateStatus === 'Past' ? '#fef2f2' : '#f0fdf4',
-                        color: shipment.pickupDateStatus === 'Future' ? '#1d4ed8' :
-                               shipment.pickupDateStatus === 'Past' ? '#dc2626' : '#16a34a',
-                      }}>
-                        {shipment.pickupDateStatus}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-400">—</span>
-                    )}
+                    {shipment.pickupDateStatus ? (() => {
+                      const pickupStyle = PICKUP_STATUS_STYLES[shipment.pickupDateStatus] ?? {
+                        bg: 'bg-gray-50', text: 'text-gray-600',
+                      }
+                      return (
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${pickupStyle.bg} ${pickupStyle.text}`}>
+                          {shipment.pickupDateStatus}
+                        </span>
+                      )
+                    })() : <span className="text-xs text-gray-400">—</span>}
                   </td>
 
                   {/* AI Note */}
@@ -213,8 +244,8 @@ export default function SuperUserArchiveShipmentsPage() {
         <ShipmentPagination
           currentPage={currentPage}
           totalResults={filteredShipments.length}
-          totalPages={Math.ceil(filteredShipments.length / pageSize)}
-          pageSize={pageSize}
+          totalPages={Math.ceil(filteredShipments.length / PAGE_SIZE)}
+          pageSize={PAGE_SIZE}
           onPageChange={setCurrentPage}
         />
       </div>
