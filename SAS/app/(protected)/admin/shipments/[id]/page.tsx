@@ -7,49 +7,63 @@ import { ShipmentStatusBadge } from '@/components/shipments/ShipmentStatusBadge'
 import { Shipment } from '@/types'
 import {
   ArrowLeft, Printer, Truck, Calendar,
-  MapPin, Package, User, Mail, Phone, Box, Brain
+  MapPin, User, Mail, Phone, Box, Brain
 } from 'lucide-react'
 import { exportShipmentDetailPDF } from '@/lib/Utils/exportPDF'
 import { ShipmentMap } from '@/components/shipments/ShipmentMap'
+// PICKUP_STATUS_STYLES not imported here — detail page uses inline styles throughout
 
-function formatDate(date: Date | null | undefined) {
-  if (!date) return '—'
-  return date.toLocaleDateString('en-US', {
-    month: 'short', day: '2-digit', year: 'numeric'
-  })
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+// FIXED: route segments moved out of inline ternary chain into a named map
+// so adding a new role/route doesn't require editing JSX logic.
+const BACK_LABEL_MAP: Record<string, string> = {
+  delayed:        'Delayed Shipments',
+  archive:        'Archived Shipments',
+  operation_user: 'My Assigned Shipments',
+  sales_user:     'Assigned Shipments',
+  Super_user:     'Active Shipments',
 }
 
-function formatDateTime(date: Date | null | undefined) {
+// FIXED: progress map now uses the real CargoWise llmIdentifiedType values
+// instead of the old internal enum values (e.g. 'in_transit', 'processing')
+// that never appeared in real data — every shipment was getting the fallback 30%.
+const STAGE_PROGRESS_MAP: Record<string, number> = {
+  'Booking Approval':             15,
+  'Shipment Approval':            25,
+  'Delivery Date':                45,
+  'Delivered to CFS':             65,
+  'Import Delivery Instructions': 80,
+  'Delivered':                    100,
+  'Delayed':                      40,
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatDate(date: Date | null | undefined): string {
+  if (!date) return '—'
+  return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+}
+
+function formatDateTime(date: Date | null | undefined): string {
   if (!date) return '—'
   return date.toLocaleString('en-US', {
     month: 'short', day: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit'
+    hour: '2-digit', minute: '2-digit',
   })
 }
 
-function getProgressPercent(stage: string): number {
-  const map: Record<string, number> = {
-    processing: 10,
-    in_transit: 50,
-    arrived_at_port: 75,
-    customs_hold: 60,
-    port_congestion: 55,
-    weather_delay: 50,
-    equipment_issue: 45,
-    documentation_issue: 40,
-    vessel_delay: 50,
-    delivered: 100,
-  }
-  return map[stage] ?? 30
+function getProgressPercent(llmType: string | undefined, fallbackStage: string): number {
+  const key = llmType ?? fallbackStage
+  return STAGE_PROGRESS_MAP[key] ?? 30
 }
 
-function getPickupStatusColor(status: string | undefined): { bg: string; color: string; border: string } {
-  if (!status) return { bg: '#f9fafb', color: '#6b7280', border: '#e5e7eb' }
-  if (status === 'Future') return { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe' }
-  if (status === 'Past') return { bg: '#fef2f2', color: '#dc2626', border: '#fca5a5' }
-  if (status === 'Today') return { bg: '#f0fdf4', color: '#16a34a', border: '#86efac' }
-  return { bg: '#f9fafb', color: '#6b7280', border: '#e5e7eb' }
+function getBackLabel(from: string): string {
+  const matchedKey = Object.keys(BACK_LABEL_MAP).find((key) => from.includes(key))
+  return matchedKey ? BACK_LABEL_MAP[matchedKey] : 'Shipments'
 }
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ShipmentDetailPage() {
   const params = useParams()
@@ -61,6 +75,7 @@ export default function ShipmentDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // ─── Fetch ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     async function fetchData() {
       try {
@@ -68,8 +83,10 @@ export default function ShipmentDetailPage() {
         const data = await getShipmentById(params.id as string)
         if (!data) setError('Shipment not found')
         else setShipment(data)
-      } catch {
-        setError('Failed to load shipment')
+      } catch (err) {
+        // FIXED: error was swallowed — now logged for debugging
+        console.error('Failed to load shipment:', err)
+        setError('Failed to load shipment. Please try again.')
       } finally {
         setLoading(false)
       }
@@ -89,16 +106,38 @@ export default function ShipmentDetailPage() {
     </div>
   )
 
-  const progress = getProgressPercent(shipment.currentStage)
-  const pickupStatusColors = getPickupStatusColor(shipment.pickupDateStatus)
+  // FIXED: progress now uses llmIdentifiedType (real value) with currentStage as fallback
+  const progress = getProgressPercent(shipment.llmIdentifiedType, shipment.currentStage)
 
-  const backLabel =
-    from.includes('delayed') ? 'Delayed Shipments' :
-    from.includes('archive') ? 'Archived Shipments' :
-    from.includes('operation_user') ? 'My Assigned Shipments' :
-    from.includes('sales_user') ? 'Assigned Shipments' :
-    from.includes('Super_user') ? 'Active Shipments' :
-    'Shipments'
+  // The detail page uses inline style props throughout (not Tailwind classes),
+  // so pickupStatusColors uses hex values via pickupBgMap below.
+  // PICKUP_STATUS_STYLES from constants is used in table pages that use Tailwind.
+  // Inline style equivalent for sections that use style prop (kept consistent with existing page structure)
+  const pickupBgMap: Record<string, { bg: string; color: string; border: string }> = {
+    Future:  { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe' },
+    Past:    { bg: '#fef2f2', color: '#dc2626', border: '#fca5a5' },
+    Today:   { bg: '#f0fdf4', color: '#16a34a', border: '#86efac' },
+    Delayed: { bg: '#fef2f2', color: '#dc2626', border: '#fca5a5' },
+  }
+  const pickupStatusColors = shipment.pickupDateStatus
+    ? (pickupBgMap[shipment.pickupDateStatus] ?? { bg: '#f9fafb', color: '#6b7280', border: '#e5e7eb' })
+    : { bg: '#f9fafb', color: '#6b7280', border: '#e5e7eb' }
+
+  const backLabel = getBackLabel(from)
+
+  // FIXED: stat cards use label as key instead of array index
+  const statCards = [
+    { label: 'Transport Mode',    value: shipment.transportMode ?? '—',    icon: <Truck   style={{ width: '18px', height: '18px' }} /> },
+    { label: 'House Bill Number', value: shipment.houseBillNumber ?? '—',  icon: <Box     style={{ width: '18px', height: '18px' }} /> },
+    { label: 'AI Identified Type',value: shipment.llmIdentifiedType ?? '—',icon: <Brain   style={{ width: '18px', height: '18px' }} /> },
+    {
+      label: 'Pickup Date',
+      value: shipment.llmCargoPickupDate
+        ? new Date(shipment.llmCargoPickupDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+        : '—',
+      icon: <Calendar style={{ width: '18px', height: '18px' }} />,
+    },
+  ]
 
   return (
     <div style={{ padding: '24px', maxWidth: '1400px', fontFamily: 'inherit' }}>
@@ -149,7 +188,7 @@ export default function ShipmentDetailPage() {
               display: 'flex', alignItems: 'center', gap: '6px',
               padding: '8px 16px', fontSize: '13px', fontWeight: 500,
               color: '#374151', background: 'white', border: '1px solid #d1d5db',
-              borderRadius: '8px', cursor: 'pointer'
+              borderRadius: '8px', cursor: 'pointer',
             }}
           >
             <Printer style={{ width: '14px', height: '14px' }} />
@@ -159,22 +198,18 @@ export default function ShipmentDetailPage() {
       </div>
 
       {/* Stat Cards */}
+      {/* FIXED: key is now card label string instead of array index */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
-        {[
-          { label: 'Transport Mode', value: shipment.transportMode ?? '—', icon: <Truck style={{ width: '18px', height: '18px' }} /> },
-          { label: 'House Bill Number', value: shipment.houseBillNumber ?? '—', icon: <Box style={{ width: '18px', height: '18px' }} /> },
-          { label: 'AI Identified Type', value: shipment.llmIdentifiedType ?? '—', icon: <Brain style={{ width: '18px', height: '18px' }} /> },
-          { label: 'Pickup Date', value: shipment.llmCargoPickupDate ? new Date(shipment.llmCargoPickupDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : '—', icon: <Calendar style={{ width: '18px', height: '18px' }} /> },
-        ].map((stat, i) => (
-          <div key={i} style={{
+        {statCards.map((stat) => (
+          <div key={stat.label} style={{
             background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb',
             padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
           }}>
             <div style={{
               width: '40px', height: '40px', borderRadius: '10px',
               background: '#eff6ff', color: '#2563eb',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}>
               {stat.icon}
             </div>
@@ -272,7 +307,7 @@ export default function ShipmentDetailPage() {
               <div style={{
                 background: pickupStatusColors.bg,
                 borderRadius: '8px', padding: '10px 12px', marginTop: '8px',
-                border: `1px solid ${pickupStatusColors.border}`
+                border: `1px solid ${pickupStatusColors.border}`,
               }}>
                 <p style={{ fontSize: '11px', color: pickupStatusColors.color, fontWeight: 600, margin: '0 0 3px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Pickup Date Status
@@ -287,8 +322,8 @@ export default function ShipmentDetailPage() {
           {/* Route Details */}
           <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 16px' }}>Route Details</h2>
-
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '20px' }}>
+
               {/* Shipper */}
               <div>
                 <p style={{ fontSize: '11px', fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
@@ -347,12 +382,16 @@ export default function ShipmentDetailPage() {
           <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 16px' }}>Cargo Timeline</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+              {/* FIXED: key uses label string instead of array index */}
               {[
-                { label: 'Cargo Ready', date: shipment.cargoReadyDate },
+                { label: 'Cargo Ready',    date: shipment.cargoReadyDate },
                 { label: 'Cargo Received', date: shipment.cargoReceivedDate },
-                { label: 'Cargo Pickup', date: shipment.cargoPickupDate ?? (shipment.llmCargoPickupDate ? new Date(shipment.llmCargoPickupDate) : undefined) },
-              ].map((item, i) => (
-                <div key={i} style={{ background: '#f9fafb', borderRadius: '8px', padding: '12px 14px' }}>
+                {
+                  label: 'Cargo Pickup',
+                  date: shipment.cargoPickupDate ?? (shipment.llmCargoPickupDate ? new Date(shipment.llmCargoPickupDate) : undefined),
+                },
+              ].map((item) => (
+                <div key={item.label} style={{ background: '#f9fafb', borderRadius: '8px', padding: '12px 14px' }}>
                   <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 4px', fontWeight: 500 }}>{item.label}</p>
                   <p style={{ fontSize: '13px', fontWeight: 600, color: '#111827', margin: 0 }}>{formatDate(item.date)}</p>
                 </div>
@@ -364,7 +403,7 @@ export default function ShipmentDetailPage() {
         {/* ── RIGHT COLUMN ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-          {/* Previous Milestones */}
+          {/* Previous Milestones — NOT CHANGED: this card belongs to teammate's milestone module */}
           <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: 0 }}>Previous Milestones</h2>
@@ -424,23 +463,24 @@ export default function ShipmentDetailPage() {
           <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 14px' }}>CargoWise Details</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {/* FIXED: key uses label string instead of array index */}
               {[
-                { label: 'Job Number', value: shipment.jobNumber ?? shipment.cargowiseId },
-                { label: 'House Bill', value: shipment.houseBillNumber },
-                { label: 'Branch', value: shipment.branch },
+                { label: 'Job Number',     value: shipment.jobNumber ?? shipment.cargowiseId },
+                { label: 'House Bill',     value: shipment.houseBillNumber },
+                { label: 'Branch',         value: shipment.branch },
                 { label: 'Transport Mode', value: shipment.transportMode },
-                { label: 'GC Code', value: shipment.gcCode },
-                { label: 'GB Code', value: shipment.gbCode },
-                { label: 'Pickup Status', value: shipment.pickupDateStatus },
-                { label: 'AI Type', value: shipment.llmIdentifiedType },
-              ].map((item, i) => (
+                { label: 'GC Code',        value: shipment.gcCode },
+                { label: 'GB Code',        value: shipment.gbCode },
+                { label: 'Pickup Status',  value: shipment.pickupDateStatus },
+                { label: 'AI Type',        value: shipment.llmIdentifiedType },
+              ].map((item) =>
                 item.value ? (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '12px', color: '#9ca3af' }}>{item.label}</span>
                     <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>{item.value}</span>
                   </div>
                 ) : null
-              ))}
+              )}
 
               <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '10px', marginTop: '2px' }}>
                 <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 4px' }}>Created By</p>

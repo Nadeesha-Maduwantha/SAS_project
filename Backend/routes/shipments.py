@@ -3,17 +3,51 @@ from services.supabase_client import supabase
 
 shipments_bp = Blueprint('shipments', __name__)
 
-# ─── Specific routes FIRST ───
+
+# ─── Shared Helper ────────────────────────────────────────────────────────────
+
+def is_delayed(shipment: dict) -> bool:
+    """
+    Single source of truth for delayed shipment logic.
+    FIXED: was copy-pasted in 4+ places across this file — any change
+    to the definition would require updating each copy separately.
+    A shipment is delayed when:
+      - pickup_date_status is 'Delayed', AND
+      - it has not already been delivered
+    """
+    return (
+        shipment.get('pickup_date_status') == 'Delayed' and
+        'delivered' not in (shipment.get('llm_identified_type') or '').lower()
+    )
+
+
+def is_delivered(shipment: dict) -> bool:
+    """Single source of truth for delivered/archived status."""
+    return 'delivered' in (shipment.get('llm_identified_type') or '').lower()
+
+
+# ─── Specific routes FIRST ────────────────────────────────────────────────────
 
 @shipments_bp.route('/api/shipments', methods=['GET'])
 def get_all_shipments():
+    """
+    Returns all shipments. Supports optional query params:
+      ?created_by_staff_code=<code>  — filter by the operation user who created it
+      ?sales_user_staff_code=<code>  — filter by the sales user assigned to it
+    FIXED: previously ignored these params, returning all shipments to every role.
+    """
     try:
-        response = (
-            supabase.table('shipments')
-            .select('*')
-            .order('created_at', desc=True)
-            .execute()
-        )
+        query = supabase.table('shipments').select('*').order('created_at', desc=True)
+
+        created_by = request.args.get('created_by_staff_code')
+        if created_by:
+            query = query.eq('created_by_staff_code', created_by)
+
+        sales_code = request.args.get('sales_user_staff_code')
+        if sales_code:
+            query = query.eq('sales_user_staff_code', sales_code)
+
+        response = query.execute()
         return jsonify({"data": response.data}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -21,6 +55,10 @@ def get_all_shipments():
 
 @shipments_bp.route('/api/shipments/delayed', methods=['GET'])
 def get_delayed_shipments():
+    """
+    Returns shipments where pickup_date_status is Delayed and not yet delivered.
+    FIXED: uses is_delayed() helper instead of inline duplicate logic.
+    """
     try:
         response = (
             supabase.table('shipments')
@@ -29,8 +67,7 @@ def get_delayed_shipments():
             .order('created_at', desc=True)
             .execute()
         )
-        data = [s for s in (response.data or [])
-                if 'delivered' not in (s.get('llm_identified_type') or '').lower()]
+        data = [s for s in (response.data or []) if is_delayed(s)]
         return jsonify({"data": data}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -38,6 +75,10 @@ def get_delayed_shipments():
 
 @shipments_bp.route('/api/shipments/archived', methods=['GET'])
 def get_archived_shipments():
+    """
+    Returns all delivered shipments (treated as archived).
+    FIXED: uses is_delivered() helper instead of inline duplicate logic.
+    """
     try:
         response = (
             supabase.table('shipments')
@@ -45,8 +86,29 @@ def get_archived_shipments():
             .order('created_at', desc=True)
             .execute()
         )
-        data = [s for s in (response.data or [])
-                if 'delivered' in (s.get('llm_identified_type') or '').lower()]
+        data = [s for s in (response.data or []) if is_delivered(s)]
+        return jsonify({"data": data}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@shipments_bp.route('/api/shipments/archived/department/<mode>', methods=['GET'])
+def get_archived_shipments_by_department(mode):
+    """
+    FIXED: new endpoint so the frontend doesn't have to fetch all archived
+    shipments and filter by department in JavaScript.
+    Previously getArchivedShipmentsByDepartment() pulled every archived
+    shipment over the network then did .filter(s => s.transportMode === department).
+    """
+    try:
+        response = (
+            supabase.table('shipments')
+            .select('*')
+            .eq('transport_mode', mode.upper())
+            .order('created_at', desc=True)
+            .execute()
+        )
+        data = [s for s in (response.data or []) if is_delivered(s)]
         return jsonify({"data": data}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -54,23 +116,26 @@ def get_archived_shipments():
 
 @shipments_bp.route('/api/shipments/stats', methods=['GET'])
 def get_shipment_stats():
+    """
+    FIXED: select only the columns needed for counting instead of select('*').
+    Fetching all columns of all rows just to count them wastes bandwidth.
+    """
     try:
         response = (
             supabase.table('shipments')
-            .select('*')
+            .select('id, pickup_date_status, llm_identified_type')
             .execute()
         )
         shipments = response.data or []
 
         stats = {
             'total': len(shipments),
-            'pending': sum(1 for s in shipments
-                          if s.get('llm_identified_type') in ['Booking Approval', 'Shipment Approval']),
-            'delivered': sum(1 for s in shipments
-                            if 'delivered' in (s.get('llm_identified_type') or '').lower()),
-            'delayed': sum(1 for s in shipments
-                          if s.get('pickup_date_status') == 'Delayed' and
-                          'delivered' not in (s.get('llm_identified_type') or '').lower()),
+            'pending': sum(
+                1 for s in shipments
+                if s.get('llm_identified_type') in ('Booking Approval', 'Shipment Approval')
+            ),
+            'delivered': sum(1 for s in shipments if is_delivered(s)),
+            'delayed':   sum(1 for s in shipments if is_delayed(s)),
         }
         return jsonify({"data": stats}), 200
     except Exception as e:
@@ -79,18 +144,20 @@ def get_shipment_stats():
 
 @shipments_bp.route('/api/shipments/stats/delayed', methods=['GET'])
 def get_delayed_stats():
+    """
+    FIXED: uses is_delayed() helper. Also selects only required columns.
+    """
     try:
         from datetime import datetime, timezone
+
         response = (
             supabase.table('shipments')
-            .select('*')
+            .select('pickup_date_status, llm_identified_type, llm_note, st_note_text, llm_cargo_pickup_date')
             .eq('pickup_date_status', 'Delayed')
             .execute()
         )
-        shipments = [s for s in (response.data or [])
-                    if 'delivered' not in (s.get('llm_identified_type') or '').lower()]
+        shipments = [s for s in (response.data or []) if is_delayed(s)]
 
-        # Calculate average delay days
         today = datetime.now(timezone.utc)
         delay_days_list = []
         for s in shipments:
@@ -103,19 +170,27 @@ def get_delayed_stats():
                     diff = (today - pickup_dt).days
                     if diff > 0:
                         delay_days_list.append(diff)
-                except:
+                except Exception:
                     pass
 
-        avg_delay_days = round(sum(delay_days_list) / len(delay_days_list)) if delay_days_list else 0
+        avg_delay_days = (
+            round(sum(delay_days_list) / len(delay_days_list))
+            if delay_days_list else 0
+        )
+
+        priority_keywords = {'urgent', 'critical', 'immediate', 'asap', 'priority'}
 
         stats = {
             'total_delayed': len(shipments),
-            'high_priority': sum(1 for s in shipments
-                                if any(word in (s.get('llm_note') or '').lower()
-                                      for word in ['urgent', 'critical', 'immediate', 'asap', 'priority'])),
-            'customs_issues': sum(1 for s in shipments
-                                 if 'customs' in (s.get('llm_identified_type') or '').lower() or
-                                 'customs' in (s.get('st_note_text') or '').lower()),
+            'high_priority': sum(
+                1 for s in shipments
+                if any(w in (s.get('llm_note') or '').lower() for w in priority_keywords)
+            ),
+            'customs_issues': sum(
+                1 for s in shipments
+                if 'customs' in (s.get('llm_identified_type') or '').lower() or
+                   'customs' in (s.get('st_note_text') or '').lower()
+            ),
             'avg_delay_days': avg_delay_days,
         }
         return jsonify({"data": stats}), 200
@@ -125,27 +200,31 @@ def get_delayed_stats():
 
 @shipments_bp.route('/api/shipments/stats/department/<mode>', methods=['GET'])
 def get_department_stats(mode):
+    """
+    FIXED: uses is_delayed() / is_delivered() helpers. Selects only required columns.
+    """
     try:
         response = (
             supabase.table('shipments')
-            .select('*')
+            .select('pickup_date_status, llm_identified_type, llm_note')
             .eq('transport_mode', mode.upper())
             .execute()
         )
         shipments = response.data or []
 
+        risk_keywords = {'risk', 'delay', 'issue', 'problem', 'urgent'}
+
         stats = {
-            'on_time': sum(1 for s in shipments
-                          if s.get('pickup_date_status') == 'Future' and
-                          'delivered' not in (s.get('llm_identified_type') or '').lower()),
-            'delayed': sum(1 for s in shipments
-                          if s.get('pickup_date_status') == 'Delayed' and
-                          'delivered' not in (s.get('llm_identified_type') or '').lower()),
-            'at_risk': sum(1 for s in shipments
-                          if any(word in (s.get('llm_note') or '').lower()
-                                for word in ['risk', 'delay', 'issue', 'problem', 'urgent'])),
-            'delivered_today': sum(1 for s in shipments
-                                  if 'delivered' in (s.get('llm_identified_type') or '').lower()),
+            'on_time': sum(
+                1 for s in shipments
+                if s.get('pickup_date_status') == 'Future' and not is_delivered(s)
+            ),
+            'delayed': sum(1 for s in shipments if is_delayed(s)),
+            'at_risk': sum(
+                1 for s in shipments
+                if any(w in (s.get('llm_note') or '').lower() for w in risk_keywords)
+            ),
+            'delivered_today': sum(1 for s in shipments if is_delivered(s)),
         }
         return jsonify({"data": stats}), 200
     except Exception as e:
@@ -154,23 +233,32 @@ def get_department_stats(mode):
 
 @shipments_bp.route('/api/shipments/department/<mode>', methods=['GET'])
 def get_shipments_by_department(mode):
+    """
+    FIXED: delivered filter now applied at DB level using ilike instead of
+    fetching all rows and filtering in Python.
+    """
     try:
         response = (
             supabase.table('shipments')
             .select('*')
             .eq('transport_mode', mode.upper())
+            .not_.ilike('llm_identified_type', '%delivered%')
             .order('created_at', desc=True)
             .execute()
         )
-        data = [s for s in (response.data or [])
-                if 'delivered' not in (s.get('llm_identified_type') or '').lower()]
-        return jsonify({"data": data}), 200
+        return jsonify({"data": response.data or []}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
 @shipments_bp.route('/api/shipments/current-milestones', methods=['GET'])
 def get_current_milestones():
+    """
+    Returns each shipment paired with its current (first non-completed) milestone.
+    FIXED: milestone query now explicitly orders by shipment_id, sequence_order
+    so milestone_map always picks the lowest-sequence pending milestone per shipment,
+    not whichever happened to come back first from the DB.
+    """
     try:
         shipments_response = (
             supabase.table('shipments')
@@ -193,26 +281,23 @@ def get_current_milestones():
             supabase.table('shipment_milestones')
             .select('*')
             .neq('status', 'completed')
+            .order('shipment_id')          # FIXED: explicit ordering
             .order('sequence_order')
             .execute()
         )
 
-        milestone_map = {}
+        # Build map: shipment_id → first pending milestone (lowest sequence_order)
+        milestone_map: dict = {}
         for m in (milestones_response.data or []):
             sid = m['shipment_id']
             if sid not in milestone_map:
                 milestone_map[sid] = m
 
-        result = []
-        for s in shipments_response.data:
-            current = milestone_map.get(s['id'])
-            result.append({
-                "shipment": s,
-                "current_milestone": current
-            })
-
+        result = [
+            {"shipment": s, "current_milestone": milestone_map.get(s['id'])}
+            for s in shipments_response.data
+        ]
         return jsonify({"data": result}), 200
-
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -234,10 +319,16 @@ def get_shipment_by_job(job_number):
         return jsonify({"error": str(e)}), 500
 
 
-# ─── Dynamic routes LAST ───
+# ─── Dynamic routes LAST ──────────────────────────────────────────────────────
 
 @shipments_bp.route('/api/shipments/<shipment_id>/assign-template/<template_id>', methods=['POST'])
 def assign_template(shipment_id, template_id):
+    """
+    FIXED: days_from_booking was incorrectly set to sequence_order.
+    Milestone 1 was getting 1 day, milestone 2 getting 2 days, etc. regardless
+    of what the template actually specified. Now reads days_from_booking from
+    the template milestone row with a safe fallback of 0.
+    """
     try:
         template_milestones = (
             supabase.table('template_milestones')
@@ -248,7 +339,7 @@ def assign_template(shipment_id, template_id):
         )
 
         rows = []
-        for m in template_milestones.data:
+        for m in (template_milestones.data or []):
             rows.append({
                 'shipment_id':       shipment_id,
                 'template_id':       template_id,
@@ -256,7 +347,7 @@ def assign_template(shipment_id, template_id):
                 'sequence_order':    m['sequence_order'],
                 'status':            'pending',
                 'automated':         m.get('automated', False),
-                'days_from_booking': m.get('sequence_order', 0),
+                'days_from_booking': m.get('days_from_booking', 0),  # FIXED
             })
 
         supabase.table('shipment_milestones').insert(rows).execute()

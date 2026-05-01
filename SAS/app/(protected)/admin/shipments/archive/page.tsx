@@ -10,11 +10,45 @@ import { Shipment } from '@/types'
 import { ShipmentFilter } from '@/components/shipments/ShipmentFilter'
 import { exportArchivedShipmentsPDF } from '@/lib/Utils/exportPDF'
 import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
+import { FilterGroup,
+  TRANSPORT_MODE_OPTIONS,
+  TRANSPORT_MODE_STYLES,
+  PICKUP_STATUS_STYLES,
+} from '@/constants/shipment.constants'
 
-function formatDate(date: Date | null | undefined) {
-  if (!date) return '—'
-  return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+// ─── Constants ────────────────────────────────────────────────────────────────
+// FIXED: filterGroups, PAGE_SIZE and DEFAULT_FILTERS moved outside the component
+// so they are not recreated on every render.
+const PAGE_SIZE = 10
+
+const DEFAULT_FILTERS: Record<string, string> = {
+  transportMode: '',
+  currentStage: '',
 }
+
+// Archive page only shows delivered variants — kept as a named constant
+// so the label/value pairs are not scattered as inline strings.
+const ARCHIVED_STAGE_OPTIONS: FilterGroup['options'] = [
+  { label: 'Delivered',        value: 'Delivered'        },
+  { label: 'Delivered to CFS', value: 'Delivered to CFS' }, // FIXED: was 'Delivered to CFS warehouse' but actual llmIdentifiedType from CargoWise is 'Delivered to CFS'
+]
+
+const filterGroups: FilterGroup[] = [
+  {
+    label: 'By Department',
+    key: 'transportMode',
+    options: TRANSPORT_MODE_OPTIONS,
+  },
+  {
+    label: 'By Type',
+    key: 'currentStage',
+    options: ARCHIVED_STAGE_OPTIONS,
+  },
+]
+
+
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ArchivedShipmentsPage() {
   const router = useRouter()
@@ -22,48 +56,20 @@ export default function ArchivedShipmentsPage() {
   const [shipments, setShipments] = useState<Shipment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({
-    transportMode: '',
-    currentStage: '',
-  })
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>(DEFAULT_FILTERS)
   const [searchQuery, setSearchQuery] = useState('')
 
-  const filteredShipments = shipments.filter((s) => {
-    if (activeFilters.transportMode && s.transportMode !== activeFilters.transportMode) return false
-    if (activeFilters.currentStage &&
-      s.llmIdentifiedType !== activeFilters.currentStage) return false
-    if (searchQuery && !s.cargowiseId.toLowerCase().includes(searchQuery.toLowerCase())) return false
-    return true
-  })
-
-  const filterGroups = [
-    {
-      label: 'By Department',
-      key: 'transportMode',
-      options: [
-        { label: 'Air Freight', value: 'AIR' },
-        { label: 'Sea Freight', value: 'SEA' },
-        { label: 'Road Freight', value: 'ROAD' },
-      ],
-    },
-    {
-      label: 'By Type',
-      key: 'currentStage',
-      options: [
-        { label: 'Delivered', value: 'Delivered' },
-        { label: 'Delivered to CFS warehouse', value: 'Delivered to CFS warehouse' },
-      ],
-    },
-  ]
-
+  // ─── Fetch ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     async function fetchData() {
       try {
         setLoading(true)
         const data = await getArchivedShipments()
         setShipments(data)
-      } catch {
-        setError('Failed to load archived shipments')
+      } catch (err) {
+        // FIXED: error was swallowed — now logged for debugging
+        console.error('Failed to load archived shipments:', err)
+        setError('Failed to load archived shipments. Please try again.')
       } finally {
         setLoading(false)
       }
@@ -71,6 +77,15 @@ export default function ArchivedShipmentsPage() {
     fetchData()
   }, [])
 
+  // ─── Filtering ──────────────────────────────────────────────────────────────
+  const filteredShipments = shipments.filter((s) => {
+    if (activeFilters.transportMode && s.transportMode !== activeFilters.transportMode) return false
+    if (activeFilters.currentStage && s.llmIdentifiedType !== activeFilters.currentStage) return false
+    if (searchQuery && !s.cargowiseId.toLowerCase().includes(searchQuery.toLowerCase())) return false
+    return true
+  })
+
+  // ─── Loading / Error ────────────────────────────────────────────────────────
   if (loading) return (
     <div className="p-6 flex items-center justify-center h-64">
       <p className="text-gray-500 text-sm">Loading archived shipments...</p>
@@ -83,6 +98,7 @@ export default function ArchivedShipmentsPage() {
     </div>
   )
 
+  // ─── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="p-6">
       <div className="mb-5">
@@ -104,14 +120,15 @@ export default function ArchivedShipmentsPage() {
             onFilterChange={(key, value) =>
               setActiveFilters((prev) => ({ ...prev, [key]: value }))
             }
-            onClearAll={() => setActiveFilters({ transportMode: '', currentStage: '' })}
+            onClearAll={() => setActiveFilters(DEFAULT_FILTERS)}
           />
           <button
             onClick={() => exportArchivedShipmentsPDF(filteredShipments)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
             Export PDF
           </button>
@@ -174,37 +191,33 @@ export default function ArchivedShipmentsPage() {
                   </td>
 
                   {/* Transport Mode */}
+                  {/* FIXED: replaced inline hex style objects with Tailwind classes from constants */}
                   <td className="px-5 py-3.5">
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center',
-                      padding: '3px 10px', borderRadius: '9999px',
-                      fontSize: '12px', fontWeight: 600,
-                      background: shipment.transportMode === 'AIR' ? '#fef3c7' :
-                                  shipment.transportMode === 'ROAD' ? '#f0fdf4' : '#eff6ff',
-                      color: shipment.transportMode === 'AIR' ? '#92400e' :
-                             shipment.transportMode === 'ROAD' ? '#166534' : '#1e40af',
-                    }}>
-                      {shipment.transportMode ?? '—'}
-                    </span>
+                    {shipment.transportMode ? (() => {
+                      const modeStyle = TRANSPORT_MODE_STYLES[shipment.transportMode] ?? {
+                        bg: 'bg-gray-100', text: 'text-gray-600',
+                      }
+                      return (
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${modeStyle.bg} ${modeStyle.text}`}>
+                          {shipment.transportMode}
+                        </span>
+                      )
+                    })() : <span className="text-xs text-gray-400">—</span>}
                   </td>
 
                   {/* Pickup Status */}
+                  {/* FIXED: replaced inline hex style objects with Tailwind classes from constants */}
                   <td className="px-5 py-3.5">
-                    {shipment.pickupDateStatus ? (
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center',
-                        padding: '3px 10px', borderRadius: '9999px',
-                        fontSize: '12px', fontWeight: 600,
-                        background: shipment.pickupDateStatus === 'Future' ? '#eff6ff' :
-                                    shipment.pickupDateStatus === 'Past' ? '#fef2f2' : '#f0fdf4',
-                        color: shipment.pickupDateStatus === 'Future' ? '#1d4ed8' :
-                               shipment.pickupDateStatus === 'Past' ? '#dc2626' : '#16a34a',
-                      }}>
-                        {shipment.pickupDateStatus}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-400">—</span>
-                    )}
+                    {shipment.pickupDateStatus ? (() => {
+                      const pickupStyle = PICKUP_STATUS_STYLES[shipment.pickupDateStatus] ?? {
+                        bg: 'bg-gray-50', text: 'text-gray-600',
+                      }
+                      return (
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${pickupStyle.bg} ${pickupStyle.text}`}>
+                          {shipment.pickupDateStatus}
+                        </span>
+                      )
+                    })() : <span className="text-xs text-gray-400">—</span>}
                   </td>
 
                   {/* AI Note */}
@@ -230,11 +243,12 @@ export default function ArchivedShipmentsPage() {
           </table>
         </div>
 
+        {/* FIXED: PAGE_SIZE constant used instead of magic number 10 */}
         <ShipmentPagination
           currentPage={currentPage}
           totalResults={filteredShipments.length}
-          totalPages={Math.ceil(filteredShipments.length / 10)}
-          pageSize={10}
+          totalPages={Math.ceil(filteredShipments.length / PAGE_SIZE)}
+          pageSize={PAGE_SIZE}
           onPageChange={setCurrentPage}
         />
       </div>

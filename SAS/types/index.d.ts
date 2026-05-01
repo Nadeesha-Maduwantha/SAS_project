@@ -1,79 +1,47 @@
-// ─── Shipment Types ───────────────────────────────────────────
+// ─── Shipment Status ─────────────────────────────────────────────────────────
+// FIXED: values now match what CargoWise actually returns via the Flask API.
+// Previously used internal enum values (e.g. 'in_transit') that never
+// appeared in real data — every status badge was rendering as gray "Unknown".
 export type ShipmentStatus =
-  | 'in_transit'
-  | 'customs_hold'
-  | 'arrived_at_port'
-  | 'processing'
-  | 'delivered'
-  | 'port_congestion'
-  | 'weather_delay'
-  | 'equipment_issue'
-  | 'documentation_issue'
-  | 'vessel_delay'
+  | 'Booking Approval'
+  | 'Shipment Approval'
+  | 'Delivery Date'
+  | 'Delivered to CFS'
+  | 'Import Delivery Instructions'
+  | 'Delivered'
+  | 'Delayed'
+  | string // allow unknown future CargoWise stages without breaking the app
 
+// ─── Transport Mode ───────────────────────────────────────────────────────────
+export type TransportMode = 'AIR' | 'SEA' | 'ROAD'
+
+// ─── Pickup Date Status ───────────────────────────────────────────────────────
+export type PickupDateStatus = 'Future' | 'Delayed' | 'Past' | 'Today'
+
+// ─── CargoWise User ───────────────────────────────────────────────────────────
 export interface CargowiseUser {
   staffCode: string
   name: string
   email: string
 }
 
-
-
-export interface User {
-  id: string;
-  fullName: string;
-  email: string;
-  department: string;
-  role: string;
-  status: 'Active' | 'Blocked' | 'Locked';
-  lastLogin: string;
-  lastLoginIP: string;
-  lastUpdated: string;
-  lastUpdatedBy: string;
-}
-
-export interface UserFormData {
-  fullName: string;
-  email: string;
-  department: string;
-  role: string;
-  userAction: 'block' | 'unblock' | '';
-  resetPassword: boolean;
-  unlockAccount: boolean;
-}
-
-// ─── Profile Types ───────────────────────────────────────────
-export interface UserProfile {
-  id: string;
-  fullName: string;
-  email: string;
-  phoneNumber: string;
-  department: string;
-  role: "admin" | "super-user" | "sales_user" | "operation_user";
-  status: "Active" | "Inactive";
-  isVerified: boolean;
-  lastLogin: string;
-  memberSince: string;
-  avatarUrl?: string;
-}
-
-export interface PasswordChange {
-  currentPassword: string;
-  newPassword: string;
-  confirmPassword: string;
-}
-
-
+// ─── Shipment ─────────────────────────────────────────────────────────────────
 export interface Shipment {
   id: string
-  cargowiseId: string          // ← add (was trackingNumber)
-  currentStage: ShipmentStatus // ← add (was status)
-  originCity: string           // ← add
-  originCountryCode: string    // ← add
-  destinationCity: string      // ← add
-  destinationCountryCode: string // ← add
+  cargowiseId: string
+  // currentStage holds the raw CargoWise DB value.
+  // llmIdentifiedType is the human-readable stage from LLM classification.
+  // Use llmIdentifiedType as the display value; currentStage as fallback.
+  currentStage: ShipmentStatus
+  llmIdentifiedType?: string
+  llmNote?: string
+  llmCargoPickupDate?: string
+  originCity: string
+  originCountryCode: string
+  destinationCity: string
+  destinationCountryCode: string
   carrier: string
-  estimatedArrival: Date | null  // ← add
+  estimatedArrival: Date | null
   createdBy: CargowiseUser
   lastUpdatedBy: CargowiseUser
   createdAt: Date
@@ -86,7 +54,7 @@ export interface Shipment {
   transitDays?: number
   jobNumber?: string
   houseBillNumber?: string
-  transportMode?: string
+  transportMode?: TransportMode | string
   branch?: string
   gbCode?: string
   gcCode?: string
@@ -95,14 +63,11 @@ export interface Shipment {
   cargoReadyDate?: Date
   cargoReceivedDate?: Date
   cargoPickupDate?: Date
-  pickupDateStatus?: string
+  pickupDateStatus?: PickupDateStatus | string
   jobLastEditTime?: Date
-  llmIdentifiedType?: string
-  llmNote?: string
-  llmCargoPickupDate?: string  // ← add
-  runningDateTime?: Date | null // ← add
-  noteNumber?: number | null   // ← add
-  jsPk?: string                // ← add
+  runningDateTime?: Date | null
+  noteNumber?: number | null
+  jsPk?: string
   shipperName?: string
   shipperAddress?: string
   shipperContact?: string
@@ -116,7 +81,30 @@ export interface Shipment {
   salesUserEmail?: string
 }
 
+// ─── Shipment Stats ───────────────────────────────────────────────────────────
+export interface ShipmentStats {
+  total: number
+  pending: number
+  delivered: number
+  delayed: number
+}
 
+export interface DelayedStats {
+  totalDelayed: number
+  highPriority: number
+  avgDelayDays: number
+  customsIssues: number
+}
+
+export interface DepartmentStats {
+  onTime: number
+  delayed: number
+  atRisk: number
+  deliveredToday: number
+}
+
+// ─── Shipment Milestone ───────────────────────────────────────────────────────
+// NOT CHANGED — belongs to the milestone module (teammate's work).
 export interface ShipmentMilestone {
   id: string
   shipment_id: string
@@ -133,6 +121,51 @@ export interface ShipmentMilestone {
   location_lng?: number | null
   days_from_booking?: number | null
   created_at: string
+}
+
+// ─── User Types ───────────────────────────────────────────────────────────────
+export interface User {
+  id: string
+  fullName: string
+  email: string
+  department: string
+  role: string
+  status: 'Active' | 'Blocked' | 'Locked'
+  lastLogin: string
+  lastLoginIP: string
+  lastUpdated: string
+  lastUpdatedBy: string
+}
+
+export interface UserFormData {
+  fullName: string
+  email: string
+  department: string
+  role: string
+  userAction: 'block' | 'unblock' | ''
+  resetPassword: boolean
+  unlockAccount: boolean
+}
+
+// ─── Profile Types ────────────────────────────────────────────────────────────
+export interface UserProfile {
+  id: string
+  fullName: string
+  email: string
+  phoneNumber: string
+  department: string
+  role: 'admin' | 'super-user' | 'sales_user' | 'operation_user'
+  status: 'Active' | 'Inactive'
+  isVerified: boolean
+  lastLogin: string
+  memberSince: string
+  avatarUrl?: string
+}
+
+export interface PasswordChange {
+  currentPassword: string
+  newPassword: string
+  confirmPassword: string
 }
 
 declare module '*.css'
