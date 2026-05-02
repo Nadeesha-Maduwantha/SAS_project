@@ -6,16 +6,19 @@ export const metadata = {
 }
 
 export default function RootLayout({ children }) {
-<<<<<<< HEAD
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="antialiased">
-        {children}
-      </body>
-    </html>
-  )
-}
-=======
+    <html lang="en">
+  <head>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+  </head>
+  <body className="antialiased">
+    {children}
+  </body>
+</html>
+  );
+
     return (
         <html lang="en" suppressHydrationWarning>
             <head>
@@ -35,5 +38,6 @@ export default function RootLayout({ children }) {
             </body>
         </html>
     );
+
+
 }
->>>>>>> 21f793f1dab44f11c2278ee83fb129acbd8148ce
