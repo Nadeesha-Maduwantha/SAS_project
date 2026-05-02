@@ -17,108 +17,7 @@ export interface CargowiseUser {
   email: string
 }
 
-export interface Shipment {
-  id: string
-  cargowiseId: string
-  originCity: string
-  originCountryCode: string
-  destinationCity: string
-  destinationCountryCode: string
-  currentStage: ShipmentStatus
-  carrier: string
-  estimatedArrival: Date | null
-  createdBy: CargowiseUser
-  lastUpdatedBy: CargowiseUser
-  createdAt: Date
-  updatedAt: Date
-  isPriority?: boolean
-  delayReason?: string
-  delayDays?: number
-  deliveryDate?: Date
-  archivedDate?: Date
-  transitDays?: number
-<<<<<<< HEAD
-jobNumber?: string
-houseBillNumber?: string
-transportMode?: string
-branch?: string
-gbCode?: string
-gcCode?: string
-stDescription?: string
-stNoteText?: string
-cargoReadyDate?: Date
-cargoReceivedDate?: Date
-cargoPickupDate?: Date
-pickupDateStatus?: string
-jobLastEditTime?: Date
-llmIdentifiedType?: string
-llmNote?: string
-shipperName?: string
-shipperAddress?: string
-shipperContact?: string
-shipperPhone?: string
-consigneeName?: string
-consigneeAddress?: string
-consigneeContact?: string
-consigneeEmail?: string
-<<<<<<< HEAD
 
-=======
-salesUserStaffCode?: string
-salesUserName?: string
-salesUserEmail?: string
->>>>>>> 99762374183279ee8046687e9690d09ac424354d
-=======
-  jobNumber?: string
-  houseBillNumber?: string
-  transportMode?: string
-  branch?: string
-  gbCode?: string
-  gcCode?: string
-  stDescription?: string
-  stNoteText?: string
-  cargoReadyDate?: Date
-  cargoReceivedDate?: Date
-  cargoPickupDate?: Date
-  pickupDateStatus?: string
-  jobLastEditTime?: Date
-  llmIdentifiedType?: string
-  llmNote?: string
-  shipperName?: string
-  shipperAddress?: string
-  shipperContact?: string
-  shipperPhone?: string
-  consigneeName?: string
-  consigneeAddress?: string
-  consigneeContact?: string
-  consigneeEmail?: string
-  salesUserStaffCode?: string
-  salesUserName?: string
-  salesUserEmail?: string
-  jsPk?: string
-  llmCargoPickupDate?: string
-  runningDateTime?: Date | null
-  noteNumber?: number | null
->>>>>>> 21f793f1dab44f11c2278ee83fb129acbd8148ce
-}
-
-export interface ShipmentStats {
-  total: number
-  inTransit: number
-  exceptions: number
-  deliveredToday: number
-}
-
-export interface DelayedStats {
-  totalDelayed: number
-  highPriority: number
-  avgDelayDays: number
-  customsIssues: number
-<<<<<<< HEAD
-
-=======
->>>>>>> 21f793f1dab44f11c2278ee83fb129acbd8148ce
-}
 
 export interface User {
   id: string;
@@ -134,20 +33,17 @@ export interface User {
 }
 
 export interface UserFormData {
+  id: string;
   fullName: string;
   email: string;
   department: string;
   role: string;
-  userAction: 'block' | 'unblock' | '';
+  userAction: string;
   resetPassword: boolean;
   unlockAccount: boolean;
 }
 
-// ─── Profile Types ───────────────────────────────────────────
-<<<<<<< HEAD
-
-=======
->>>>>>> 21f793f1dab44f11c2278ee83fb129acbd8148ce
+// Profile Types 
 export interface UserProfile {
   id: string;
   fullName: string;
@@ -166,10 +62,78 @@ export interface PasswordChange {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
-<<<<<<< HEAD
 }
-=======
+
+
+export interface Shipment {
+  id: string
+  cargowiseId: string          // ← add (was trackingNumber)
+  currentStage: ShipmentStatus // ← add (was status)
+  originCity: string           // ← add
+  originCountryCode: string    // ← add
+  destinationCity: string      // ← add
+  destinationCountryCode: string // ← add
+  carrier: string
+  estimatedArrival: Date | null  // ← add
+  createdBy: CargowiseUser
+  lastUpdatedBy: CargowiseUser
+  createdAt: Date
+  updatedAt: Date
+  isPriority?: boolean
+  delayReason?: string
+  delayDays?: number
+  deliveryDate?: Date
+  archivedDate?: Date
+  transitDays?: number
+  jobNumber?: string
+  houseBillNumber?: string
+  transportMode?: string
+  branch?: string
+  gbCode?: string
+  gcCode?: string
+  stDescription?: string
+  stNoteText?: string
+  cargoReadyDate?: Date
+  cargoReceivedDate?: Date
+  cargoPickupDate?: Date
+  pickupDateStatus?: string
+  jobLastEditTime?: Date
+  llmIdentifiedType?: string
+  llmNote?: string
+  llmCargoPickupDate?: string  // ← add
+  runningDateTime?: Date | null // ← add
+  noteNumber?: number | null   // ← add
+  jsPk?: string                // ← add
+  shipperName?: string
+  shipperAddress?: string
+  shipperContact?: string
+  shipperPhone?: string
+  consigneeName?: string
+  consigneeAddress?: string
+  consigneeContact?: string
+  consigneeEmail?: string
+  salesUserStaffCode?: string
+  salesUserName?: string
+  salesUserEmail?: string
+}
+
+
+export interface ShipmentMilestone {
+  id: string
+  shipment_id: string
+  name: string
+  sequence_order: number
+  is_critical: boolean
+  status: string
+  assigned_to?: string
+  due_date?: string | null
+  completed_date?: string | null
+  notes?: string | null
+  location_label?: string | null
+  location_lat?: number | null
+  location_lng?: number | null
+  days_from_booking?: number | null
+  created_at: string
 }
 
 declare module '*.css'
->>>>>>> 21f793f1dab44f11c2278ee83fb129acbd8148ce
