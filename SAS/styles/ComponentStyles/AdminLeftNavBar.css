@@ -1,8 +1,21 @@
-/* Tailwind @apply version — Admin Left Navigation Bar Styles */
-@reference "tailwindcss";
+@reference "../../app/globals.css";
+
 .admin-nav-container {
-  @apply w-full max-w-[300px] 
-  h-screen bg-[#f5f5f7] p-5 box-border overflow-y-auto flex flex-col gap-2 border-r border-[#e5e5e7];
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 260px;
+  max-width: 260px;
+  z-index: 100;
+  background-color: #f5f5f7;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-right: 1px solid #e5e5e7;
 }
 
 /* Header Styles */
@@ -32,12 +45,8 @@
 }
 
 /* Dashboard Button */
-
-
 .nav-dashboard-btn {
-  @apply flex items-center gap-3 w-full px-5 py-4 bg-blue-100 border-0 
-  rounded-2xl cursor-pointer text-[14px] font-black text-blue-900 
-  transition-all duration-200 ease-in-out mb-3;
+  @apply flex items-center gap-3 w-full px-5 py-4 bg-blue-100 border-0 rounded-2xl cursor-pointer text-[14px] font-black text-blue-900 transition-all duration-200 ease-in-out mb-3;
 }
 
 .nav-dashboard-btn:hover {
@@ -58,16 +67,12 @@
 }
 
 /* Sections */
-
-
 .nav-section {
   @apply flex flex-col gap-0 mb-2;
 }
 
 .nav-section-header {
-  @apply flex items-center gap-3 w-full px-5 py-4 bg-transparent border-0 
-  rounded-2xl cursor-pointer text-[14px] font-bold text-slate-800 
-  transition-all duration-200 ease-in-out text-left;
+  @apply flex items-center gap-3 w-full px-5 py-4 bg-transparent border-0 rounded-2xl cursor-pointer text-[14px] font-bold text-slate-800 transition-all duration-200 ease-in-out text-left;
 }
 
 .nav-section-header:hover {
@@ -102,9 +107,7 @@
 
 /* Items */
 .nav-item {
-  @apply w-full px-4 py-3 bg-transparent border-0 rounded-xl 
-  cursor-pointer text-[14px] font-extrabold text-slate-500 
-  text-left transition-all duration-200 ease-in-out;
+  @apply w-full px-4 py-3 bg-transparent border-0 rounded-xl cursor-pointer text-[14px] font-extrabold text-slate-500 text-left transition-all duration-200 ease-in-out;
 }
 
 .nav-item:hover {
@@ -117,7 +120,7 @@
   padding-left: 13px;
 }
 
-/* Scrollbar (keep normal CSS) */
+/* Scrollbar */
 .admin-nav-container::-webkit-scrollbar {
   width: 6px;
 }
@@ -135,7 +138,10 @@
 /* Responsive */
 @media (max-width: 768px) {
   .admin-nav-container {
-    @apply max-w-[250px] p-4 gap-2;
+    width: 250px;
+    max-width: 250px;
+    padding: 16px;
+    gap: 6px;
   }
 
   .nav-dashboard-btn,
@@ -152,14 +158,8 @@
   .logo-text {
     @apply text-sm;
   }
+
   .logo-subtext {
     @apply text-[10px];
   }
-}
-
-
-.admin-nav-container {
-  @apply fixed top-0 left-0 h-screen w-[260px]
-  bg-[#f5f5f7] p-5 box-border overflow-y-auto
-  flex flex-col gap-2 border-r border-[#e5e5e7];
 }

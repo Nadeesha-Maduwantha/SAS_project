@@ -1,0 +1,43 @@
+@reference "tailwindcss";
+
+.admin-banner {
+  @apply w-full rounded-[14px] bg-[#0b2545] text-white px-4 py-[14px] flex items-center justify-between gap-3;
+}
+
+.admin-banner__left {
+  @apply flex items-start gap-3;
+}
+
+.admin-banner__iconWrap {
+  @apply h-9 w-9 rounded-[10px] flex items-center justify-center;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.admin-banner__icon {
+  @apply w-[18px] h-[18px];
+}
+
+.admin-banner__title {
+  @apply text-[13px] font-extrabold;
+}
+
+.admin-banner__desc {
+  @apply mt-[3px] text-xs;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.admin-banner__status {
+  @apply hidden text-xs;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.admin-banner__statusGood {
+  @apply font-extrabold;
+  color: #6ee7b7;
+}
+
+@media (min-width: 768px) {
+  .admin-banner__status {
+    @apply block;
+  }
+}
