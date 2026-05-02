@@ -1,7 +1,6 @@
 from flask import Blueprint, request, jsonify
 from services.supabase_service import get_supabase
-from datetime import datetime
-import traceback
+from utils.audit_logger import log_audit_action
 
 print("=== USERS.PY MODULE LOADED ===")  # ← TOP OF FILE outside function
 
@@ -70,3 +69,34 @@ def create_user():
         traceback.print_exc()
         error_message = type(e).__name__
         return jsonify({'error': error_message}), 400
+
+@bp.route('/<user_id>', methods=['DELETE'])
+def delete_user(user_id):
+    try:
+        supabase = get_supabase()
+        
+        # ... your code to actually delete the user ...
+        # e.g., response = supabase.table('users').delete().eq('id', user_id).execute()
+        
+        # 2. LOG THE ACTION
+        # Assuming you know who is doing the deleting (e.g., the currently logged-in Admin's ID)
+        admin_id = "uuid-of-the-logged-in-admin" # You'd get this from your auth middleware/token
+        
+        # Action types and entity types should match the IDs in your database setup!
+        ACTION_DELETE = 3       # Example: 3 = Delete
+        ENTITY_USER = 1         # Example: 1 = User module
+        
+        log_audit_action(
+            user_id=admin_id,
+            action_type_id=ACTION_DELETE,
+            entity_type_id=ENTITY_USER,
+            entity_id=user_id,
+            old_value=None,
+            new_value=None,
+            description=f"Deleted user account with ID: {user_id}"
+        )
+        
+        return jsonify({'message': 'User deleted successfully'}), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
