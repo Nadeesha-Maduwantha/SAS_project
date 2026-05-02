@@ -17,56 +17,7 @@ export interface CargowiseUser {
   email: string
 }
 
-export interface Shipment {
-  id: string
-  trackingNumber: string
-  status: ShipmentStatus
-  origin: Location
-  destination: Location
-  estimatedDelivery: Date
-  carrier: string
-  createdBy: CargowiseUser
-  lastUpdatedBy: CargowiseUser
-  createdAt: Date
-  updatedAt: Date
-  isPriority?: boolean
-  delayReason?: string
-  delayDays?: number
-  deliveryDate?: Date
-  archivedDate?: Date
-  transitDays?: number
-salesUserStaffCode?: string
-salesUserName?: string
-salesUserEmail?: string
 
-  jobNumber?: string
-  houseBillNumber?: string
-  transportMode?: string
-  branch?: string
-  gbCode?: string
-  gcCode?: string
-  stDescription?: string
-  stNoteText?: string
-  cargoReadyDate?: Date
-  cargoReceivedDate?: Date
-  cargoPickupDate?: Date
-  pickupDateStatus?: string
-  jobLastEditTime?: Date
-  llmIdentifiedType?: string
-  llmNote?: string
-  shipperName?: string
-  shipperAddress?: string
-  shipperContact?: string
-  shipperPhone?: string
-  consigneeName?: string
-  consigneeAddress?: string
-  consigneeContact?: string
-  consigneeEmail?: string
-  salesUserStaffCode?: string
-  salesUserName?: string
-  salesUserEmail?: string
-
-}
 
 export interface User {
   id: string;

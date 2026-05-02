@@ -4,9 +4,7 @@ import { useState, FormEvent, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-  const router = useRouter(); // Initialize router for dashboard redirecting post-login
-  
-  // Local React state handling for user inputs and UI interactions
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberDevice, setRememberDevice] = useState(true);
@@ -98,10 +96,9 @@ export default function LoginPage() {
         {/* Decorative circles */}
         <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-700 rounded-full opacity-20 blur-3xl"></div>
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500 rounded-full opacity-20 blur-3xl"></div>
-        
+
         <div className="relative z-10">
           <h1 className="text-sm font-semibold tracking-wider mb-20">SAS SYSTEMS</h1>
-          
           <div className="max-w-xl">
             <h2 className="text-5xl font-bold mb-6 leading-tight">Dart Global Logistic</h2>
             <p className="text-lg text-blue-100 leading-relaxed">
