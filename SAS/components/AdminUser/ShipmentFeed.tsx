@@ -31,6 +31,16 @@ type ShipmentRow = {
   pickupStatus: PickupStatus;
 };
 
+export type ShipmentFeedItem = {
+  id: string;
+  cargo_id: string | null;
+  branch: string | null;
+  lane: string | null;
+  stage: ShipmentStage | string | null;
+  transport_mode: TransportMode | string | null;
+  pickup_status: PickupStatus | string | null;
+};
+
 // ========================================
 // STATUS STYLING (KEEP SAME)
 // ========================================
@@ -50,11 +60,29 @@ const pickupStatusClass: Record<PickupStatus, string> = {
   Completed: 'status--gray',
 };
 
+const normalizeStage = (stage: ShipmentFeedItem['stage']): ShipmentStage => {
+  if (stage && stage in stageClass) return stage as ShipmentStage;
+  return 'Processing';
+};
+
+const normalizeTransportMode = (
+  mode: ShipmentFeedItem['transport_mode']
+): TransportMode => {
+  return String(mode).toLowerCase() === 'air' ? 'Air' : 'Sea';
+};
+
+const normalizePickupStatus = (
+  status: ShipmentFeedItem['pickup_status']
+): PickupStatus => {
+  if (status && status in pickupStatusClass) return status as PickupStatus;
+  return 'Pending';
+};
+
 // ========================================
 // COMPONENT (UPDATED ONLY HERE)
 // ========================================
 
-export default function ShipmentFeed({ data }: { data: any[] }) {
+export default function ShipmentFeed({ data }: { data: ShipmentFeedItem[] }) {
   const [openFilter, setOpenFilter] = useState(false);
   const [transportModeFilter, setTransportModeFilter] = useState<string>('All');
 
@@ -68,10 +96,10 @@ export default function ShipmentFeed({ data }: { data: any[] }) {
       origin: item.lane?.split('→')[0]?.trim() || '',
       dest: item.lane?.split('→')[1]?.trim() || '',
       lane: item.lane,
-      stage: item.stage,
+      stage: normalizeStage(item.stage),
       // stageDetails: item.description,
-      transportMode: item.transport_mode,
-      pickupStatus: item.pickup_status,
+      transportMode: normalizeTransportMode(item.transport_mode),
+      pickupStatus: normalizePickupStatus(item.pickup_status),
     }));
   }, [data]);
 

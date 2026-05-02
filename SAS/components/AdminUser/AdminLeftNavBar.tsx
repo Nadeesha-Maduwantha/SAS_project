@@ -59,7 +59,7 @@ export default function AdminLeftNavBar() {
 
       {/* My Dashboard */}
       <button
-        className={`nav-dashboard-btn ${isActiveRoute('/admin/dashboard') ? 'active' : ''}`}
+        className={`nav-item-lead ${isActiveRoute('/admin/dashboard') ? 'active' : ''}`}
         onClick={() => handleNavigation('/admin/dashboard')}
       >
         <LayoutGrid className="nav-icon" />
@@ -216,7 +216,7 @@ export default function AdminLeftNavBar() {
       {/* Sync */}
       <div className="nav-section">
         <button
-          className={`nav-section-header ${isActiveRoute('/admin/sync') ? 'active' : ''}`}
+          className={`nav-item-lead ${isActiveRoute('/admin/sync') ? 'active' : ''}`}
           onClick={() => handleNavigation('/admin/sync')}
         >
           <RefreshCw className="nav-icon" />
