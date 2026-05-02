@@ -207,3 +207,219 @@ def delete_template(template_id):
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+
+@templates_bp.route('/api/templates/<template_id>/preview-assignment', methods=['GET'])
+def preview_assignment(template_id):
+    try:
+        assign_type    = request.args.get('type', 'all')
+        consignee_name = request.args.get('consignee_name', '').strip()
+        branch         = request.args.get('branch', '').strip()
+ 
+        # ── Build the shipments query ─────────────────────────
+        query = supabase.table('shipments').select(
+            'id, job_number, consignee_name, transport_mode, '
+            'origin_country_code, destination_country_code, branch'
+        )
+ 
+        if assign_type == 'air_import':
+            # AIR, origin is NOT Sri Lanka → arriving into LK
+            query = query.eq('transport_mode', 'AIR').neq('origin_country_code', 'LK')
+ 
+        elif assign_type == 'air_export':
+            # AIR, origin IS Sri Lanka → departing from LK
+            query = query.eq('transport_mode', 'AIR').eq('origin_country_code', 'LK')
+ 
+        elif assign_type == 'sea_import':
+            query = query.eq('transport_mode', 'SEA').neq('origin_country_code', 'LK')
+ 
+        elif assign_type == 'sea_export':
+            query = query.eq('transport_mode', 'SEA').eq('origin_country_code', 'LK')
+ 
+        elif assign_type == 'by_client':
+            if not consignee_name:
+                return jsonify({'error': 'consignee_name is required for by_client'}), 400
+            query = query.ilike('consignee_name', f'%{consignee_name}%')
+ 
+        elif assign_type == 'by_branch':
+            if not branch:
+                return jsonify({'error': 'branch is required for by_branch'}), 400
+            # matches both "CMB" and "Colombo" style values
+            query = query.ilike('branch', f'%{branch}%')
+ 
+        # assign_type == 'all' → no filter, returns everything
+ 
+        response  = query.execute()
+        shipments = response.data or []
+ 
+        # ── Flag which shipments already have milestones ───────
+        conflict_ids = set()
+        if shipments:
+            ids = [s['id'] for s in shipments]
+            conflicts_res = (
+                supabase.table('shipment_milestones')
+                .select('shipment_id')
+                .in_('shipment_id', ids)
+                .execute()
+            )
+            conflict_ids = {m['shipment_id'] for m in (conflicts_res.data or [])}
+ 
+        for s in shipments:
+            s['has_milestones'] = s['id'] in conflict_ids
+ 
+        conflict_count = len(conflict_ids.intersection({s['id'] for s in shipments}))
+ 
+        return jsonify({
+            'data':           shipments,
+            'conflict_count': conflict_count,
+            'total':          len(shipments),
+        }), 200
+ 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+ 
+ 
+# ─────────────────────────────────────────────────────────────
+#  POST /api/templates/<template_id>/assign
+#
+#  Body:
+#    {
+#      "shipment_ids":      ["uuid1", "uuid2", ...],
+#      "conflict_strategy": "skip" | "replace"
+#    }
+#
+#  "skip"    → leave shipments that already have milestones untouched
+#  "replace" → delete existing milestones first, then assign
+#
+#  Returns: { message, assigned: int, skipped: int }
+# ─────────────────────────────────────────────────────────────
+@templates_bp.route('/api/templates/<template_id>/assign', methods=['POST'])
+def assign_template_to_shipments(template_id):
+    try:
+        data              = request.get_json()
+        shipment_ids      = data.get('shipment_ids', [])
+        conflict_strategy = data.get('conflict_strategy', 'skip')  # 'skip' or 'replace'
+ 
+        if not shipment_ids:
+            return jsonify({'error': 'No shipments provided'}), 400
+ 
+        if conflict_strategy not in ('skip', 'replace'):
+            return jsonify({'error': 'conflict_strategy must be "skip" or "replace"'}), 400
+ 
+        # ── Load the template and its milestones ──────────────
+        template_res = (
+            supabase.table('milestone_templates')
+            .select('*, template_milestones(*)')
+            .eq('id', template_id)
+            .single()
+            .execute()
+        )
+ 
+        if not template_res.data:
+            return jsonify({'error': 'Template not found'}), 404
+ 
+        template_milestones = sorted(
+            template_res.data.get('template_milestones', []),
+            key=lambda x: x.get('sequence_order', 0),
+        )
+ 
+        if not template_milestones:
+            return jsonify({'error': 'This template has no milestones to assign'}), 400
+ 
+        assigned = 0
+        skipped  = 0
+ 
+        for shipment_id in shipment_ids:
+ 
+            # Check for existing milestones on this shipment
+            existing = (
+                supabase.table('shipment_milestones')
+                .select('id')
+                .eq('shipment_id', shipment_id)
+                .execute()
+            )
+ 
+            if existing.data:
+                if conflict_strategy == 'skip':
+                    skipped += 1
+                    continue
+                elif conflict_strategy == 'replace':
+                    # Delete all existing milestones before assigning
+                    supabase.table('shipment_milestones') \
+                        .delete() \
+                        .eq('shipment_id', shipment_id) \
+                        .execute()
+ 
+            # Build milestone rows from template
+            new_milestones = [
+                {
+                    'shipment_id':    shipment_id,
+                    'template_id':    template_id,
+                    'name':           m['name'],
+                    'sequence_order': m['sequence_order'],
+                    'status':         'pending',
+                    'automated':      m.get('automated', False),
+                    'is_critical':    m.get('is_critical', False),
+                }
+                for m in template_milestones
+            ]
+ 
+            supabase.table('shipment_milestones').insert(new_milestones).execute()
+            assigned += 1
+ 
+        return jsonify({
+            'message':  f'Assigned to {assigned} shipment(s), skipped {skipped}',
+            'assigned': assigned,
+            'skipped':  skipped,
+        }), 200
+ 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+
+    # =============================================================
+#  ADD THIS ROUTE TO routes/templates.py
+#  Place it after the existing delete_template route
+# =============================================================
+
+# ─────────────────────────────────────────────────────────────
+#  GET /api/templates/<template_id>/shipments
+#
+#  Returns shipments that have milestones assigned from
+#  this template — used by the delete warning modal to show
+#  which active shipments would be affected.
+#
+#  Returns: { data: [{ id, job_number, consignee_name }] }
+# ─────────────────────────────────────────────────────────────
+@templates_bp.route('/api/templates/<template_id>/shipments', methods=['GET'])
+def get_template_shipments(template_id):
+    try:
+        # Find all shipment_milestones that reference this template
+        milestones_res = (
+            supabase.table('shipment_milestones')
+            .select('shipment_id')
+            .eq('template_id', template_id)
+            .execute()
+        )
+
+        if not milestones_res.data:
+            return jsonify({'data': [], 'total': 0}), 200
+
+        # Get unique shipment IDs
+        shipment_ids = list({m['shipment_id'] for m in milestones_res.data})
+
+        # Fetch those shipments
+        shipments_res = (
+            supabase.table('shipments')
+            .select('id, job_number, consignee_name')
+            .in_('id', shipment_ids)
+            .execute()
+        )
+
+        return jsonify({
+            'data':  shipments_res.data or [],
+            'total': len(shipments_res.data or []),
+        }), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
