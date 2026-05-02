@@ -17,9 +17,6 @@ export interface CargowiseUser {
   email: string
 }
 
-<<<<<<< HEAD
-
-=======
 export interface Shipment {
   id: string
   trackingNumber: string
@@ -70,7 +67,6 @@ salesUserEmail?: string
   salesUserEmail?: string
 
 }
->>>>>>> a3df50f55b6c5a3baa36738b5a9ea86acdefea4d
 
 export interface User {
   id: string;
@@ -96,11 +92,7 @@ export interface UserFormData {
   unlockAccount: boolean;
 }
 
-<<<<<<< HEAD
-// Profile Types 
-=======
 // ─── Profile Types ───────────────────────────────────────────
->>>>>>> a3df50f55b6c5a3baa36738b5a9ea86acdefea4d
 export interface UserProfile {
   id: string;
   fullName: string;
@@ -119,7 +111,6 @@ export interface PasswordChange {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
-<<<<<<< HEAD
 }
 
 
@@ -192,8 +183,6 @@ export interface ShipmentMilestone {
   location_lng?: number | null
   days_from_booking?: number | null
   created_at: string
-=======
->>>>>>> a3df50f55b6c5a3baa36738b5a9ea86acdefea4d
 }
 
 declare module '*.css'
