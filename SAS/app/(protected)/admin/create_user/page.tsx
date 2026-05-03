@@ -56,11 +56,26 @@ export default function CreateUserPage() {
         throw new Error(errData.error || 'Failed to create user')
       }
 
-      router.push('/admin/users')
+      // Show success message
+      alert("User created successfully!");
+      
+      // Optional: Reset the form so they can create another user
+      setFormData({
+        fullName: '',
+        email: '',
+        password: '',
+        department: '',
+        role: 'user',
+        status: 'active',
+        phone: '',
+        joinDate: '',
+        employeeId: '',
+        address: '',
+      });
+
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'An error occurred'
-      console.log('Error details:', errorMsg)  // ← Add this
-      setError(errorMsg)
+      console.log('Error details:', errorMsg)  
     } finally {
       setLoading(false)
     }
@@ -183,8 +198,8 @@ export default function CreateUserPage() {
                 <option value="">Select Role</option>
                 <option value="admin">Admin</option>
                 <option value="superuser">Super User</option>
-                <option value="supervisor">Supervisor</option>
-                <option value="staff">Staff</option>
+                <option value="salesuser">Sales User</option>
+                <option value="operationuser">Operation User</option>
               </select>
             </div>
           </div>
@@ -233,7 +248,7 @@ export default function CreateUserPage() {
             disabled={loading}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Creating...' : '+ Create User'}
+            {loading ? 'Creating...' : ' Create User'}
           </button>
         </div>
       </form>

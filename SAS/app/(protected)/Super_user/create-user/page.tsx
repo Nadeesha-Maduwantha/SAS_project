@@ -1,9 +1,5 @@
 'use client'
-<<<<<<< HEAD
 import SuperLeftNavBar from '@/components/SuperUser/SuperLeftNavBar'
-=======
-
->>>>>>> cc71c22008c624c8cbf761cc181aba2c21cf2395
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
@@ -60,7 +56,26 @@ export default function CreateUserPage() {
         throw new Error(errData.error || 'Failed to create user')
       }
 
+      // Show success message
+      alert("User created successfully!");
+
+      // Optional: Reset the form so they can create another user
+      setFormData({
+        fullName: '',
+        email: '',
+        password: '',
+        department: '',
+        role: 'user',
+        status: 'active',
+        phone: '',
+        joinDate: '',
+        employeeId: '',
+        address: '',
+      });
+
+      // Redirect to admin/users
       router.push('/admin/users')
+
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'An error occurred'
       console.log('Error details:', errorMsg)  // ← Add this
