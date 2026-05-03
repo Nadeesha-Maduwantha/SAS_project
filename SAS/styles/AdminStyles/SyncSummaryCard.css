@@ -1,0 +1,110 @@
+@reference "tailwindcss";
+
+/* ============================= */
+/* CARD */
+/* ============================= */
+
+.sync-card {
+  @apply bg-white border border-slate-100 rounded-[14px]
+  shadow-[0_10px_24px_rgba(15,23,42,0.04)]
+  p-5 flex flex-col gap-4;
+}
+
+/* ============================= */
+/* HEADER */
+/* ============================= */
+
+.sync-card__head {
+  @apply flex items-center justify-between;
+}
+
+.sync-card__title {
+  @apply text-sm font-black text-slate-900;
+}
+
+/* BUTTON */
+.sync-btn {
+  @apply flex items-center gap-2 text-xs font-extrabold
+  px-3 py-2 rounded-xl bg-blue-600 text-white
+  hover:bg-blue-700 transition;
+}
+
+.sync-btn__icon {
+  @apply w-4 h-4;
+}
+
+/* ============================= */
+/* STATS */
+/* ============================= */
+
+.sync-stats {
+  @apply grid grid-cols-3 gap-4;
+}
+
+.sync-stat {
+  @apply flex items-start gap-2;
+}
+
+.sync-stat__icon {
+  @apply w-5 h-5 text-slate-400 mt-1;
+}
+
+.sync-stat__label {
+  @apply text-[11px] text-slate-500 font-bold;
+}
+
+.sync-stat__value {
+  @apply text-[13px] font-extrabold text-slate-900;
+}
+
+/* ============================= */
+/* STATUS */
+/* ============================= */
+
+.sync-status {
+  @apply text-[11px] px-2 py-1 rounded-full font-black border inline-block;
+}
+
+.sync-status--green {
+  @apply bg-green-50 text-emerald-700 border-green-200;
+}
+
+.sync-status--amber {
+  @apply bg-amber-50 text-amber-700 border-amber-200;
+}
+
+.sync-status--red {
+  @apply bg-red-50 text-red-700 border-red-200;
+}
+
+/* ============================= */
+/* RECORDS */
+/* ============================= */
+
+.sync-records {
+  @apply bg-slate-50 rounded-xl px-4 py-3 flex justify-between items-center;
+}
+
+.sync-records__label {
+  @apply text-sm font-bold text-slate-600;
+}
+
+.sync-records__value {
+  @apply text-lg font-black text-slate-900;
+}
+
+/* ============================= */
+/* FOOTER */
+/* ============================= */
+
+.sync-footer {
+  @apply flex items-center justify-between;
+}
+
+.sync-warning {
+  @apply text-xs font-bold text-amber-600;
+}
+
+.sync-view {
+  @apply text-xs font-extrabold text-blue-600 hover:text-blue-700;
+}

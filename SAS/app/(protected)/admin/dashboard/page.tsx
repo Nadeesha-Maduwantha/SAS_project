@@ -9,6 +9,9 @@ import { useEffect, useState } from "react";
 import { ShieldCheck, Users, BellRing, Mail } from 'lucide-react';
 import '@/styles/AdminStyles/AdminLayout.css';
 
+import SyncSummaryCard from '@/components/AdminUser/SyncSummaryCard';
+
+
 
 async function fetchDashboardData<T>(url: string, fallback: T): Promise<T> {
   try {
@@ -86,7 +89,7 @@ export default function AdminDashboardPage() {
 
       <div className="bottom-grid">
         <ProgressLogs />
-        <SystemTechnicalLogs />
+        <SyncSummaryCard />
       </div>
       <div className="section-gap">
         <ShipmentFeed data={shipments} />

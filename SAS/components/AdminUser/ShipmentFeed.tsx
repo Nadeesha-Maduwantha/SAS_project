@@ -92,10 +92,10 @@ export default function ShipmentFeed({ data }: { data: ShipmentFeedItem[] }) {
 
     return data.map((item) => ({
       id: `#${item.cargo_id}`,
-      branch: item.branch,
+      branch: item.branch || '',
       origin: item.lane?.split('→')[0]?.trim() || '',
       dest: item.lane?.split('→')[1]?.trim() || '',
-      lane: item.lane,
+      lane: item.lane || '',
       stage: normalizeStage(item.stage),
       // stageDetails: item.description,
       transportMode: normalizeTransportMode(item.transport_mode),
