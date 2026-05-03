@@ -1,126 +1,120 @@
 @reference "tailwindcss";
 
 /* ============================= */
-/* CARD LAYOUT - ADMIN THEME */
+/* CARD */
 /* ============================= */
 
-.ra-card {
+.super-table-card {
   @apply bg-white border border-slate-100 rounded-[14px]
   shadow-[0_10px_24px_rgba(15,23,42,0.04)]
-  overflow-hidden flex flex-col relative;
+  overflow-hidden;
 }
 
-.ra-head {
-  @apply flex items-center justify-between gap-4 p-4;
+/* ============================= */
+/* HEADER */
+/* ============================= */
+
+.super-table-header {
+  @apply flex items-center justify-between px-5 py-4 border-b border-slate-100;
 }
 
-.ra-title {
+.super-table-header h3 {
   @apply text-sm font-black text-slate-900;
 }
 
 /* ============================= */
-/* SEARCH BAR */
+/* FILTER */
 /* ============================= */
 
-.ra-search {
-  @apply hidden md:flex items-center gap-2 px-3 py-2 rounded-[10px] border border-slate-200 bg-white;
+.super-table-filter {
+  @apply flex items-center gap-2;
 }
 
-.ra-search__icon {
-  @apply w-4 h-4 text-slate-400;
+.super-table-filter input {
+  @apply px-3 py-2 text-xs rounded-xl border border-slate-200
+  outline-none bg-white;
 }
 
-.ra-search__input {
-  @apply bg-transparent outline-none border-0 text-[13px] text-slate-700 w-[220px];
+.super-table-filter button {
+  @apply px-4 py-2 text-xs font-black rounded-xl
+  bg-blue-600 text-white hover:bg-blue-700 transition;
 }
 
 /* ============================= */
-/* TABLE AREA */
+/* TABLE WRAPPER */
 /* ============================= */
 
-.ra-tableWrap {
-  @apply overflow-x-auto flex-1;
-  min-height: 360px;
+.super-table-wrapper {
+  @apply overflow-x-auto;
 }
 
-.ra-table {
+/* ============================= */
+/* TABLE */
+/* ============================= */
+
+.super-table {
   @apply w-full text-[13px] border-collapse;
 }
 
-.ra-table thead th {
+/* HEADER */
+.super-table thead th {
   @apply text-left text-[11px] uppercase tracking-[0.7px]
   text-slate-500 bg-slate-50 border-y border-slate-100
-  px-4 py-3;
+  px-5 py-3;
 }
 
-.ra-table tbody td {
-  @apply px-4 py-[14px] border-b border-slate-100 align-top;
+/* BODY */
+.super-table tbody td {
+  @apply px-5 py-[14px] border-b border-slate-100 align-top;
 }
 
-.ra-table tbody tr:hover {
+.super-table tbody tr:hover {
   background: rgba(15, 23, 42, 0.02);
 }
 
 /* ============================= */
-/* TABLE TEXT */
+/* TEXT */
 /* ============================= */
 
-.ra-muted {
-  @apply text-slate-600 font-semibold;
-}
-
-.ra-strong {
-  @apply font-black text-slate-900;
-
+.super-table td:first-child {
+  @apply font-bold text-blue-600;
 }
 
 /* ============================= */
-/* MANAGER & AVATAR */
+/* STATUS BADGES */
 /* ============================= */
 
-.ra-manager {
-  @apply flex items-center gap-3;
+.status-badge {
+  @apply text-[11px] font-black px-[10px] py-[5px]
+  rounded-full border inline-block;
 }
 
-.ra-avatar {
-  @apply w-7 h-7 rounded-full bg-slate-200 text-slate-700 text-xs font-black flex items-center justify-center;
+/* COLORS */
+.status-completed {
+  @apply bg-green-50 border-green-200 text-emerald-700;
 }
 
-/* ============================= */
-/* STATUS PILLS */
-/* ============================= */
-
-.ra-pill {
-  @apply text-[11px] font-black px-[10px] py-[6px]
-  rounded-full border inline-flex items-center;
+.status-pending {
+  @apply bg-blue-50 border-blue-200 text-blue-700;
 }
 
-.ra-pill--blue { @apply bg-blue-50 border-blue-200 text-blue-700; }
-.ra-pill--red { @apply bg-red-50 border-red-200 text-red-700; }
-.ra-pill--green { @apply bg-green-50 border-green-200 text-emerald-700; }
-.ra-pill--amber { @apply bg-amber-50 border-amber-200 text-amber-700; }
-.ra-pill--gray { @apply bg-gray-100 border-gray-300 text-gray-700; }
-
-/* ============================= */
-/* MORE ACTIONS */
-/* ============================= */
-
-.ra-more {
-  @apply text-right;
+.status-overdue {
+  @apply bg-red-50 border-red-200 text-red-600;
 }
 
-.ra-moreBtn {
-  @apply w-9 h-9 rounded-[10px] hover:bg-slate-100 flex items-center justify-center transition;
-}
-
-.ra-moreIcon {
-  @apply w-4 h-4 text-slate-400;
+/* fallback */
+.status-unknown {
+  @apply bg-gray-100 border-gray-300 text-gray-600;
 }
 
 /* ============================= */
-/* LOAD MORE */
+/* STATES */
 /* ============================= */
 
-.ra-load {
-  @apply w-full py-3 text-xs font-extrabold text-blue-600 hover:text-blue-700 bg-white transition;
+.super-loading {
+  @apply text-center text-sm font-bold text-slate-500 py-10;
+}
+
+.super-empty {
+  @apply text-center text-sm font-bold text-slate-400 py-10;
 }

@@ -43,13 +43,16 @@ export default function SuperLeftNavBar({ alertsCount = 0 }: Props) {
       <div className="nav-header">
         <div className="nav-logo" onClick={() => handleNavigation('/Super_user/dashboard')}>
           <Shield className="logo-icon" />
-          <span className="logo-text">SAS Alert</span>
+          <div className="logo-textWrap">
+            <span className="logo-text">SAS SYSTEM</span>
+            <span className="logo-subtext">MANAGEMENT</span>
+          </div>
         </div>
       </div>
 
       {/* Dashboard */}
       <button
-        className={`nav-dashboard-btn ${isActiveRoute('/Super_user/dashboard') ? 'active' : ''}`}
+        className={`nav-item-lead ${isActiveRoute('/Super_user/dashboard') ? 'active' : ''}`}
         onClick={() => handleNavigation('/Super_user/dashboard')}
       >
         <LayoutGrid className="nav-icon" />

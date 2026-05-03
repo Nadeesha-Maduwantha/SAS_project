@@ -5,7 +5,7 @@
 }
 
 .super-header__title {
-  @apply text-2xl font-black text-slate-900;
+  @apply text-[18px] font-black text-slate-900;
 }
 
 .super-header__dateBtn {

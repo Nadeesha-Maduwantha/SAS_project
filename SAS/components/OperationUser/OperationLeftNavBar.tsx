@@ -49,13 +49,16 @@ export default function OperationLeftNavBar({ alertsCount = 0 }: Props) {
       <div className="nav-header">
         <div className="nav-logo" onClick={() => handleNavigation('/operation_user/dashboard')}>
           <Shield className="logo-icon" />
-          <span className="logo-text">SAS ALERT</span>
+          <div className="logo-textWrap">
+            <span className="logo-text">SAS SYSTEM</span>
+            <span className="logo-subtext">MANAGEMENT</span>
+          </div>
         </div>
       </div>
 
       {/* My Dashboard */}
       <button
-        className={`nav-dashboard-btn ${isActiveRoute('/operation_user/dashboard') ? 'active' : ''}`}
+        className={`nav-item-lead ${isActiveRoute('/operation_user/dashboard') ? 'active' : ''}`}
         onClick={() => handleNavigation('/operation_user/dashboard')}
       >
         <LayoutGrid className="nav-icon" />
@@ -64,7 +67,7 @@ export default function OperationLeftNavBar({ alertsCount = 0 }: Props) {
 
       {/* My Shipments */}
       <button
-        className={`nav-section-header ${isActiveRoute('/operation_user/shipments') ? 'active' : ''}`}
+        className={`nav-item-lead ${isActiveRoute('/operation_user/shipments') ? 'active' : ''}`}
         onClick={() => handleNavigation('/operation_user/shipments')}
       >
         <Package className="nav-icon" />
@@ -73,7 +76,7 @@ export default function OperationLeftNavBar({ alertsCount = 0 }: Props) {
 
       {/* My Alerts */}
       <button
-        className={`nav-section-header ${isActiveRoute('/operation_user/alerts') ? 'active' : ''}`}
+        className={`nav-item-lead ${isActiveRoute('/operation_user/alerts') ? 'active' : ''}`}
         onClick={() => handleNavigation('/operation_user/alerts')}
       >
         <Bell className="nav-icon" />

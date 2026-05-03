@@ -55,13 +55,16 @@ export default function SalesLeftNavBar({
         <div className="nav-header">
           <div className="nav-logo" onClick={() => handleNavigation('/sales_user/dashboard')}>
             <Shield className="logo-icon" />
-            <span className="logo-text">SAS Alert</span>
+            <div className="logo-textWrap">
+              <span className="logo-text">SAS SYSTEM</span>
+              <span className="logo-subtext">MANAGEMENT</span>
+            </div>
           </div>
         </div>
 
         {/* My Dashboard */}
         <button
-          className={`nav-dashboard-btn ${isActiveRoute('/sales_user/dashboard') ? 'active' : ''}`}
+          className={`nav-item-lead ${isActiveRoute('/sales_user/dashboard') ? 'active' : ''}`}
           onClick={() => handleNavigation('/sales_user/dashboard')}
         >
           <LayoutGrid className="nav-icon" />
@@ -70,7 +73,7 @@ export default function SalesLeftNavBar({
 
         {/* My Shipments */}
         <button
-          className={`nav-section-header ${isActiveRoute('/sales_user/shipments') ? 'active' : ''}`}
+          className={`nav-item-lead ${isActiveRoute('/sales_user/shipments') ? 'active' : ''}`}
           onClick={() => handleNavigation('/sales_user/shipments')}
         >
           <Truck className="nav-icon" />
@@ -79,7 +82,7 @@ export default function SalesLeftNavBar({
 
         {/* My Alerts */}
         <button
-          className={`nav-section-header ${isActiveRoute('/sales_user/alerts') ? 'active' : ''}`}
+          className={`nav-item-lead ${isActiveRoute('/sales_user/alerts') ? 'active' : ''}`}
           onClick={() => handleNavigation('/sales_user/alerts')}
         >
           <Bell className="nav-icon" />

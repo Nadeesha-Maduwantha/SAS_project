@@ -48,10 +48,7 @@ export default function OperationPriorityShipments() {
           <h2 className="op-tableTitle">Priority Shipments</h2>
         </div>
 
-        <div className="op-tableSearch">
-          <Search className="op-tableSearch__icon" />
-          <input className="op-tableSearch__input" placeholder="Search ID..." />
-        </div>
+        
       </div>
 
       <div className="op-tableWrap">
@@ -99,14 +96,7 @@ export default function OperationPriorityShipments() {
         </table>
       </div>
 
-      <div className="op-tableFooter">
-        <span className="op-muted">Showing 4 of 24 tasks</span>
-
-        <div className="op-pager">
-          <button className="op-pageBtn" type="button">Prev</button>
-          <button className="op-pageBtn" type="button">Next</button>
-        </div>
-      </div>
+      
     </div>
   );
 }

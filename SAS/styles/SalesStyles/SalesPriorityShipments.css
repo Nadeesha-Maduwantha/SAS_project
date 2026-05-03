@@ -30,7 +30,7 @@
 }
 
 .sales-table tbody td {
-  @apply px-4 py-[14px] border-b border-slate-100 align-top;
+  @apply px-4 py-3 border-b border-slate-100 align-top;
 }
 
 .sales-table tbody tr:hover {
@@ -42,7 +42,7 @@
 /* ============================= */
 
 .sales-strong {
-  @apply font-black text-slate-900;
+  @apply font-black text-blue-600;
 }
 
 .sales-muted {

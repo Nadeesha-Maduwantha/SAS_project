@@ -1,7 +1,7 @@
 @reference "tailwindcss";
 
 .sales-pill {
-  @apply inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black border;
+  @apply inline-flex items-center gap-2 px-[10px] py-[6px] rounded-full text-[11px] font-black border;
 }
 
 .sales-pill__dot {
