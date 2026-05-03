@@ -176,8 +176,9 @@ def get_me():
             
         supabase = get_supabase()
         
+        # 1. ADD 'phoneNumber' to the select query to fetch the column
         profile_response = supabase.table('profiles').select(
-            'id, full_name, email, role, department, created_at'
+            'id, full_name, email, role, department, phoneNumber, created_at'
         ).eq('id', user_id).execute()
         
         if not profile_response.data:
@@ -190,7 +191,7 @@ def get_me():
                 'id': user_data.get('id'),
                 'fullName': user_data.get('full_name') or 'No Name Set',
                 'email': user_data.get('email') or '',
-                'phoneNumber': '+94 00 000-0000',
+                'phoneNumber': user_data.get('phoneNumber') or 'Not Set',
                 'department': user_data.get('department') or 'General',
                 'role': user_data.get('role') or 'user',
                 'status': 'Active', 
