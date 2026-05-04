@@ -10,12 +10,9 @@ export default function SalesUserDashboardPage() {
     <div>
       <SalesDashboardHeader />
 
-      
-
       <SalesStatsGrid />
 
       <SalesSectionTitle
-        
         title="Priority Shipments" 
       />
 

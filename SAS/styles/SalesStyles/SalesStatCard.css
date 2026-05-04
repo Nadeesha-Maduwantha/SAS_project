@@ -20,10 +20,10 @@
   @apply w-5 h-5;
 }
 
-.sales-stat__icon--amber { @apply text-amber-600; }
+/* .sales-stat__icon--amber { @apply text-amber-600; }
 .sales-stat__icon--blue { @apply text-blue-600; }
 .sales-stat__icon--purple { @apply text-indigo-600; }
-.sales-stat__icon--green { @apply text-emerald-600; }
+.sales-stat__icon--green { @apply text-emerald-600; } */
 
 .sales-stat__title {
   @apply text-[11px] font-extrabold tracking-[0.8px] text-slate-500 uppercase;

@@ -1,7 +1,7 @@
 @reference "tailwindcss";
 
 .super-stat {
-  @apply bg-white border border-slate-100 rounded-[14px] shadow-[0_10px_24px_rgba(15,23,42,0.04)] p-4;
+  @apply bg-white max-w-[300px] border border-slate-100 rounded-[14px] shadow-[0_10px_24px_rgba(15,23,42,0.04)] p-4;
 }
 
 .super-stat__top {

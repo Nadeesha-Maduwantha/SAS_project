@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
 import '@/styles/AdminStyles/ShipmentFeed.css';
 
@@ -83,6 +84,7 @@ const normalizePickupStatus = (
 // ========================================
 
 export default function ShipmentFeed({ data }: { data: ShipmentFeedItem[] }) {
+  const router = useRouter();
   const [openFilter, setOpenFilter] = useState(false);
   const [transportModeFilter, setTransportModeFilter] = useState<string>('All');
 
@@ -217,7 +219,9 @@ export default function ShipmentFeed({ data }: { data: ShipmentFeedItem[] }) {
                   </td>
 
                   <td>
-                    <button className="shipment-viewAll">
+                      
+                    <button className="shipment-viewAll" onClick={() => router.push(`/admin/shipments/${r.id.replace('#', '')}?from=/admin/dashboard`)}
+                   >
                       View Details
                     </button>
                   </td>

@@ -24,10 +24,10 @@
   @apply w-5 h-5;
 }
 
-.op-stat__icon--blue { @apply text-blue-600; }
+/* .op-stat__icon--blue { @apply text-blue-600; }
 .op-stat__icon--purple { @apply text-purple-600; }
 .op-stat__icon--green { @apply text-green-600; }
-.op-stat__icon--red { @apply text-red-500; }
+.op-stat__icon--red { @apply text-red-500; } */
 
 .op-stat__value {
   @apply mt-3 text-[26px] font-black text-slate-900;

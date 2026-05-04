@@ -4,23 +4,34 @@ import { RefreshCw, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import '@/styles/AdminStyles/SyncSummaryCard.css';
 
-export default function SyncSummaryCard() {
+type SyncStatus = 'success' | 'failed' | 'partial';
+
+interface SyncSummaryCardProps {
+  syncData: {
+    lastSyncTime: string;
+    status: SyncStatus;
+    recordsUpdated: number;
+    validationErrors: number;
+  };
+}
+
+export default function SyncSummaryCard({ syncData }: SyncSummaryCardProps) {
   const router = useRouter();
 
-  type SyncStatus = 'Success' | 'Partial' | 'Failed';
+  // Capitalize status for display
+  const capitalizedStatus = syncData.status.charAt(0).toUpperCase() + syncData.status.slice(1) as 'Success' | 'Partial' | 'Failed';
 
-  // 🔹 TEMP DATA (later connect backend)
-  const syncData: { lastSync: string; status: SyncStatus; records: number; errors: number; } = {
-    lastSync: 'Feb 22, 2026, 08:00 AM',
-    status: 'Partial',
-    records: 142,
-    errors: 3,
-  };
-
-  const statusColor: Record<SyncStatus, string> = {
+  const statusColor: Record<'Success' | 'Partial' | 'Failed', string> = {
     Success: 'sync-status--green',
     Partial: 'sync-status--amber',
     Failed: 'sync-status--red',
+  };
+
+  const formatDateTime = (dt: string) => {
+    return new Date(dt).toLocaleString('en-US', {
+      month: 'short', day: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
   };
 
   return (
@@ -29,10 +40,10 @@ export default function SyncSummaryCard() {
       <div className="sync-card__head">
         <div className="sync-card__title">Sync Status</div>
 
-        <button className="sync-btn">
+        {/* <button className="sync-btn">
           <RefreshCw className="sync-btn__icon" />
           Sync Now
-        </button>
+        </button> */}
       </div>
 
       {/* STATS */}
@@ -41,7 +52,7 @@ export default function SyncSummaryCard() {
           <Clock className="sync-stat__icon" />
           <div>
             <div className="sync-stat__label">Last Sync</div>
-            <div className="sync-stat__value">{syncData.lastSync}</div>
+            <div className="sync-stat__value">{formatDateTime(syncData.lastSyncTime)}</div>
           </div>
         </div>
 
@@ -49,8 +60,8 @@ export default function SyncSummaryCard() {
           <CheckCircle className="sync-stat__icon" />
           <div>
             <div className="sync-stat__label">Status</div>
-            <span className={`sync-status ${statusColor[syncData.status]}`}>
-              {syncData.status}
+            <span className={`sync-status ${statusColor[capitalizedStatus]}`}>
+              {capitalizedStatus}
             </span>
           </div>
         </div>
@@ -59,7 +70,7 @@ export default function SyncSummaryCard() {
           <AlertTriangle className="sync-stat__icon" />
           <div>
             <div className="sync-stat__label">Errors</div>
-            <div className="sync-stat__value">{syncData.errors}</div>
+            <div className="sync-stat__value">{syncData.validationErrors}</div>
           </div>
         </div>
       </div>
@@ -67,14 +78,14 @@ export default function SyncSummaryCard() {
       {/* RECORDS */}
       <div className="sync-records">
         <div className="sync-records__label">Records Updated</div>
-        <div className="sync-records__value">{syncData.records}</div>
+        <div className="sync-records__value">{syncData.recordsUpdated}</div>
       </div>
 
       {/* FOOTER */}
       <div className="sync-footer">
-        {syncData.errors > 0 && (
+        {syncData.validationErrors > 0 && (
           <div className="sync-warning">
-            ⚠ {syncData.errors} validation errors found
+            ⚠ {syncData.validationErrors} validation errors found
           </div>
         )}
 

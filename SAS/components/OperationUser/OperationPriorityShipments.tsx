@@ -1,102 +1,68 @@
-import { Search } from 'lucide-react';
+"use client";
+
+import { useEffect, useState } from "react";
 import '@/styles/OperationStyles/OperationPriorityShipments.css';
 
-const rows = [
-  {
-    id: '#SHP-2024-001',
-    sub: 'Container: CN-8291',
-    origin: 'Shanghai, CN',
-    dest: 'Los Angeles, US',
-    status: { label: 'Delayed', tone: 'red' as const },
-    eta: 'Oct 24, 2023',
-    
-  },
-  {
-    id: '#SHP-2024-002',
-    sub: 'Container: CN-1123',
-    origin: 'Hamburg, DE',
-    dest: 'New York, US',
-    status: { label: 'Processing', tone: 'blue' as const },
-    eta: 'Oct 26, 2023',
-    
-  },
-  {
-    id: '#SHP-2024-003',
-    sub: 'Air Freight: AF-992',
-    origin: 'Tokyo, JP',
-    dest: 'London, UK',
-    status: { label: 'In Transit', tone: 'purple' as const },
-    eta: 'Oct 22, 2023',
-    
-  },
-  {
-    id: '#SHP-2024-004',
-    sub: 'Container: CN-5541',
-    origin: 'Singapore, SG',
-    dest: 'Dubai, UAE',
-    status: { label: 'Arrived', tone: 'green' as const },
-    eta: 'Oct 20, 2023',
-    
-  },
-];
+type Shipment = {
+  cargo_id: string;
+  lane: string;
+  stage: string;
+  transport_mode: string;
+  pickup_status: string;
+};
 
 export default function OperationPriorityShipments() {
+  const [rows, setRows] = useState<Shipment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("http://localhost:5001/api/dashboard/operation/shipment")
+      .then((res) => res.json())
+      .then((data) => {
+        setRows(data.data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error fetching shipments:", err);
+        setLoading(false);
+      });
+  }, []);
+
   return (
     <div className="op-tableCard">
       <div className="op-tableHead">
-        <div>
-          <h2 className="op-tableTitle">Priority Shipments</h2>
-        </div>
-
-        
+        <h2 className="op-tableTitle">Priority Shipments</h2>
       </div>
 
       <div className="op-tableWrap">
-        <table className="op-table">
-          <thead>
-            <tr>
-              <th>SHIPMENT ID</th>
-              <th>ORIGIN / DESTINATION</th>
-              <th>STATUS</th>
-              <th>ETA</th>
-              <th className="text-right">ACTION</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id}>
-                <td>
-                  <div className="op-strong">{r.id}</div>
-                  <div className="op-muted">{r.sub}</div>
-                </td>
-
-                <td>
-                  <div className="op-strong">{r.origin}</div>
-                  <div className="op-muted">to {r.dest}</div>
-                </td>
-
-                <td>
-                  <span className={`op-pill op-pill--${r.status.tone}`}>
-                    <span className={`op-pillDot op-pillDot--${r.status.tone}`} />
-                    {r.status.label}
-                  </span>
-                </td>
-
-                <td className="op-strong">{r.eta}</td>
-
-                <td className="op-action">
-                  <button className="op-linkBtn" type="button">
-                    View Details
-                  </button>
-                </td>
+        {loading ? (
+          <p>Loading...</p>
+        ) : (
+          <table className="op-table">
+            <thead>
+              <tr>
+                <th>SHIPMENT ID</th>
+                <th>LANE</th>
+                <th>STAGE</th>
+                <th>MODE</th>
+                <th>STATUS</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
 
-      
+            <tbody>
+              {rows.map((r, index) => (
+                <tr key={index}>
+                  <td className="op-strong">{r.cargo_id}</td>
+                  <td>{r.lane}</td>
+                  <td>{r.stage}</td>
+                  <td>{r.transport_mode}</td>
+                  <td>{r.pickup_status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }

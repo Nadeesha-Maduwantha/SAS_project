@@ -1,4 +1,4 @@
-"use client"; 
+"use client";
 import AdminHeader from '@/components/AdminUser/AdminHeader';
 import StatCard from '@/components/AdminUser/StatCard';
 import ShipmentFeed from '@/components/AdminUser/ShipmentFeed';
@@ -10,6 +10,15 @@ import { ShieldCheck, Users, BellRing, Mail } from 'lucide-react';
 import '@/styles/AdminStyles/AdminLayout.css';
 
 import SyncSummaryCard from '@/components/AdminUser/SyncSummaryCard';
+
+// ─── Sync Status Data ───
+const MOCK_SYNC_STATUS = {
+  lastSyncTime: '2026-02-22T08:00:00',
+  status: 'partial' as 'success' | 'failed' | 'partial',
+  recordsUpdated: 142,
+  validationErrors: 3,
+};
+
 
 
 
@@ -33,10 +42,11 @@ async function fetchDashboardData<T>(url: string, fallback: T): Promise<T> {
 export default function AdminDashboardPage() {
   const [shipments, setShipments] = useState<ShipmentFeedItem[]>([]);
   const [metrics, setMetrics] = useState({
-  total_users: 0,
-  active_alerts: 0,
-  total_emails: 0,
-  success_rate: 0 });
+    total_users: 0,
+    active_alerts: 0,
+    total_emails: 0,
+    success_rate: 0
+  });
 
   useEffect(() => {
     fetchDashboardData(
@@ -61,39 +71,36 @@ export default function AdminDashboardPage() {
 
       <div className="stats-grid">
         <StatCard
-  title="Milestone Success Rate"
-  value={`${metrics.success_rate}%`}
-  icon={<ShieldCheck size={16} />}
-/>
+          title="Milestone Success Rate"
+          value={`${metrics.success_rate}%`}
+          icon={<ShieldCheck size={16} />}
+        />
 
-<StatCard
-  title="Total Users"
-  value={metrics.total_users.toString()}
-  icon={<Users size={16} />}
-/>
+        <StatCard
+          title="Total Users"
+          value={metrics.total_users.toString()}
+          icon={<Users size={16} />}
+        />
 
-<StatCard
-  title="Active Alerts"
-  value={metrics.active_alerts.toString()}
-  icon={<BellRing size={16} />}
-/>
+        <StatCard
+          title="Active Alerts"
+          value={metrics.active_alerts.toString()}
+          icon={<BellRing size={16} />}
+        />
 
-<StatCard
-  title="Total Generated Emails"
-  value={metrics.total_emails.toString()}
-  icon={<Mail size={16} />}
-/>
+        <StatCard
+          title="Total Generated Emails"
+          value={metrics.total_emails.toString()}
+          icon={<Mail size={16} />}
+        />
       </div>
-
-      
-
       <div className="bottom-grid">
         <ProgressLogs />
-        <SyncSummaryCard />
+        <SyncSummaryCard syncData={MOCK_SYNC_STATUS} />
       </div>
       <div className="section-gap">
         <ShipmentFeed data={shipments} />
-    
+
       </div>
     </div>
   );

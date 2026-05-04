@@ -2,27 +2,27 @@
 
 import SuperStatsGrid from '@/components/SuperUser/SuperStatsGrid';
 import SuperRecentActivityTable from '@/components/SuperUser/SuperRecentActivityTable';
-import SuperWorkloadChartCard from '@/components/SuperUser/SuperWorkloadChartCard';
 import SuperCriticalAlertsCard from '@/components/SuperUser/SuperCriticalAlertsCard';
+import '@/styles/SuperStyles/SuperDashboardLayout.css';
+import SuperDashboardHeader from '@/components/SuperUser/SuperDashboardHeader';
 
 export default function SuperUserDashboard() {
   return (
     <div className="super-dashboard">
+      <SuperDashboardHeader />
 
-      
-      <SuperStatsGrid />
-
-      
-      <div className="super-section-gap">
-        <SuperRecentActivityTable />
-      </div>
-
-      
       <div className="super-grid-2">
         <div className="super-grid-2__left">
-          <SuperWorkloadChartCard />
+          <SuperStatsGrid />
         </div>
-        <SuperCriticalAlertsCard />
+
+        <div className="super-grid-2__right">
+          <SuperCriticalAlertsCard />
+        </div>
+      </div>
+
+      <div className="super-section-gap">
+        <SuperRecentActivityTable />
       </div>
 
     </div>
