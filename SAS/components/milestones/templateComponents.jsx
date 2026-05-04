@@ -1,18 +1,9 @@
-// =============================================================
-//  Shared components for milestone template pages
-//  Path: src/components/templateComponents.jsx
-//
-//  Used by:
-//    src/app/templates/[id]/page.jsx        (view/edit template)
-//    src/app/templates/create/page.jsx      (create new template)
-// =============================================================
+
 "use client";
 
 import { useState } from "react";
 import { T, solidBtn, ghostBtn, inp, lbl } from "@/styles/tokens";
-// =============================================================
 //  ICONS
-// =============================================================
 
 export const IcoEdit = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -95,9 +86,7 @@ export const IcoBranch = () => (
   </svg>
 );
 
-// =============================================================
 //  BADGE
-// =============================================================
 
 export function Badge({ text, color, bg, border }) {
   return (
@@ -117,9 +106,7 @@ export function Badge({ text, color, bg, border }) {
   );
 }
 
-// =============================================================
 //  SECTION HEADING
-// =============================================================
 
 export function SectionHead({ title, pill }) {
   return (
@@ -144,17 +131,13 @@ export function SectionHead({ title, pill }) {
   );
 }
 
-// =============================================================
 //  DIVIDER
-// =============================================================
 
 export function Divider() {
   return <div style={{ borderTop: `1px solid ${T.gray200}`, margin: "20px 0" }} />;
 }
 
-// =============================================================
 //  TOGGLE CHECKBOX
-// =============================================================
 
 export function ToggleCheck({ label, checked, onChange, color, bg }) {
   return (
@@ -185,9 +168,7 @@ export function ToggleCheck({ label, checked, onChange, color, bg }) {
   );
 }
 
-// =============================================================
 //  MILESTONE CARD  (drag-and-drop capable)
-// =============================================================
 
 export function MilestoneCard({ milestone, index, editMode, onDragStart, onDragOver, onDrop, onDragEnd, isDragOver, onRemove }) {
   const [hov, setHov] = useState(false);
@@ -282,9 +263,7 @@ export function MilestoneCard({ milestone, index, editMode, onDragStart, onDragO
   );
 }
 
-// =============================================================
 //  MODAL
-// =============================================================
 
 export function Modal({ title, titleColor, onClose, children }) {
   return (
@@ -323,9 +302,7 @@ export function Modal({ title, titleColor, onClose, children }) {
   );
 }
 
-// =============================================================
 //  MILESTONE FORM  (add a single milestone — used in both pages)
-// =============================================================
 
 export function MilestoneForm({ onAdd, onClose, submitLabel = "Add Milestone" }) {
   const [name,      setName]    = useState("");
@@ -487,9 +464,7 @@ export function MilestoneForm({ onAdd, onClose, submitLabel = "Add Milestone" })
   );
 }
 
-// =============================================================
 //  PAGE-LEVEL KEYFRAMES  (paste inside a <style> tag)
-// =============================================================
 
 export const PAGE_KEYFRAMES = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
