@@ -72,7 +72,8 @@ def create_template():
         template_id  = new_template['id']
 
         # Step 2: Insert all the milestones linked to this template
-        # We build a list of dictionaries — one per milestone
+        # build a list of dictionaries — one per milestone
+
         milestones_to_insert = []
         for i, milestone in enumerate(data['milestones']):
             milestones_to_insert.append({
@@ -88,28 +89,27 @@ def create_template():
         return jsonify({
             "message": "Template created successfully",
             "data":    new_template
-        }), 201  # 201 = Created (not 200, because we made something new)
+        }), 201  # 201 = Created (not 200, because made something new)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-# ─────────────────────────────────────────────
+
 #  PUT /api/templates/<template_id>
 #  Updates an existing template
-#  Used when admin edits a template
-# ─────────────────────────────────────────────
+
 @templates_bp.route('/api/templates/<template_id>', methods=['PUT'])
 def update_template(template_id):
     try:
         data = request.get_json()
 
-        # Step 1: Update the template metadata
+         
         update_data = {
             "name":          data.get('name'),
             "shipment_type": data.get('shipment_type'),
             "description":   data.get('description', ''),
-            "updated_at":    "now()",  # Supabase understands "now()" as current timestamp
+            "updated_at":    "now()", 
         }
 
         supabase.table('milestone_templates').update(update_data).eq('id', template_id).execute()
@@ -135,11 +135,10 @@ def update_template(template_id):
         return jsonify({"error": str(e)}), 500
 
 
-# ─────────────────────────────────────────────
 #  POST /api/templates/<template_id>/copy
 #  Saves a template as a new copy
-#  This is your "save as copy" feature
-# ─────────────────────────────────────────────
+#  save as copy feature
+
 @templates_bp.route('/api/templates/<template_id>/copy', methods=['POST'])
 def copy_template(template_id):
     try:
@@ -194,11 +193,10 @@ def copy_template(template_id):
         return jsonify({"error": str(e)}), 500
 
 
-# ─────────────────────────────────────────────
+
 #  DELETE /api/templates/<template_id>
-#  Soft delete — sets is_active to False
-#  We never fully delete templates in case shipments reference them
-# ─────────────────────────────────────────────
+
+
 @templates_bp.route('/api/templates/<template_id>', methods=['DELETE'])
 def delete_template(template_id):
     try:
@@ -279,20 +277,9 @@ def preview_assignment(template_id):
         return jsonify({'error': str(e)}), 500
  
  
-# ─────────────────────────────────────────────────────────────
 #  POST /api/templates/<template_id>/assign
-#
-#  Body:
-#    {
-#      "shipment_ids":      ["uuid1", "uuid2", ...],
-#      "conflict_strategy": "skip" | "replace"
-#    }
-#
-#  "skip"    → leave shipments that already have milestones untouched
-#  "replace" → delete existing milestones first, then assign
-#
 #  Returns: { message, assigned: int, skipped: int }
-# ─────────────────────────────────────────────────────────────
+
 @templates_bp.route('/api/templates/<template_id>/assign', methods=['POST'])
 def assign_template_to_shipments(template_id):
     try:
@@ -306,7 +293,7 @@ def assign_template_to_shipments(template_id):
         if conflict_strategy not in ('skip', 'replace'):
             return jsonify({'error': 'conflict_strategy must be "skip" or "replace"'}), 400
  
-        # ── Load the template and its milestones ──────────────
+        # Load the template and its milestones 
         template_res = (
             supabase.table('milestone_templates')
             .select('*, template_milestones(*)')
@@ -377,20 +364,12 @@ def assign_template_to_shipments(template_id):
         return jsonify({'error': str(e)}), 500
     
 
-    # =============================================================
-#  ADD THIS ROUTE TO routes/templates.py
-#  Place it after the existing delete_template route
-# =============================================================
 
-# ─────────────────────────────────────────────────────────────
-#  GET /api/templates/<template_id>/shipments
-#
 #  Returns shipments that have milestones assigned from
 #  this template — used by the delete warning modal to show
 #  which active shipments would be affected.
-#
 #  Returns: { data: [{ id, job_number, consignee_name }] }
-# ─────────────────────────────────────────────────────────────
+
 @templates_bp.route('/api/templates/<template_id>/shipments', methods=['GET'])
 def get_template_shipments(template_id):
     try:
