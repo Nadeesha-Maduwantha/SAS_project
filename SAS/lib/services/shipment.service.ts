@@ -1,11 +1,10 @@
 import { Shipment, ShipmentMilestone, ShipmentStats, DelayedStats, DepartmentStats } from '@/types'
 import { supabase } from '@/lib/supabase'
 
-// FIXED: no longer hardcoded — reads from environment variable.
-// Add NEXT_PUBLIC_API_URL=http://localhost:5000 to your .env.local
+
 const FLASK_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000'
 
-// ─── Row Type ─────────────────────────────────────────────────────────────────
+// Row Type 
 
 interface ShipmentRow {
   id: string
@@ -63,7 +62,7 @@ interface ShipmentRow {
   note_number: number | null
 }
 
-// ─── Mapper ───────────────────────────────────────────────────────────────────
+// Mapper 
 
 function mapRow(row: ShipmentRow): Shipment {
   return {
@@ -127,8 +126,8 @@ function mapRow(row: ShipmentRow): Shipment {
   }
 }
 
-// ─── Shared Fetch Helper ──────────────────────────────────────────────────────
-// FIXED: centralised fetch with response.ok check so all shipment endpoints
+// Shared Fetch Helper
+// centralised fetch with response.ok check so all shipment endpoints
 // get consistent error handling instead of silently returning bad data.
 async function fetchFlask<T>(path: string): Promise<T> {
   const response = await fetch(`${FLASK_API}${path}`)
@@ -140,7 +139,7 @@ async function fetchFlask<T>(path: string): Promise<T> {
   return result.data as T
 }
 
-// ─── Shipment Functions ───────────────────────────────────────────────────────
+// Shipment Functions 
 
 export async function getAllShipments(): Promise<Shipment[]> {
   const data = await fetchFlask<ShipmentRow[]>('/api/shipments')
@@ -190,7 +189,7 @@ export async function getActiveShipmentsByDepartment(department: string): Promis
   return (data ?? []).map(mapRow)
 }
 
-// FIXED: archived department filter now done server-side via dedicated endpoint
+// archived department filter done server-side via dedicated endpoint
 // instead of fetching all archived shipments and filtering in JavaScript
 export async function getArchivedShipmentsByDepartment(department: string): Promise<Shipment[]> {
   const data = await fetchFlask<ShipmentRow[]>(`/api/shipments/archived/department/${department}`)
@@ -235,7 +234,7 @@ export async function getShipmentsBySalesUser(staffCode: string): Promise<Shipme
   return (data ?? []).map(mapRow)
 }
 
-// ─── Milestone Functions ──────────────────────────────────────────────────────
+// Milestone Functions 
 // NOT CHANGED — these belong to the milestone module (teammate's work).
 // Left exactly as originally written.
 

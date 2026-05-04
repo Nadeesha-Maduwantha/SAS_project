@@ -20,8 +20,8 @@ import {
   isDelayedShipment,
 } from '@/constants/shipment.constants'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-// FIXED: all constants moved outside the component so they are not
+// Constants 
+//  all constants are in outside the component so they are not
 // recreated on every render.
 
 const PAGE_SIZE = 10
@@ -31,10 +31,8 @@ const DEFAULT_FILTERS: Record<string, string> = {
   transportMode: '',
 }
 
-// FIXED: filterGroups moved outside component — was recreated on every render.
-// Also fixed: 'Delivered to CFS warehouse' → 'Delivered to CFS' to match
-// the actual llmIdentifiedType value returned by CargoWise.
-// 'Unknown' removed — it is not a real CargoWise stage value.
+// filterGroups is outside component.
+
 const filterGroups = [
   {
     label: 'By Department',
@@ -48,7 +46,7 @@ const filterGroups = [
   },
 ]
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Helpers 
 
 function formatPickupDate(date: string | undefined): string {
   if (!date) return '—'
@@ -57,12 +55,12 @@ function formatPickupDate(date: string | undefined): string {
   })
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+//Component
 
 export default function SalesUserShipmentsPage() {
   const router = useRouter()
 
-  // FIXED: staffCode and name now come from useAuth() instead of hardcoded
+  // staffCode and name come from useAuth() instead of hardcoded
   // module-level constants (SALES_USER_STAFF_CODE / SALES_USER_NAME).
   // When auth teammate connects real sessions, only useAuth.ts changes —
   // this page stays the same.
@@ -78,7 +76,7 @@ export default function SalesUserShipmentsPage() {
   const [searchQuery, setSearchQuery]    = useState('')
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>(DEFAULT_FILTERS)
 
-  // ─── Fetch ────────────────────────────────────────────────────────────────
+  // To Fetching shipments, we use useEffect to call getShipmentsBySalesUser with the staffCode from auth.
   useEffect(() => {
     async function fetchData() {
       try {
@@ -96,9 +94,9 @@ export default function SalesUserShipmentsPage() {
     fetchData()
   }, [staffCode]) // re-fetches if staffCode changes when real auth is connected
 
-  // ─── Stats ────────────────────────────────────────────────────────────────
-  // FIXED: isDelayedShipment() imported from constants — single source of
-  // truth for delay logic. Was duplicated inline here AND in filteredShipments.
+  // Stats
+  // isDelayedShipment() imported from constants — single source of
+  // truth for delay logic.
   const stats = useMemo(() => ({
     total:     shipments.length,
     active:    shipments.filter((s) =>
@@ -110,9 +108,9 @@ export default function SalesUserShipmentsPage() {
     ).length,
   }), [shipments])
 
-  // ─── Filtering ────────────────────────────────────────────────────────────
-  // FIXED: isDelayedShipment() used instead of duplicating the condition.
-  // Search now checks cargowiseId, consigneeName and branch — same as before.
+  //Filtering
+  // isDelayedShipment() used instead of duplicating the condition.
+  // Search now checks cargowiseId, consigneeName and branch.
   const filteredShipments = useMemo(() => shipments.filter((s) => {
     if (activeFilters.transportMode && s.transportMode !== activeFilters.transportMode) return false
 
@@ -140,7 +138,7 @@ export default function SalesUserShipmentsPage() {
     return true
   }), [shipments, activeFilters, searchQuery])
 
-  // ─── Sorting ──────────────────────────────────────────────────────────────
+  // Sorting 
   // Sort by nearest pickup date — shipments without a date go to the bottom
   const sortedShipments = useMemo(() => {
     return [...filteredShipments].sort((a, b) => {
@@ -150,13 +148,13 @@ export default function SalesUserShipmentsPage() {
     })
   }, [filteredShipments])
 
-  // FIXED: PAGE_SIZE constant used instead of magic number 10
+  // PAGE_SIZE constant used instead of magic number 10
   const paginated = sortedShipments.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   )
 
-  // ─── Loading / Error ──────────────────────────────────────────────────────
+  // To show Loading / Error states.
   if (loading) return (
     <div className="p-6 flex items-center justify-center h-64">
       <p className="text-gray-500 text-sm">Loading shipments...</p>
@@ -169,7 +167,7 @@ export default function SalesUserShipmentsPage() {
     </div>
   )
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  //Render 
   return (
     <div className="p-6">
 
@@ -230,8 +228,7 @@ export default function SalesUserShipmentsPage() {
             onFilterChange={(key, value) =>
               setActiveFilters((prev) => ({ ...prev, [key]: value }))
             }
-            // FIXED: onClearAll uses DEFAULT_FILTERS constant instead of
-            // an inline object literal that could drift out of sync
+           
             onClearAll={() => setActiveFilters(DEFAULT_FILTERS)}
           />
           {/* Sort indicator — currently fixed to pickup date nearest */}
@@ -280,7 +277,7 @@ export default function SalesUserShipmentsPage() {
                 const clientInitials = (shipment.consigneeName ?? 'CL')
                   .split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
 
-                // FIXED: transport mode icon background uses TRANSPORT_MODE_STYLES
+                // transport mode icon background uses TRANSPORT_MODE_STYLES
                 // instead of inline hex ternary
                 const modeStyle = TRANSPORT_MODE_STYLES[shipment.transportMode ?? ''] ?? {
                   bg: 'bg-gray-100', text: 'text-gray-600',
@@ -292,7 +289,7 @@ export default function SalesUserShipmentsPage() {
                     {/* Shipment ID */}
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2">
-                        {/* FIXED: icon background uses modeStyle from constants */}
+                        
                         <div className={`w-8 h-8 rounded-lg ${modeStyle.bg} flex items-center justify-center flex-shrink-0`}>
                           <Truck className={`w-4 h-4 ${modeStyle.text}`} />
                         </div>
@@ -335,7 +332,7 @@ export default function SalesUserShipmentsPage() {
                     </td>
 
                     {/* Transport Mode */}
-                    {/* FIXED: replaced inline hex style object with Tailwind classes from constants */}
+                    
                     <td className="px-5 py-3.5">
                       {shipment.transportMode ? (
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${modeStyle.bg} ${modeStyle.text}`}>
@@ -352,7 +349,7 @@ export default function SalesUserShipmentsPage() {
                     </td>
 
                     {/* Pickup Status */}
-                    {/* FIXED: replaced inline hex style object with Tailwind classes from constants */}
+                    
                     <td className="px-5 py-3.5">
                       {shipment.pickupDateStatus ? (() => {
                         const pickupStyle = PICKUP_STATUS_STYLES[shipment.pickupDateStatus] ?? {
@@ -367,7 +364,7 @@ export default function SalesUserShipmentsPage() {
                     </td>
 
                     {/* Action */}
-                    {/* FIXED: Take Action button now has an onClick handler */}
+                    
                     <td className="px-5 py-3.5">
                       {!shipment.llmIdentifiedType?.toLowerCase().includes('delivered') ? (
                         <button
@@ -398,7 +395,7 @@ export default function SalesUserShipmentsPage() {
           </table>
         </div>
 
-        {/* FIXED: PAGE_SIZE constant used instead of magic number 10 */}
+        {/*  PAGE_SIZE constant used instead of magic number 10 */}
         <ShipmentPagination
           currentPage={currentPage}
           totalPages={Math.ceil(sortedShipments.length / PAGE_SIZE)}

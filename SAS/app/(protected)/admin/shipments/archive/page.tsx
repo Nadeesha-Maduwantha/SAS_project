@@ -16,8 +16,8 @@ import { FilterGroup,
   PICKUP_STATUS_STYLES,
 } from '@/constants/shipment.constants'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-// FIXED: filterGroups, PAGE_SIZE and DEFAULT_FILTERS moved outside the component
+//  Constants 
+// filterGroups, PAGE_SIZE and DEFAULT_FILTERS moved outside the component
 // so they are not recreated on every render.
 const PAGE_SIZE = 10
 
@@ -30,7 +30,7 @@ const DEFAULT_FILTERS: Record<string, string> = {
 // so the label/value pairs are not scattered as inline strings.
 const ARCHIVED_STAGE_OPTIONS: FilterGroup['options'] = [
   { label: 'Delivered',        value: 'Delivered'        },
-  { label: 'Delivered to CFS', value: 'Delivered to CFS' }, // FIXED: was 'Delivered to CFS warehouse' but actual llmIdentifiedType from CargoWise is 'Delivered to CFS'
+  { label: 'Delivered to CFS', value: 'Delivered to CFS' }, 
 ]
 
 const filterGroups: FilterGroup[] = [
@@ -48,7 +48,7 @@ const filterGroups: FilterGroup[] = [
 
 
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// Component for the archived shipments page.
 
 export default function ArchivedShipmentsPage() {
   const router = useRouter()
@@ -59,7 +59,7 @@ export default function ArchivedShipmentsPage() {
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>(DEFAULT_FILTERS)
   const [searchQuery, setSearchQuery] = useState('')
 
-  // ─── Fetch ──────────────────────────────────────────────────────────────────
+  // To fetching archived shipments from the backend API.
   useEffect(() => {
     async function fetchData() {
       try {
@@ -77,7 +77,7 @@ export default function ArchivedShipmentsPage() {
     fetchData()
   }, [])
 
-  // ─── Filtering ──────────────────────────────────────────────────────────────
+  // To apply filters and search query on the shipments list.
   const filteredShipments = shipments.filter((s) => {
     if (activeFilters.transportMode && s.transportMode !== activeFilters.transportMode) return false
     if (activeFilters.currentStage && s.llmIdentifiedType !== activeFilters.currentStage) return false
@@ -85,7 +85,7 @@ export default function ArchivedShipmentsPage() {
     return true
   })
 
-  // ─── Loading / Error ────────────────────────────────────────────────────────
+  // To show loading and error states.
   if (loading) return (
     <div className="p-6 flex items-center justify-center h-64">
       <p className="text-gray-500 text-sm">Loading archived shipments...</p>
@@ -98,7 +98,7 @@ export default function ArchivedShipmentsPage() {
     </div>
   )
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
+  // To render the main table with filters, search, and pagination.
   return (
     <div className="p-6">
       <div className="mb-5">
@@ -191,7 +191,7 @@ export default function ArchivedShipmentsPage() {
                   </td>
 
                   {/* Transport Mode */}
-                  {/* FIXED: replaced inline hex style objects with Tailwind classes from constants */}
+                  
                   <td className="px-5 py-3.5">
                     {shipment.transportMode ? (() => {
                       const modeStyle = TRANSPORT_MODE_STYLES[shipment.transportMode] ?? {
@@ -205,8 +205,7 @@ export default function ArchivedShipmentsPage() {
                     })() : <span className="text-xs text-gray-400">—</span>}
                   </td>
 
-                  {/* Pickup Status */}
-                  {/* FIXED: replaced inline hex style objects with Tailwind classes from constants */}
+                  {/* Pickup Status */}   
                   <td className="px-5 py-3.5">
                     {shipment.pickupDateStatus ? (() => {
                       const pickupStyle = PICKUP_STATUS_STYLES[shipment.pickupDateStatus] ?? {
@@ -243,7 +242,7 @@ export default function ArchivedShipmentsPage() {
           </table>
         </div>
 
-        {/* FIXED: PAGE_SIZE constant used instead of magic number 10 */}
+        {/* To Pagination: PAGE_SIZE constant used instead of magic number 10 */}
         <ShipmentPagination
           currentPage={currentPage}
           totalResults={filteredShipments.length}

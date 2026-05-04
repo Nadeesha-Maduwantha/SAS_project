@@ -7,17 +7,14 @@ import {
   ChevronDown, ChevronUp, X
 } from 'lucide-react'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-// FIXED: no longer hardcoded — reads from environment variable.
-// Add NEXT_PUBLIC_API_URL=http://localhost:5000 to your .env.local
+// Constants
+// reads from environment variable.
 const FLASK_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000'
 
 const HISTORY_PAGE_SIZE = 10
 const ERRORS_PAGE_SIZE  = 5
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-// FIXED: replaced all `any` types with proper interfaces so the evaluator
-// can verify correct data type usage (Knowledge of Code criterion).
+//Types and Interfaces
 
 type SyncStatus = 'success' | 'failed' | 'partial'
 type HistoryFilter = 'all' | 'success' | 'failed' | 'partial'
@@ -53,14 +50,8 @@ interface SyncSchedule {
 }
 
 // TODO (Alert Settings — implement after interim):
-// Add these fields to SyncSettings interface when backend integration is ready.
-// interface SyncSettings {
-//   alert_on_failure: boolean
-//   alert_on_validation: boolean
-//   min_errors_threshold: number
-// }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+//Helpers 
 
 function formatDateTime(dt: string): string {
   return new Date(dt).toLocaleString('en-US', {
@@ -76,7 +67,7 @@ function formatDuration(seconds: number): string {
   return `${m}m ${s}s`
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// Sub-components 
 
 function StatusBadge({ status }: { status: SyncStatus }) {
   const config = {
@@ -97,7 +88,7 @@ function StatusBadge({ status }: { status: SyncStatus }) {
   )
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// Component 
 
 export default function SyncManagementPage() {
   const [bannerDismissed, setBannerDismissed] = useState(false)
@@ -112,8 +103,6 @@ export default function SyncManagementPage() {
   const [settingsSaved, setSettingsSaved]     = useState(false)
   const [scheduleSaved, setScheduleSaved]     = useState(false)
   const [syncError, setSyncError]             = useState<string | null>(null)
-
-  // FIXED: typed as proper interfaces instead of `any`
   const [syncResult, setSyncResult]   = useState<SyncResult | null>(null)
   const [syncHistory, setSyncHistory] = useState<SyncLog[]>([])
   const [syncErrors, setSyncErrors]   = useState<SyncError[]>([])
@@ -122,16 +111,15 @@ export default function SyncManagementPage() {
   // Alert Settings state
   // TODO (after interim): fetch initial values from Flask /api/sync/schedule
   // endpoint which reads from sync_settings table columns:
-  //   alert_on_failure, alert_on_validation, min_errors_threshold
-  // and save them back via POST /api/sync/schedule when the user clicks Save Settings.
+ 
   const [alertOnFailure, setAlertOnFailure]     = useState(true)
   const [alertOnValidation, setAlertOnValidation] = useState(true)
   const [minErrors, setMinErrors]               = useState(1)
 
   const now = new Date()
 
-  // ─── Fetch Functions ────────────────────────────────────────────────────────
-
+  //  Fetch Functions 
+  // to fetches all past sync history records from Flask and stores them in state so the sync history table can display them.
   const fetchSyncLogs = useCallback(async () => {
     try {
       setLoadingHistory(true)
@@ -144,7 +132,7 @@ export default function SyncManagementPage() {
     } finally {
       setLoadingHistory(false)
     }
-  }, []) // no dependencies — only uses module-level FLASK_API constant
+  }, []) // no dependencies — only uses module-level FLASK_API constant, [] menas never re-create the function on re-renders.
 
   const fetchSyncErrors = useCallback(async () => {
     try {
@@ -173,6 +161,7 @@ export default function SyncManagementPage() {
           setScheduleTime(formattedTime)
           setCustomScheduleTime(formattedTime)
         }
+
         // TODO (after interim): also read alert settings from result.data:
         //   setAlertOnFailure(result.data.alert_on_failure ?? true)
         //   setAlertOnValidation(result.data.alert_on_validation ?? true)
@@ -184,20 +173,22 @@ export default function SyncManagementPage() {
   }, [])
 
   useEffect(() => {
-    fetchSyncLogs()
-    fetchSyncErrors()
-    fetchSchedule()
-  }, [fetchSyncLogs, fetchSyncErrors, fetchSchedule])
+  async function init() {
+    setLoadingHistory(true)
+    await Promise.all([fetchSyncLogs(), fetchSyncErrors(), fetchSchedule()])
+  }
+  init()
+}, [fetchSyncLogs, fetchSyncErrors, fetchSchedule])
 
-  // ─── Actions ────────────────────────────────────────────────────────────────
+  // Actions 
 
   async function handleSyncNow() {
-    if (isSyncing) return
+    if (isSyncing) return // to prevent multiple clicks
     setIsSyncing(true)
     setSyncProgress(0)
     setSyncError(null)
 
-    const interval = setInterval(() => {
+    const interval = setInterval(() => { // to simulate progress since we don't have real-time updates from Flask, increments progress by 5% every 150ms until it reaches 90%, then waits for the actual sync to complete before setting it to 100%.
       setSyncProgress((prev) => {
         if (prev >= 90) { clearInterval(interval); return 90 }
         return prev + 5
@@ -214,8 +205,7 @@ export default function SyncManagementPage() {
       await fetchSyncLogs()
       await fetchSyncErrors()
     } catch (err) {
-      // FIXED: error was silently swallowed — user saw nothing when sync failed.
-      // Now logs the error and shows a message in the UI.
+      
       clearInterval(interval)
       setSyncProgress(0)
       setSyncError('Sync failed. Please check the Flask server and try again.')
@@ -227,11 +217,7 @@ export default function SyncManagementPage() {
 
   function handleSaveSettings() {
     // TODO (after interim): send alert settings to Flask:
-    //   POST /api/sync/schedule with body:
-    //   { alert_on_failure: alertOnFailure,
-    //     alert_on_validation: alertOnValidation,
-    //     min_errors_threshold: minErrors }
-    // The sync_settings table already has these columns ready.
+    //  for now just simulates saving and shows a temporary "Settings saved" message when the user clicks Save Settings in the Alert Settings section.
     setSettingsSaved(true)
     setTimeout(() => setSettingsSaved(false), 2000)
   }
@@ -239,14 +225,14 @@ export default function SyncManagementPage() {
   async function handleSaveSchedule() {
     try {
       const response = await fetch(`${FLASK_API}/api/sync/schedule`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', //to sending the new schedule time to Flask when the user clicks Save Schedule in the Sync Schedule section.
+        headers: { 'Content-Type': 'application/json' }, // to tell Flask that we're sending JSON data in the request body
         body: JSON.stringify({ schedule_time: scheduleTime }),
       })
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const result = await response.json()
       if (result.success) {
-        setCustomScheduleTime(scheduleTime)
+        setCustomScheduleTime(scheduleTime) 
         setScheduleSaved(true)
         setTimeout(() => setScheduleSaved(false), 2000)
       }
@@ -255,14 +241,15 @@ export default function SyncManagementPage() {
     }
   }
 
-  // ─── Derived Data ────────────────────────────────────────────────────────────
+  //Derived Data
 
   const latestSync         = syncHistory[0]
   const lastSyncTime       = latestSync?.synced_at ?? ''
   const lastSyncStatus     = (latestSync?.status ?? 'success') as SyncStatus
   const lastRecordsUpdated = latestSync?.records_updated ?? 0
   const lastErrorCount     = latestSync?.error_count ?? 0
-
+  
+  // to filter the sync history based on the selected filter (all, success, failed, partial).
   const filteredHistory = syncHistory.filter((h) =>
     historyFilter === 'all' ? true : h.status === historyFilter
   )
@@ -283,7 +270,7 @@ export default function SyncManagementPage() {
     partial: { bg: '#fefce8', border: '#fde047', color: '#a16207', icon: <AlertTriangle style={{ width: '18px', height: '18px' }} />, text: 'Last sync completed with ' + lastErrorCount + ' errors on ' + formatDateTime(lastSyncTime) },
   }[lastSyncStatus] : null
 
-  // FIXED: stat cards use label string as key instead of array index
+  //  stat cards 
   const statCards = [
     {
       label: 'Last Sync Time',
@@ -313,7 +300,7 @@ export default function SyncManagementPage() {
     },
   ]
 
-  // ─── Render ──────────────────────────────────────────────────────────────────
+  // Render
 
   return (
     <div className="p-6" style={{ maxWidth: '1400px' }}>
@@ -367,7 +354,7 @@ export default function SyncManagementPage() {
         </div>
       )}
 
-      {/* Sync Error — FIXED: now shown when sync fails instead of silently swallowing */}
+      {/* Sync Error */}
       {syncError && !isSyncing && (
         <div style={{
           background: '#fef2f2', border: '1px solid #fca5a5',
@@ -416,7 +403,7 @@ export default function SyncManagementPage() {
         </div>
       )}
 
-      {/* Stats Cards — FIXED: key uses card.label instead of array index */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         {statCards.map((card) => (
           <div key={card.label} style={{
