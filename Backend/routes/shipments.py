@@ -4,13 +4,11 @@ from services.supabase_client import supabase
 shipments_bp = Blueprint('shipments', __name__)
 
 
-# ─── Shared Helper ────────────────────────────────────────────────────────────
+# Shared Helper Functions
 
 def is_delayed(shipment: dict) -> bool:
     """
     Single source of truth for delayed shipment logic.
-    FIXED: was copy-pasted in 4+ places across this file — any change
-    to the definition would require updating each copy separately.
     A shipment is delayed when:
       - pickup_date_status is 'Delayed', AND
       - it has not already been delivered
@@ -26,7 +24,7 @@ def is_delivered(shipment: dict) -> bool:
     return 'delivered' in (shipment.get('llm_identified_type') or '').lower()
 
 
-# ─── Specific routes FIRST ────────────────────────────────────────────────────
+# Specific routes FIRST 
 
 @shipments_bp.route('/api/shipments', methods=['GET'])
 def get_all_shipments():
@@ -34,7 +32,6 @@ def get_all_shipments():
     Returns all shipments. Supports optional query params:
       ?created_by_staff_code=<code>  — filter by the operation user who created it
       ?sales_user_staff_code=<code>  — filter by the sales user assigned to it
-    FIXED: previously ignored these params, returning all shipments to every role.
     """
     try:
         query = supabase.table('shipments').select('*').order('created_at', desc=True)
@@ -77,7 +74,7 @@ def get_delayed_shipments():
 def get_archived_shipments():
     """
     Returns all delivered shipments (treated as archived).
-    FIXED: uses is_delivered() helper instead of inline duplicate logic.
+    uses is_delivered() helper instead of inline duplicate logic.
     """
     try:
         response = (
@@ -95,10 +92,8 @@ def get_archived_shipments():
 @shipments_bp.route('/api/shipments/archived/department/<mode>', methods=['GET'])
 def get_archived_shipments_by_department(mode):
     """
-    FIXED: new endpoint so the frontend doesn't have to fetch all archived
+    the frontend doesn't have to fetch all archived
     shipments and filter by department in JavaScript.
-    Previously getArchivedShipmentsByDepartment() pulled every archived
-    shipment over the network then did .filter(s => s.transportMode === department).
     """
     try:
         response = (
@@ -117,7 +112,7 @@ def get_archived_shipments_by_department(mode):
 @shipments_bp.route('/api/shipments/stats', methods=['GET'])
 def get_shipment_stats():
     """
-    FIXED: select only the columns needed for counting instead of select('*').
+    select only the columns needed for counting instead of select('*').
     Fetching all columns of all rows just to count them wastes bandwidth.
     """
     try:
@@ -145,7 +140,7 @@ def get_shipment_stats():
 @shipments_bp.route('/api/shipments/stats/delayed', methods=['GET'])
 def get_delayed_stats():
     """
-    FIXED: uses is_delayed() helper. Also selects only required columns.
+    uses is_delayed() helper. Also selects only required columns.
     """
     try:
         from datetime import datetime, timezone
@@ -201,7 +196,7 @@ def get_delayed_stats():
 @shipments_bp.route('/api/shipments/stats/department/<mode>', methods=['GET'])
 def get_department_stats(mode):
     """
-    FIXED: uses is_delayed() / is_delivered() helpers. Selects only required columns.
+    uses is_delayed() / is_delivered() helpers. Selects only required columns.
     """
     try:
         response = (
@@ -234,7 +229,7 @@ def get_department_stats(mode):
 @shipments_bp.route('/api/shipments/department/<mode>', methods=['GET'])
 def get_shipments_by_department(mode):
     """
-    FIXED: delivered filter now applied at DB level using ilike instead of
+    delivered filter applied at DB level using ilike instead of
     fetching all rows and filtering in Python.
     """
     try:
@@ -319,7 +314,7 @@ def get_shipment_by_job(job_number):
         return jsonify({"error": str(e)}), 500
 
 
-# ─── Dynamic routes LAST ──────────────────────────────────────────────────────
+# Dynamic routes LAST
 
 @shipments_bp.route('/api/shipments/<shipment_id>/assign-template/<template_id>', methods=['POST'])
 def assign_template(shipment_id, template_id):

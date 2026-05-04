@@ -25,6 +25,7 @@ def get_access_token():
         print(f'Login error: {e}')
         return None
 
+# to use token to fetch data from api
 def fetch_shipments_from_api():
     try:
         token = get_access_token()

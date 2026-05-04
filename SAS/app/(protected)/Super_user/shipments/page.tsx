@@ -18,8 +18,8 @@ import {
   isDelayedShipment,
 } from '@/constants/shipment.constants'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-// FIXED: all constants moved outside the component so they are not
+// Constants 
+//  all constants are in outside the component so they are not
 // recreated on every render.
 
 const PAGE_SIZE = 10
@@ -28,7 +28,7 @@ const DEFAULT_FILTERS: Record<string, string> = {
   currentStage: '',
 }
 
-// FIXED: department display name now comes from a map instead of an
+//  department display name  comes from a map instead of an
 // inline ternary chain repeated in the JSX.
 const DEPARTMENT_LABELS: Record<string, string> = {
   SEA:  'Sea Freight',
@@ -36,15 +36,13 @@ const DEPARTMENT_LABELS: Record<string, string> = {
   ROAD: 'Road Freight',
 }
 
-// Super user only filters by stage (department is fixed to their own)
+// To filters Super user only by stage (department is fixed to their own)
+//  reuses CURRENT_STAGE_OPTIONS from constants instead of
+// re-declaring the same strings here.
 const filterGroups = [
   {
     label: 'By Stage',
     key: 'currentStage',
-    // FIXED: reuses CURRENT_STAGE_OPTIONS from constants instead of
-    // re-declaring the same strings here.
-    // Also fixed: 'Delivered to CFS warehouse' → 'Delivered to CFS'
-    // to match the actual llmIdentifiedType value from CargoWise.
     options: CURRENT_STAGE_OPTIONS,
   },
 ]
@@ -56,7 +54,7 @@ const DEFAULT_STATS: DepartmentStats = {
   deliveredToday: 0,
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+//  Helpers 
 
 function formatPickupDate(date: string | undefined): string {
   if (!date) return '—'
@@ -65,12 +63,12 @@ function formatPickupDate(date: string | undefined): string {
   })
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// Component 
 
 export default function SuperUserActiveShipmentsPage() {
   const router = useRouter()
 
-  // FIXED: department now comes from useAuth() instead of a hardcoded
+  //  department  comes from useAuth() instead of a hardcoded
   // module-level constant. When auth teammate connects real sessions,
   // only useAuth.ts changes — this page stays the same.
   const { department } = useAuth()
@@ -84,7 +82,7 @@ export default function SuperUserActiveShipmentsPage() {
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>(DEFAULT_FILTERS)
   const [searchQuery, setSearchQuery]    = useState('')
 
-  // ─── Fetch ────────────────────────────────────────────────────────────────
+  // To Fetching Data on component mount and when department changes.
   useEffect(() => {
     async function fetchData() {
       try {
@@ -96,7 +94,6 @@ export default function SuperUserActiveShipmentsPage() {
         setShipments(shipmentsData)
         setStats(statsData)
       } catch (err) {
-        // FIXED: error was swallowed — now logged for debugging
         console.error('Failed to load shipments:', err)
         setError('Failed to load shipments. Please try again.')
       } finally {
@@ -104,9 +101,10 @@ export default function SuperUserActiveShipmentsPage() {
       }
     }
     fetchData()
-  }, [department]) // re-fetches if department changes
+  }, [department]) // to re-fetches if department changes
 
-  // ─── Filtering ────────────────────────────────────────────────────────────
+  // Filtering & Pagination
+  //  applies tab filter first, then stage + search filters, and finally pagination.
 
   // Tab filter — expedited = priority shipments, standard = non-priority
   const tabFiltered = shipments.filter((s) => {
@@ -116,7 +114,7 @@ export default function SuperUserActiveShipmentsPage() {
   })
 
   // Stage + search filter
-  // FIXED: isDelayedShipment() imported from constants — single source of truth
+  // isDelayedShipment() imported from constants — single source of truth
   // for delay logic instead of duplicating the condition inline here.
   const filteredShipments = tabFiltered.filter((s) => {
     if (activeFilters.currentStage === 'Delayed') return isDelayedShipment(s)
@@ -129,13 +127,13 @@ export default function SuperUserActiveShipmentsPage() {
     return true
   })
 
-  // FIXED: PAGE_SIZE constant used instead of magic number 10
+  // PAGE_SIZE constant used instead of magic number 10
   const paginated = filteredShipments.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   )
 
-  // ─── Loading / Error ──────────────────────────────────────────────────────
+  // to show Loading / Error states.
   if (loading) return (
     <div className="p-6 flex items-center justify-center h-64">
       <p className="text-gray-500 text-sm">Loading shipments...</p>
@@ -148,7 +146,7 @@ export default function SuperUserActiveShipmentsPage() {
     </div>
   )
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  // To render the component
   return (
     <div className="p-6">
 
@@ -306,7 +304,7 @@ export default function SuperUserActiveShipmentsPage() {
                   </td>
 
                   {/* Pickup Status */}
-                  {/* FIXED: replaced inline hex style objects with Tailwind classes from constants */}
+                  
                   <td className="px-5 py-3.5">
                     {shipment.pickupDateStatus ? (() => {
                       const pickupStyle = PICKUP_STATUS_STYLES[shipment.pickupDateStatus] ?? {
@@ -332,9 +330,7 @@ export default function SuperUserActiveShipmentsPage() {
                   </td>
 
                   {/* Action */}
-                  {/* FIXED: was checking currentStage !== 'delivered' (lowercase) but real
-                      data uses llmIdentifiedType for display stage. Now uses llmIdentifiedType
-                      check consistent with the rest of the codebase. Also added onClick. */}
+                  
                   <td className="px-5 py-3.5">
                     {!shipment.llmIdentifiedType?.toLowerCase().includes('delivered') && (
                       <button
@@ -362,7 +358,7 @@ export default function SuperUserActiveShipmentsPage() {
           </table>
         </div>
 
-        {/* FIXED: PAGE_SIZE constant used instead of magic number 10 */}
+        {/*PAGE_SIZE constant used instead of magic number 10 */}
         <ShipmentPagination
           currentPage={currentPage}
           totalPages={Math.ceil(filteredShipments.length / PAGE_SIZE)}

@@ -20,8 +20,8 @@ import {
   isDelayedShipment,
 } from '@/constants/shipment.constants'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-// FIXED: all constants moved outside the component so they are not
+// Constants 
+//  all constants moved outside the component so they are not
 // recreated on every render.
 
 const PAGE_SIZE = 10
@@ -31,10 +31,6 @@ const DEFAULT_FILTERS: Record<string, string> = {
   transportMode: '',
 }
 
-// FIXED: filterGroups moved outside component — was recreated on every render.
-// Also fixed: 'Delivered to CFS warehouse' → 'Delivered to CFS' to match
-// the actual llmIdentifiedType value returned by CargoWise.
-// 'Unknown' removed — not a real CargoWise stage value.
 const filterGroups = [
   {
     label: 'By Department',
@@ -48,7 +44,7 @@ const filterGroups = [
   },
 ]
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Helpers 
 
 function formatPickupDate(date: string | undefined): string {
   if (!date) return '—'
@@ -57,16 +53,16 @@ function formatPickupDate(date: string | undefined): string {
   })
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// Component 
 
 export default function OperationUserShipmentsPage() {
   const router = useRouter()
 
-  // FIXED: staffCode and name now come from useAuth() instead of hardcoded
+  //  staffCode and name now come from useAuth() instead of hardcoded
   // module-level constants (OPERATION_USER_STAFF_CODE / OPERATION_USER_NAME).
   // When auth teammate connects real sessions, only useAuth.ts changes —
   // this page stays the same.
-  // NOTE: staffCode filter in getShipmentsByOperationUser() is temporarily
+  // staffCode filter in getShipmentsByOperationUser() is temporarily
   // disabled — see shipment.service.ts for details. All shipments are
   // returned until real auth staff codes are available in the database.
   const { staffCode, name } = useAuth()
@@ -78,7 +74,7 @@ export default function OperationUserShipmentsPage() {
   const [searchQuery, setSearchQuery]    = useState('')
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>(DEFAULT_FILTERS)
 
-  // ─── Fetch ────────────────────────────────────────────────────────────────
+  // To fetch data from backend API on component mount.
   useEffect(() => {
     async function fetchData() {
       try {
@@ -86,7 +82,6 @@ export default function OperationUserShipmentsPage() {
         const data = await getShipmentsByOperationUser(staffCode)
         setShipments(data)
       } catch (err) {
-        // FIXED: error was swallowed — now logged for debugging
         console.error('Failed to load shipments:', err)
         setError('Failed to load shipments. Please try again.')
       } finally {
@@ -96,9 +91,9 @@ export default function OperationUserShipmentsPage() {
     fetchData()
   }, [staffCode]) // re-fetches if staffCode changes when real auth is connected
 
-  // ─── Stats ────────────────────────────────────────────────────────────────
-  // FIXED: isDelayedShipment() imported from constants — single source of
-  // truth for delay logic. Was duplicated inline here AND in dropdownFiltered.
+  // Stats
+  // isDelayedShipment() imported from constants — single source of
+  // truth for delay logic. Stats are memoized to avoid unnecessary recalculations on every render.
   const stats = useMemo(() => ({
     total:     shipments.length,
     active:    shipments.filter((s) =>
@@ -108,10 +103,10 @@ export default function OperationUserShipmentsPage() {
     delivered: shipments.filter((s) =>
       s.llmIdentifiedType?.toLowerCase().includes('delivered')
     ).length,
-  }), [shipments])
+  }), [shipments]) // useMemo ensures stats are only recalculated when shipments data changes, improving performance.
 
-  // ─── Filtering ────────────────────────────────────────────────────────────
-  // FIXED: isDelayedShipment() used instead of duplicating the condition inline.
+  // Filtering
+  // isDelayedShipment() used instead of duplicating the condition inline.
   // Dropdown and search filters kept as two separate useMemo steps to preserve
   // the original structure and make each concern independently readable.
   const dropdownFiltered = useMemo(() => shipments.filter((s) => {
@@ -132,6 +127,7 @@ export default function OperationUserShipmentsPage() {
     return true
   }), [shipments, activeFilters])
 
+  // Search filter applied on top of dropdown filters — allows users to search within the already filtered results. Also memoized for performance.
   const filteredShipments = useMemo(() => dropdownFiltered.filter((s) => {
     if (!searchQuery) return true
     const q = searchQuery.toLowerCase()
@@ -142,7 +138,7 @@ export default function OperationUserShipmentsPage() {
     )
   }), [dropdownFiltered, searchQuery])
 
-  // ─── Sorting ──────────────────────────────────────────────────────────────
+  // Sorting runs on the filtered shipments — ensures pagination is applied to a sorted list. Memoized to avoid re-sorting on every render when filters/search query haven't changed.
   // Sort by nearest pickup date — shipments without a date go to the bottom
   const sortedShipments = useMemo(() => {
     return [...filteredShipments].sort((a, b) => {
@@ -152,13 +148,13 @@ export default function OperationUserShipmentsPage() {
     })
   }, [filteredShipments])
 
-  // FIXED: PAGE_SIZE constant used instead of magic number 10
+  // PAGE_SIZE constant used instead of magic number 10
   const paginated = sortedShipments.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   )
 
-  // ─── Loading / Error ──────────────────────────────────────────────────────
+  //Show  Loading / Error states — ensures users get feedback while data is loading or if something goes wrong. Error message is now set in state and displayed to the user, instead of just logged to console.
   if (loading) return (
     <div className="p-6 flex items-center justify-center h-64">
       <p className="text-gray-500 text-sm">Loading shipments...</p>
@@ -171,16 +167,16 @@ export default function OperationUserShipmentsPage() {
     </div>
   )
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  // Render 
   return (
     <div className="p-6">
 
       {/* Header */}
       <div className="mb-5">
         <h1 className="text-xl font-semibold text-gray-900">My Assigned Shipments</h1>
-        {/* FIXED: name now comes from useAuth() instead of hardcoded OPERATION_USER_NAME */}
+        {/*name comes from useAuth()  */}
         <p className="text-sm text-gray-500 mt-0.5">
-          Manage and track your active logistics operations — {name}
+          Manage and track your active logistics operations - {name}
         </p>
       </div>
 
@@ -232,7 +228,7 @@ export default function OperationUserShipmentsPage() {
             onFilterChange={(key, value) =>
               setActiveFilters((prev) => ({ ...prev, [key]: value }))
             }
-            // FIXED: onClearAll uses DEFAULT_FILTERS constant instead of
+            // onClearAll uses DEFAULT_FILTERS constant instead of
             // an inline object literal that could drift out of sync
             onClearAll={() => setActiveFilters(DEFAULT_FILTERS)}
           />
@@ -279,7 +275,7 @@ export default function OperationUserShipmentsPage() {
                   </td>
                 </tr>
               ) : paginated.map((shipment) => {
-                // FIXED: transport mode styles resolved once per row from constants
+                // transport mode styles resolved once per row from constants
                 // instead of repeating inline hex ternary in both icon and badge
                 const modeStyle = TRANSPORT_MODE_STYLES[shipment.transportMode ?? ''] ?? {
                   bg: 'bg-gray-100', text: 'text-gray-600',
@@ -291,7 +287,7 @@ export default function OperationUserShipmentsPage() {
                     {/* Shipment ID */}
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2">
-                        {/* FIXED: icon background uses modeStyle from constants */}
+                    
                         <div className={`w-8 h-8 rounded-lg ${modeStyle.bg} flex items-center justify-center flex-shrink-0`}>
                           <Truck className={`w-4 h-4 ${modeStyle.text}`} />
                         </div>
@@ -325,7 +321,6 @@ export default function OperationUserShipmentsPage() {
                     </td>
 
                     {/* Transport Mode */}
-                    {/* FIXED: replaced inline hex style object with Tailwind classes from constants */}
                     <td className="px-5 py-3.5">
                       {shipment.transportMode ? (
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${modeStyle.bg} ${modeStyle.text}`}>
@@ -342,7 +337,6 @@ export default function OperationUserShipmentsPage() {
                     </td>
 
                     {/* Pickup Status */}
-                    {/* FIXED: replaced inline hex style object with Tailwind classes from constants */}
                     <td className="px-5 py-3.5">
                       {shipment.pickupDateStatus ? (() => {
                         const pickupStyle = PICKUP_STATUS_STYLES[shipment.pickupDateStatus] ?? {
@@ -357,7 +351,7 @@ export default function OperationUserShipmentsPage() {
                     </td>
 
                     {/* Action */}
-                    {/* FIXED: Take Action button now has an onClick handler */}
+                    
                     <td className="px-5 py-3.5">
                       {!shipment.llmIdentifiedType?.toLowerCase().includes('delivered') ? (
                         <button
@@ -388,7 +382,7 @@ export default function OperationUserShipmentsPage() {
           </table>
         </div>
 
-        {/* FIXED: PAGE_SIZE constant used instead of magic number 10 */}
+        {/*  PAGE_SIZE constant used instead of magic number 10 */}
         <ShipmentPagination
           currentPage={currentPage}
           totalPages={Math.ceil(sortedShipments.length / PAGE_SIZE)}

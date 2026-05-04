@@ -13,10 +13,9 @@ import { exportShipmentDetailPDF } from '@/lib/Utils/exportPDF'
 import { ShipmentMap } from '@/components/shipments/ShipmentMap'
 // PICKUP_STATUS_STYLES not imported here — detail page uses inline styles throughout
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// Constants 
 
-// FIXED: route segments moved out of inline ternary chain into a named map
-// so adding a new role/route doesn't require editing JSX logic.
+// This is how the back button knows what label to show. When any table page navigates here it passes its own path in the URL.
 const BACK_LABEL_MAP: Record<string, string> = {
   delayed:        'Delayed Shipments',
   archive:        'Archived Shipments',
@@ -25,9 +24,8 @@ const BACK_LABEL_MAP: Record<string, string> = {
   Super_user:     'Active Shipments',
 }
 
-// FIXED: progress map now uses the real CargoWise llmIdentifiedType values
-// instead of the old internal enum values (e.g. 'in_transit', 'processing')
-// that never appeared in real data — every shipment was getting the fallback 30%.
+// progress map  uses the real CargoWise llmIdentifiedType values
+// To maps each CargoWise stage to a percentage for the progress bar.
 const STAGE_PROGRESS_MAP: Record<string, number> = {
   'Booking Approval':             15,
   'Shipment Approval':            25,
@@ -38,7 +36,7 @@ const STAGE_PROGRESS_MAP: Record<string, number> = {
   'Delayed':                      40,
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Helper fuctions
 
 function formatDate(date: Date | null | undefined): string {
   if (!date) return '—'
@@ -63,7 +61,7 @@ function getBackLabel(from: string): string {
   return matchedKey ? BACK_LABEL_MAP[matchedKey] : 'Shipments'
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// Component 
 
 export default function ShipmentDetailPage() {
   const params = useParams()
@@ -75,13 +73,13 @@ export default function ShipmentDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // ─── Fetch ──────────────────────────────────────────────────────────────────
+  // To fetch shipment data based on ID from URL params when component mounts
   useEffect(() => {
     async function fetchData() {
       try {
         setLoading(true)
         const data = await getShipmentById(params.id as string)
-        if (!data) setError('Shipment not found')
+        if (!data) setError('Shipment not found') // to handle case where shipment is not found
         else setShipment(data)
       } catch (err) {
         // FIXED: error was swallowed — now logged for debugging
@@ -92,21 +90,24 @@ export default function ShipmentDetailPage() {
       }
     }
     fetchData()
-  }, [params.id])
+  }, [params.id]) //if the user somehow navigates from one detail page to another detail page (different ID in the URL), the effect re-runs and fetches the new shipment.
 
+
+  // Conditional rendering for loading and error states
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
       <p style={{ color: '#6b7280', fontSize: '14px' }}>Loading shipment...</p>
     </div>
   )
 
+  
   if (error || !shipment) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
       <p style={{ color: '#ef4444', fontSize: '14px' }}>{error}</p>
     </div>
   )
 
-  // FIXED: progress now uses llmIdentifiedType (real value) with currentStage as fallback
+  //progress now uses llmIdentifiedType (real value) with currentStage as fallback
   const progress = getProgressPercent(shipment.llmIdentifiedType, shipment.currentStage)
 
   // The detail page uses inline style props throughout (not Tailwind classes),
@@ -123,7 +124,7 @@ export default function ShipmentDetailPage() {
     ? (pickupBgMap[shipment.pickupDateStatus] ?? { bg: '#f9fafb', color: '#6b7280', border: '#e5e7eb' })
     : { bg: '#f9fafb', color: '#6b7280', border: '#e5e7eb' }
 
-  const backLabel = getBackLabel(from)
+  const backLabel = getBackLabel(from) //to calls the helper with the from URL to get the correct label for the back button.
 
   // FIXED: stat cards use label as key instead of array index
   const statCards = [
@@ -141,8 +142,8 @@ export default function ShipmentDetailPage() {
 
   return (
     <div style={{ padding: '24px', maxWidth: '1400px', fontFamily: 'inherit' }}>
-
-      {/* Breadcrumb */}
+      
+      {/* Breadcrumb - to show where you came from and current shipment ID */}   
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#6b7280', marginBottom: '16px' }}>
         <button
           onClick={() => router.push(from)}
@@ -198,7 +199,7 @@ export default function ShipmentDetailPage() {
       </div>
 
       {/* Stat Cards */}
-      {/* FIXED: key is now card label string instead of array index */}
+      
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
         {statCards.map((stat) => (
           <div key={stat.label} style={{
@@ -382,7 +383,7 @@ export default function ShipmentDetailPage() {
           <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 16px' }}>Cargo Timeline</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-              {/* FIXED: key uses label string instead of array index */}
+             
               {[
                 { label: 'Cargo Ready',    date: shipment.cargoReadyDate },
                 { label: 'Cargo Received', date: shipment.cargoReceivedDate },
@@ -463,7 +464,7 @@ export default function ShipmentDetailPage() {
           <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: '0 0 14px' }}>CargoWise Details</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {/* FIXED: key uses label string instead of array index */}
+              
               {[
                 { label: 'Job Number',     value: shipment.jobNumber ?? shipment.cargowiseId },
                 { label: 'House Bill',     value: shipment.houseBillNumber },

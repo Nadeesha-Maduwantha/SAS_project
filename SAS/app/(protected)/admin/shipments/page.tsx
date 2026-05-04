@@ -19,8 +19,8 @@ import {
   isDelayedShipment,
 } from '@/constants/shipment.constants'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-// FIXED: filterGroups was defined inside the component body and recreated on
+//  Constants 
+// filterGroups was defined inside the component body and recreated on
 // every render. Moved outside since it has no dependency on state or props.
 const filterGroups = [
   {
@@ -42,7 +42,7 @@ const DEFAULT_FILTERS: Record<string, string> = {
   currentStage: '',
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// Component 
 
 export default function AllShipmentsPage() {
   const router = useRouter()
@@ -54,7 +54,7 @@ export default function AllShipmentsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [stats, setStats] = useState<ShipmentStats>({ total: 0, pending: 0, delivered: 0, delayed: 0 })
 
-  // ─── Fetch ──────────────────────────────────────────────────────────────────
+  // To fetch data on mount
   useEffect(() => {
     async function fetchData() {
       try {
@@ -66,8 +66,6 @@ export default function AllShipmentsPage() {
         setShipments(shipmentsData)
         setStats(statsData)
       } catch (err) {
-        // FIXED: error was swallowed with an empty catch block.
-        // Now logged for debugging while still showing a user-friendly message.
         console.error('Failed to load shipments:', err)
         setError('Failed to load shipments. Please try again.')
       } finally {
@@ -77,8 +75,8 @@ export default function AllShipmentsPage() {
     fetchData()
   }, [])
 
-  // ─── Filtering ──────────────────────────────────────────────────────────────
-  // FIXED: isDelayedShipment() is now imported from constants so the delay
+  // Filtering & Pagination
+  //  isDelayedShipment() is  imported from constants so the delay
   // definition is shared with the backend instead of being duplicated inline.
   const filteredShipments = shipments.filter((s) => {
     if (activeFilters.transportMode && s.transportMode !== activeFilters.transportMode) return false
@@ -103,7 +101,7 @@ export default function AllShipmentsPage() {
     currentPage * PAGE_SIZE
   )
 
-  // ─── Loading / Error ────────────────────────────────────────────────────────
+  // To show Loading / Error states.
   if (loading) return (
     <div className="p-6 flex items-center justify-center h-64">
       <p className="text-gray-500 text-sm">Loading shipments...</p>
@@ -116,7 +114,7 @@ export default function AllShipmentsPage() {
     </div>
   )
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
+  // To render the component
   return (
     <div className="p-6">
       <h1 className="text-xl font-semibold text-gray-900 mb-5">Shipments Overview</h1>
@@ -239,7 +237,6 @@ export default function AllShipmentsPage() {
                   </td>
 
                   {/* Transport Mode */}
-                  {/* FIXED: replaced inline hex style objects with Tailwind classes from constants */}
                   <td className="px-5 py-3.5">
                     {shipment.transportMode ? (() => {
                       const modeStyle = TRANSPORT_MODE_STYLES[shipment.transportMode] ?? {
@@ -254,7 +251,6 @@ export default function AllShipmentsPage() {
                   </td>
 
                   {/* Pickup Status */}
-                  {/* FIXED: replaced inline hex style objects with Tailwind classes from constants */}
                   <td className="px-5 py-3.5">
                     {shipment.pickupDateStatus ? (() => {
                       const pickupStyle = PICKUP_STATUS_STYLES[shipment.pickupDateStatus] ?? {
@@ -269,8 +265,6 @@ export default function AllShipmentsPage() {
                   </td>
 
                   {/* Action */}
-                  {/* FIXED: was checking !== 'delivered' (lowercase) but data uses 'Delivered' (title case)
-                      Now uses isDelayedShipment / is_delivered consistent check via llmIdentifiedType */}
                   <td className="px-5 py-3.5">
                     {!shipment.llmIdentifiedType?.toLowerCase().includes('delivered') ? (
                       <button

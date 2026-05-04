@@ -17,8 +17,8 @@ import {
   CURRENT_STAGE_OPTIONS,
 } from '@/constants/shipment.constants'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-// FIXED: filterGroups, PAGE_SIZE and DEFAULT_FILTERS moved outside the component
+// Constants 
+//  filterGroups, PAGE_SIZE and DEFAULT_FILTERS are outside the component
 // so they are not recreated on every render.
 const PAGE_SIZE = 10
 
@@ -47,7 +47,7 @@ const DEFAULT_STATS: DelayedStats = {
   customsIssues: 0,
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+//Component
 
 export default function DelayedShipmentsPage() {
   const router = useRouter()
@@ -59,7 +59,7 @@ export default function DelayedShipmentsPage() {
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>(DEFAULT_FILTERS)
   const [searchQuery, setSearchQuery] = useState('')
 
-  // ─── Fetch ──────────────────────────────────────────────────────────────────
+  // To fetching data 
   useEffect(() => {
     async function fetchData() {
       try {
@@ -71,7 +71,7 @@ export default function DelayedShipmentsPage() {
         setShipments(shipmentsData)
         setStats(statsData)
       } catch (err) {
-        // FIXED: error was swallowed — now logged for debugging
+        
         console.error('Failed to load delayed shipments:', err)
         setError('Failed to load delayed shipments. Please try again.')
       } finally {
@@ -81,7 +81,7 @@ export default function DelayedShipmentsPage() {
     fetchData()
   }, [])
 
-  // ─── Filtering & Pagination ──────────────────────────────────────────────────
+  //  Filtering & Pagination
   const filteredShipments = shipments.filter((s) => {
     if (activeFilters.transportMode && s.transportMode !== activeFilters.transportMode) return false
     if (
@@ -93,13 +93,13 @@ export default function DelayedShipmentsPage() {
     return true
   })
 
-  // FIXED: PAGE_SIZE constant used instead of magic number 10
+  // PAGE_SIZE constant used instead of magic number 10
   const paginated = filteredShipments.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   )
 
-  // ─── Loading / Error ────────────────────────────────────────────────────────
+  // To show Loading / Error states.
   if (loading) return (
     <div className="p-6 flex items-center justify-center h-64">
       <p className="text-gray-500 text-sm">Loading delayed shipments...</p>
@@ -112,7 +112,7 @@ export default function DelayedShipmentsPage() {
     </div>
   )
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
+  // To render the component
   return (
     <div className="p-6">
       <div className="mb-5">
@@ -238,7 +238,6 @@ export default function DelayedShipmentsPage() {
                   </td>
 
                   {/* Transport Mode */}
-                  {/* FIXED: replaced inline hex style objects with Tailwind classes from constants */}
                   <td className="px-5 py-3.5">
                     {shipment.transportMode ? (() => {
                       const modeStyle = TRANSPORT_MODE_STYLES[shipment.transportMode] ?? {
@@ -260,7 +259,6 @@ export default function DelayedShipmentsPage() {
                   </td>
 
                   {/* Action */}
-                  {/* FIXED: button now has an onClick handler — was a dead UI element */}
                   <td className="px-5 py-3.5">
                     <button
                       onClick={() => router.push(`/admin/shipments/${shipment.id}/action`)}

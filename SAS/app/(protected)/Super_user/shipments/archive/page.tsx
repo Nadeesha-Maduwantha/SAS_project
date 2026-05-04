@@ -12,19 +12,19 @@ import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { PICKUP_STATUS_STYLES } from '@/constants/shipment.constants'
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-// FIXED: PAGE_SIZE moved outside component — was recreated on every render.
+//  Constants 
+// PAGE_SIZE moved outside component — was recreated on every render.
 
 const PAGE_SIZE = 10
 
-// FIXED: department display label uses a map instead of an inline ternary chain
+//  department display label uses a map instead of an inline ternary chain
 const DEPARTMENT_LABELS: Record<string, string> = {
   SEA:  'Sea Freight',
   AIR:  'Air Freight',
   ROAD: 'Road Freight',
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+//  Helpers 
 
 function formatPickupDate(date: string | undefined): string {
   if (!date) return '—'
@@ -33,12 +33,12 @@ function formatPickupDate(date: string | undefined): string {
   })
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+//Component 
 
 export default function SuperUserArchiveShipmentsPage() {
   const router = useRouter()
 
-  // FIXED: department now comes from useAuth() instead of a hardcoded
+  // department comes from useAuth() instead of a hardcoded
   // module-level constant. When auth teammate connects real sessions,
   // only useAuth.ts changes — this page stays the same.
   const { department } = useAuth()
@@ -49,7 +49,7 @@ export default function SuperUserArchiveShipmentsPage() {
   const [error, setError]             = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
-  // ─── Fetch ────────────────────────────────────────────────────────────────
+  // To fetching data
   useEffect(() => {
     async function fetchData() {
       try {
@@ -60,7 +60,6 @@ export default function SuperUserArchiveShipmentsPage() {
         const data = await getArchivedShipmentsByDepartment(department)
         setShipments(data)
       } catch (err) {
-        // FIXED: error was swallowed — now logged for debugging
         console.error('Failed to load archived shipments:', err)
         setError('Failed to load archived shipments. Please try again.')
       } finally {
@@ -70,20 +69,20 @@ export default function SuperUserArchiveShipmentsPage() {
     fetchData()
   }, [department]) // re-fetches if department changes
 
-  // ─── Filtering & Pagination ───────────────────────────────────────────────
+  // Filtering(to just search by cargowisse ID) & Pagination 
 
   const filteredShipments = shipments.filter((s) => {
     if (searchQuery && !s.cargowiseId.toLowerCase().includes(searchQuery.toLowerCase())) return false
     return true
   })
 
-  // FIXED: PAGE_SIZE constant used instead of magic number 10
+  //  PAGE_SIZE constant used instead of magic number 10
   const paginated = filteredShipments.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   )
 
-  // ─── Loading / Error ──────────────────────────────────────────────────────
+  // To show Loading / Error 
   if (loading) return (
     <div className="p-6 flex items-center justify-center h-64">
       <p className="text-gray-500 text-sm">Loading archived shipments...</p>
@@ -96,7 +95,7 @@ export default function SuperUserArchiveShipmentsPage() {
     </div>
   )
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  //Render 
   return (
     <div className="p-6">
 
@@ -104,7 +103,6 @@ export default function SuperUserArchiveShipmentsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Archive Shipments</h1>
-          {/* FIXED: department label uses DEPARTMENT_LABELS map instead of inline ternary */}
           <p className="text-sm text-gray-500 mt-0.5">
             Viewing historical records and completed operations —{' '}
             <span className="font-medium text-gray-700">
@@ -204,7 +202,6 @@ export default function SuperUserArchiveShipmentsPage() {
                   </td>
 
                   {/* Pickup Status */}
-                  {/* FIXED: replaced inline hex style objects with Tailwind classes from constants */}
                   <td className="px-5 py-3.5">
                     {shipment.pickupDateStatus ? (() => {
                       const pickupStyle = PICKUP_STATUS_STYLES[shipment.pickupDateStatus] ?? {
