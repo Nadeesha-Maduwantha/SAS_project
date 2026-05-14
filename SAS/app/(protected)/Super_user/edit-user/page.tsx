@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import BasicInformation from '@/components/AdminUser/BasicInformation';
 import AccountManagement from '@/components/AdminUser/AccountManagement';
+import SuperLeftNavBar from '@/components/SuperUser/SuperLeftNavBar'
 import { UserFormData } from '@/types';
 
 const EditUserPage: React.FC = () => {
