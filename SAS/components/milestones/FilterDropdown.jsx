@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 
-// ─── Icons ────────────────────────────────────────────────────────────────────
+//  Icons 
 const FilterIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
@@ -15,56 +15,8 @@ const ChevronRight = () => (
   </svg>
 );
 
-// ─── Component ────────────────────────────────────────────────────────────────
-/**
- * FilterDropdown
- *
- * A reusable flyout filter + sort menu. Each menu row expands into a side submenu
- * on hover, matching the Windows Explorer "Sort by ▶" pattern.
- *
- * Props:
- *   filters       — { [key]: value }  current filter state
- *   setFilters    — state setter
- *   rows          — array of row config objects (see below)
- *   label         — button label  (default: "Filter & Sort")
- *
- * Row config shape:
- * {
- *   key:     string               — key in `filters` this row controls
- *   label:   string               — row label shown in the main dropdown
- *   default: string               — the value that means "no filter" (e.g. "all" / "none")
- *   shortLabel: (value) => string — optional fn: returns a short label shown next to chevron
- *   options: [{ label, value }]   — submenu options
- * }
- *
- * Example usage:
- *
- *   const ROWS = [
- *     {
- *       key: "shipmentType",
- *       label: "Shipment Type",
- *       default: "all",
- *       shortLabel: (v) => v === "Air Freight" ? "Air" : "Sea",
- *       options: [
- *         { label: "All Types", value: "all" },
- *         { label: "Air Freight", value: "Air Freight" },
- *         { label: "Sea Freight", value: "Sea Freight" },
- *       ],
- *     },
- *     {
- *       key: "sortBy",
- *       label: "Sort By",
- *       default: "none",
- *       options: [
- *         { label: "Default (none)", value: "none" },
- *         { label: "Date ↑ oldest", value: "date-asc" },
- *         { label: "Date ↓ newest", value: "date-desc" },
- *       ],
- *     },
- *   ];
- *
- *   <FilterDropdown filters={filters} setFilters={setFilters} rows={ROWS} />
- */
+// Component 
+
 export default function FilterDropdown({ filters, setFilters, rows = [], label = "Filter & Sort" }) {
   const [open, setOpen] = useState(false);
   const [hoveredKey, setHoveredKey] = useState(null);
@@ -95,7 +47,7 @@ export default function FilterDropdown({ filters, setFilters, rows = [], label =
   };
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative z-[9999]" ref={ref}>
       {/* Trigger button */}
       <button
         onClick={() => setOpen((v) => !v)}
@@ -116,7 +68,7 @@ export default function FilterDropdown({ filters, setFilters, rows = [], label =
 
       {/* Main dropdown */}
       {open && (
-        <div className="absolute right-0 mt-2 z-50 w-52 rounded-xl border border-gray-200 bg-white shadow-xl overflow-visible">
+        <div className="absolute right-0 mt-2 z-[9999] w-52 rounded-xl border border-gray-200 bg-white shadow-xl overflow-visible">
           {rows.map((row, idx) => {
             const isActive = filters[row.key] !== row.default;
             const shortLabel = row.shortLabel
@@ -145,7 +97,7 @@ export default function FilterDropdown({ filters, setFilters, rows = [], label =
 
                   {/* Side submenu */}
                   {hoveredKey === row.key && (
-                    <div className="absolute left-full top-0 ml-1 w-52 rounded-xl border border-gray-200 bg-white shadow-xl z-50 overflow-hidden">
+                    <div className="absolute right-full top-0 mr-1 w-52 rounded-xl border border-gray-200 bg-white shadow-xl z-[9999] overflow-hidden">
                       {row.options.map((opt) => (
                         <button
                           key={opt.value}
