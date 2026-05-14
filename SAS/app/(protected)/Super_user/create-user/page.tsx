@@ -56,7 +56,26 @@ export default function CreateUserPage() {
         throw new Error(errData.error || 'Failed to create user')
       }
 
+      // Show success message
+      alert("User created successfully!");
+
+      // Optional: Reset the form so they can create another user
+      setFormData({
+        fullName: '',
+        email: '',
+        password: '',
+        department: '',
+        role: 'user',
+        status: 'active',
+        phone: '',
+        joinDate: '',
+        employeeId: '',
+        address: '',
+      });
+
+      // Redirect to admin/users
       router.push('/admin/users')
+
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'An error occurred'
       console.log('Error details:', errorMsg)  // ← Add this

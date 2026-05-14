@@ -3,12 +3,14 @@
 import { useState, useRef, useEffect } from 'react'
 import { SlidersHorizontal, ChevronRight, Check, X } from 'lucide-react'
 
-interface FilterOption {
+// FIXED: exported so pages that define filterGroups can explicitly type them
+// as FilterGroup[] and resolve the TypeScript prop mismatch error.
+export interface FilterOption {
   label: string
   value: string
 }
 
-interface FilterGroup {
+export interface FilterGroup {
   label: string
   key: string
   options: FilterOption[]
@@ -98,7 +100,6 @@ export function ShipmentFilter({
             {/* Filter Group Rows */}
             {groups.map((group, index) => (
               <div key={group.key}>
-                {/* Divider between groups */}
                 {index > 0 && (
                   <div style={{ height: '1px', background: 'rgba(0,0,0,0.06)', margin: '4px 8px' }} />
                 )}
@@ -108,7 +109,6 @@ export function ShipmentFilter({
                   onMouseEnter={() => setHoveredGroup(group.key)}
                   onMouseLeave={() => setHoveredGroup(null)}
                 >
-                  {/* Row */}
                   <div
                     style={{
                       display: 'flex',
@@ -173,7 +173,6 @@ export function ShipmentFilter({
                       onMouseEnter={() => setHoveredGroup(group.key)}
                       onMouseLeave={() => setHoveredGroup(null)}
                     >
-                      {/* Submenu Header */}
                       <div style={{
                         padding: '5px 10px 7px',
                         borderBottom: '1px solid rgba(0,0,0,0.06)',
@@ -218,7 +217,6 @@ export function ShipmentFilter({
                         {!activeFilters[group.key] && <Check style={{ width: '14px', height: '14px', color: '#2563eb' }} />}
                       </button>
 
-                      {/* Divider */}
                       <div style={{ height: '1px', background: 'rgba(0,0,0,0.06)', margin: '4px 8px' }} />
 
                       {/* Options */}
