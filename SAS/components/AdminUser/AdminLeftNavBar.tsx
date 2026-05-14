@@ -14,21 +14,23 @@ import {
   ChevronDown,
   RefreshCw,
   MapPin,
+  TableProperties,
 } from 'lucide-react';
 
 import '../../styles/ComponentStyles/AdminLeftNavBar.css';
 
 export default function AdminLeftNavBar() {
-  const router = useRouter();
+  const router   = useRouter();
   const pathname = usePathname();
 
   const [expandedSections, setExpandedSections] = useState({
-    userManagement: false,
+    userManagement:       false,
     departmentManagement: false,
-    shipments: false,
-    alerts: false,
-    milestones: false,
-    securityAudit: false,
+    shipments:            false,
+    alerts:               false,
+    customTables:         false,
+    milestones:           false,
+    securityAudit:        false,
   });
 
   const toggleSection = (section: keyof typeof expandedSections) => {
@@ -46,6 +48,7 @@ export default function AdminLeftNavBar() {
 
   return (
     <div className="admin-nav-container">
+
       {/* Header */}
       <div className="nav-header">
         <div className="nav-logo" onClick={() => handleNavigation('/admin/dashboard')}>
@@ -66,7 +69,7 @@ export default function AdminLeftNavBar() {
         <span>My Dashboard</span>
       </button>
 
-      {/* User Management */}
+      {/* ── User Management ───────────────────────────────────────── */}
       <div className="nav-section">
         <button className="nav-section-header" onClick={() => toggleSection('userManagement')}>
           <Users className="nav-icon" />
@@ -98,7 +101,7 @@ export default function AdminLeftNavBar() {
         )}
       </div>
 
-      {/* Department Management */}
+      {/* ── Department Management ─────────────────────────────────── */}
       <div className="nav-section">
         <button
           className="nav-section-header"
@@ -123,7 +126,7 @@ export default function AdminLeftNavBar() {
         )}
       </div>
 
-      {/* All Shipments */}
+      {/* ── All Shipments ─────────────────────────────────────────── */}
       <div className="nav-section">
         <button className="nav-section-header" onClick={() => toggleSection('shipments')}>
           <Truck className="nav-icon" />
@@ -161,7 +164,7 @@ export default function AdminLeftNavBar() {
         )}
       </div>
 
-      {/* All Alerts */}
+      {/* ── All Alerts ────────────────────────────────────────────── */}
       <div className="nav-section">
         <button className="nav-section-header" onClick={() => toggleSection('alerts')}>
           <Bell className="nav-icon" />
@@ -181,7 +184,32 @@ export default function AdminLeftNavBar() {
         )}
       </div>
 
-      {/* Milestones */}
+      {/* ── Custom Tables ─────────────────────────────────────────── */}
+      <div className="nav-section">
+        <button className="nav-section-header" onClick={() => toggleSection('customTables')}>
+          <TableProperties className="nav-icon" />
+          <span>Custom Tables</span>
+          <ChevronDown className={`chevron-icon ${expandedSections.customTables ? 'expanded' : ''}`} />
+        </button>
+
+        {expandedSections.customTables && (
+          <div className="nav-section-content">
+            <button
+              className={`nav-item ${
+                isActiveRoute('/admin/custom_tables') &&
+                !pathname.includes('/new')
+                  ? 'active'
+                  : ''
+              }`}
+              onClick={() => handleNavigation('/admin/custom_tables')}
+            >
+              My Tables
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Milestones ────────────────────────────────────────────── */}
       <div className="nav-section">
         <button className="nav-section-header" onClick={() => toggleSection('milestones')}>
           <MapPin className="nav-icon" />
@@ -213,7 +241,7 @@ export default function AdminLeftNavBar() {
         )}
       </div>
 
-      {/* Sync */}
+      {/* ── Sync ─────────────────────────────────────────────────── */}
       <div className="nav-section">
         <button
           className={`nav-section-header ${isActiveRoute('/admin/sync') ? 'active' : ''}`}
@@ -224,7 +252,7 @@ export default function AdminLeftNavBar() {
         </button>
       </div>
 
-      {/* Security & Audit */}
+      {/* ── Security & Audit ─────────────────────────────────────── */}
       <div className="nav-section">
         <button className="nav-section-header" onClick={() => toggleSection('securityAudit')}>
           <ShieldCheck className="nav-icon" />
@@ -249,6 +277,7 @@ export default function AdminLeftNavBar() {
           </div>
         )}
       </div>
+
     </div>
   );
 }

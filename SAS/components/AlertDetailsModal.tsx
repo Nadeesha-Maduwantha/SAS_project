@@ -29,15 +29,16 @@ interface MilestoneIconProps {
 }
 
 function MilestoneIcon({ type }: MilestoneIconProps) {
-    const props = { size: 16, color: '#6b7280' };
-    const icons = {
-        anchor: <Anchor {...props} />,
-        truck: <Truck {...props} />,
-        warehouse: <Warehouse {...props} />,
-        plane: <Plane {...props} />,
-        navigation: <Navigation {...props} />,
-    };
-    return icons[type] || <Package {...props} />;
+  const props = { size: 16, color: '#6b7280' };
+  if (!type) return <Package {...props} />;
+  const icons = {
+    anchor:     <Anchor {...props} />,
+    truck:      <Truck {...props} />,
+    warehouse:  <Warehouse {...props} />,
+    plane:      <Plane {...props} />,
+    navigation: <Navigation {...props} />,
+  };
+  return icons[type] ?? <Package {...props} />;
 }
 
 interface BadgeProps {
@@ -244,14 +245,14 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
                                             <div style={{ fontSize: '13px', color: '#6b7280' }}>
                                                 {milestone.status || 'Pending'}
                                             </div>
-                                            {milestone.actual_date && (
+                                           {milestone.completed_date && (
                                                 <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
-                                                    Completed: {new Date(milestone.actual_date).toLocaleDateString()}
+                                                    Completed: {new Date(milestone.completed_date).toLocaleDateString()}
                                                 </div>
-                                            )}
-                                            {milestone.scheduled_date && (
+                                                )}
+                                                {milestone.due_date && (
                                                 <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
-                                                    Scheduled: {new Date(milestone.scheduled_date).toLocaleDateString()}
+                                                    Scheduled: {new Date(milestone.due_date).toLocaleDateString()}
                                                 </div>
                                             )}
                                         </div>

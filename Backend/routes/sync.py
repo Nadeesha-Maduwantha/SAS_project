@@ -134,7 +134,7 @@ def get_errors():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-from apscheduler.triggers.cron import CronTrigger
+
 
 @sync_bp.route('/api/sync/schedule', methods=['GET'])
 def get_schedule():
@@ -149,31 +149,34 @@ def get_schedule():
 @sync_bp.route('/api/sync/schedule', methods=['POST'])
 def save_schedule():
     try:
-        from flask import request
+        from flask import request, current_app
         from services.supabase_service import save_sync_settings
-        from app import scheduler, run_sync_job
+        from apscheduler.triggers.cron import CronTrigger
 
         data = request.get_json()
-        schedule_time = data.get('schedule_time')  # format: "HH:MM"
+        schedule_time = data.get('schedule_time')
 
         if not schedule_time:
             return jsonify({'error': 'schedule_time is required'}), 400
 
         hour, minute = schedule_time.split(':')
 
-        # Save to database
         save_sync_settings(
             schedule_hours=hour,
             schedule_minute=int(minute)
         )
 
-        # Add new job to scheduler
-        scheduler.add_job(
-            run_sync_job,
-            CronTrigger(hour=hour, minute=int(minute), timezone='Asia/Colombo'),
-            id='custom_sync',
-            replace_existing=True
-        )
+        # Get scheduler from app config instead of importing from app
+        scheduler = current_app.config.get('SCHEDULER')
+        run_sync_job = current_app.config.get('RUN_SYNC_JOB')
+
+        if scheduler and run_sync_job:
+            scheduler.add_job(
+                run_sync_job,
+                CronTrigger(hour=hour, minute=int(minute), timezone='Asia/Colombo'),
+                id='custom_sync',
+                replace_existing=True
+            )
 
         return jsonify({
             'success': True,

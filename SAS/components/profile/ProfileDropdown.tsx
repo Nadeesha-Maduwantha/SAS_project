@@ -7,12 +7,16 @@ import { useRouter } from 'next/navigation';
 export default function ProfileDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   // Fallback to local storage if API is still loading/failing
-  const [user, setUser] = useState(() => {
-    if (typeof window !== 'undefined') {
-       return { full_name: 'Loading...', role: localStorage.getItem('user_role') || '', email: '' };
-    }
-    return { full_name: 'Loading...', role: '', email: '' };
-  });
+  const [user, setUser] = useState({ full_name: '', role: '', email: '' });
+  useEffect(() => {
+  const cachedRole = localStorage.getItem('user_role') || '';
+  const cachedName = localStorage.getItem('user_name') || '';
+  setUser(prev => ({
+        ...prev,
+        role: cachedRole,
+        full_name: cachedName || 'Loading...',
+      }));
+  }, []);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -31,13 +35,38 @@ export default function ProfileDropdown() {
   useEffect(() => {
     const fetchProfile = async () => {
       const token = localStorage.getItem('access_token');
-      if (!token) return;
+      console.log('ProfileDropdown: Token from localStorage:', token ? token.substring(0, 50) + '...' : 'NO TOKEN');
+      
+      if (!token) {
+        console.log('ProfileDropdown: No token found, skipping profile fetch');
+        return;
+      }
 
       try {
+        // First, test the debug endpoint
+        console.log('ProfileDropdown: Testing debug endpoint');
+        const debugRes = await fetch('http://localhost:5000/api/auth/debug', {
+          method: 'GET',
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        const debugData = await debugRes.json();
+        console.log('ProfileDropdown: Debug response:', debugData);
+
+        // Now try the /me endpoint
+        console.log('ProfileDropdown: Calling /me endpoint');
         const res = await fetch('http://localhost:5000/api/auth/me', {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         });
         const data = await res.json();
+        
+        console.log('ProfileDropdown: /me response status:', res.status);
+        console.log('ProfileDropdown: /me response data:', data);
         
         if (res.ok && data.user) {
           setUser({
@@ -75,7 +104,7 @@ export default function ProfileDropdown() {
   };
 
   const formatRole = (role: string) => {
-    if (!role) return 'Loading...';
+    if (!role) return '';
     return role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 

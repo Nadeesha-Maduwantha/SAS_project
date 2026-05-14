@@ -1,5 +1,5 @@
 import os
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
 from flask.json.provider import DefaultJSONProvider
 from dotenv import load_dotenv
@@ -14,12 +14,15 @@ from routes.audit_trail import bp as audit_trail_bp
 from routes.access_logs import access_logs_bp
 from routes.profile import bp as profile_bp # <-- Add this import
 from routes.change_password import bp as change_password_bp # <-- Add this import
+from routes.custom_tables import custom_tables_bp
+
 
 # Shipment routes
 from routes.templates import templates_bp
 from routes.milestones import milestones_bp
 from routes.shipments import shipments_bp
 from routes.sync import sync_bp
+from routes.alerts import alerts_bp
 
 load_dotenv()
 
@@ -158,7 +161,11 @@ app.register_blueprint(milestones_bp)
 app.register_blueprint(shipments_bp)
 app.register_blueprint(change_password_bp, name='change_password_routes') 
 
+app.register_blueprint(custom_tables_bp)
+
 app.register_blueprint(sync_bp)
+
+app.register_blueprint(alerts_bp)
 
 def health_check():
     return {'status': 'Backend is running'}, 200
@@ -197,6 +204,15 @@ except Exception as e:
 
 scheduler.start()
 print('Scheduler started — fixed sync at 6AM, 12PM, 6PM, 12AM Sri Lanka time')
+app.config['SCHEDULER'] = scheduler
+app.config['RUN_SYNC_JOB'] = run_sync_job
+
+
+@app.route('/debug/routes')
+def list_routes():
+    return jsonify([str(r) for r in app.url_map.iter_rules()])
+
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000, use_reloader=False)

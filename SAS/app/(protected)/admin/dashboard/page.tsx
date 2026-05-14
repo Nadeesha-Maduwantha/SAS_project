@@ -1,10 +1,9 @@
 import AdminHeader from '@/components/AdminUser/AdminHeader';
-import StatCard from '@/components/AdminUser/StatCard';
-import ShipmentFeed from '@/components/AdminUser/ShipmentFeed';
+import DashboardMetricCards from '@/components/AdminUser/DashboardMetricCards';
+import AlertFeedTable from '@/components/shared/AlertFeedTable';
+import PinnedTableStatCards from '@/components/shared/PinnedTableStatCard';
 import ProgressLogs from '@/components/AdminUser/ProgressLogs';
 import SystemTechnicalLogs from '@/components/AdminUser/SystemTechnicalLogs';
-
-import { ShieldCheck, Users, BellRing, Mail } from 'lucide-react';
 import '@/styles/AdminStyles/AdminLayout.css';
 
 export default function AdminDashboardPage() {
@@ -12,31 +11,23 @@ export default function AdminDashboardPage() {
     <div className="admin-inner">
       <AdminHeader />
 
-      <div className="stats-grid">
-        <StatCard
-          title="Milestone Success Rate"
-          value="99.8%"
-          icon={<ShieldCheck size={16} />}
-        />
-        <StatCard
-          title="Total Users"
-          value="1,482"
-          icon={<Users size={16} />}
-        />
-        <StatCard
-          title="Active Alerts"
-          value="08"
-          icon={<BellRing size={16} />}
-        />
-        <StatCard
-          title="Total Generated Emails"
-          value="94"
-          icon={<Mail size={16} />}
-        />
-      </div>
+      {/*
+        Two narrow stat cards:
+        Left  — Department Overview (AIR + SEA: ongoing / overdue / completed)
+        Right — Shipment Summary (total completed + totals)
+      */}
+      <DashboardMetricCards />
 
+      {/* Pinned custom table cards — only if user has pinned tables */}
+      <PinnedTableStatCards />
+
+      {/* Alert feed */}
       <div className="section-gap">
-        <ShipmentFeed />
+        <AlertFeedTable
+          title="Admin Shipment Alert Feed"
+          apiBase="http://localhost:5000"
+          maxRows={8}
+        />
       </div>
 
       <div className="bottom-grid">
