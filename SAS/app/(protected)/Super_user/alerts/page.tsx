@@ -6,7 +6,6 @@ import {
     MoreHorizontal, Anchor, Truck, Warehouse, Plane, Navigation,
     LayoutList, LayoutGrid, ChevronLeft, ChevronRight,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import AlertDetailsModal, { AlertData } from '@/components/AlertDetailsModal';
 import EmailComposeModal from '@/components/EmailComposeModal';
 
@@ -41,6 +40,17 @@ type SupabaseRow = {
     created_at?: string;
 }
 
+const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+
+async function parseApiResponse(response: Response) {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+        return response.json();
+    }
+    const text = await response.text();
+    return { error: text || `Request failed with status ${response.status}` };
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const CLIENT_COLORS = ['#3b82f6','#22c55e','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#f97316','#84cc16'];
 
@@ -54,12 +64,13 @@ function getMilestoneIcon(name: string = ''): 'anchor' | 'truck' | 'warehouse' |
 }
 
 function mapRow(row: SupabaseRow, idx: number): Alert {
-    const initial = String(row.shipment_id || '?')[0].toUpperCase();
+    const assignedTo = row.assigned_to?.trim() || '—';
+    const initial = String(assignedTo || '?')[0].toUpperCase();
     const isOverdue = row.due_date && !row.completed_date && new Date(row.due_date) < new Date();
     return {
         id: `${row.shipment_id}-${idx}`,
         shipment_id: row.shipment_id,
-        client: String(row.shipment_id),
+        client: assignedTo,
         clientInitial: initial,
         clientColor: CLIENT_COLORS[idx % CLIENT_COLORS.length],
         priority: row.is_critical ? 'Critical' : 'Medium',
@@ -68,7 +79,9 @@ function mapRow(row: SupabaseRow, idx: number): Alert {
         issue: row.notes || '—',
         delay: isOverdue ? `Overdue since ${new Date(row.due_date!).toLocaleDateString()}` : '—',
         delayColor: isOverdue ? '#ef4444' : '#6b7280',
-        status: 'Get Action',
+        status: (row.status === 'Action Taken' || row.status === 'Resolved' || row.status === 'Get Action')
+            ? row.status
+            : 'Get Action',
         createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     };
 }
@@ -197,13 +210,15 @@ export default function AlertDashboardPage() {
     const fetchAlerts = async () => {
         setLoading(true);
         setError(null);
-        const { data, error: err } = await supabase
-            .from('shipment_milestones')
-            .select('shipment_id, name, status, notes, is_critical, due_date, completed_date, assigned_to, assigned_email, alert_sent, created_at');
-        if (err) {
-            setError(err.message);
-        } else {
-            setAlerts((data as SupabaseRow[] || []).map(mapRow));
+        try {
+            const response = await fetch(`${BACKEND_BASE_URL}/api/alerts`);
+            const payload = await parseApiResponse(response);
+            if (!response.ok) {
+                throw new Error(payload?.error || 'Failed to load alerts');
+            }
+            setAlerts((payload.data as SupabaseRow[] || []).map(mapRow));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load alerts');
         }
         setLoading(false);
     };
@@ -338,7 +353,7 @@ export default function AlertDashboardPage() {
                                         <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
                                             <input type="checkbox" checked={selected.includes(alert.id)} onChange={() => toggleRow(alert.id)} />
                                         </td>
-                                        <td style={{ ...tdStyle, fontWeight: 600, fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>{alert.client}</td>
+                                        <td style={{ ...tdStyle, fontWeight: 600, fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>{alert.shipment_id}</td>
                                         <td style={tdStyle}><ClientAvatar initial={alert.clientInitial} color={alert.clientColor} name={alert.client} /></td>
                                         <td style={tdStyle}><PriorityBadge level={alert.priority} /></td>
                                         <td style={tdStyle}>
@@ -374,7 +389,7 @@ export default function AlertDashboardPage() {
                                 style={{ border: '1px solid #e8ecf0', borderRadius: '10px', padding: '16px', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', cursor: 'pointer' }}
                             >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                                    <span style={{ fontWeight: 700, fontSize: '13px', color: '#374151' }}>{alert.client}</span>
+                                    <span style={{ fontWeight: 700, fontSize: '13px', color: '#374151' }}>{alert.shipment_id}</span>
                                     <PriorityBadge level={alert.priority} />
                                 </div>
                                 <ClientAvatar initial={alert.clientInitial} color={alert.clientColor} name={alert.client} />

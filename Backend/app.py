@@ -135,16 +135,19 @@ class CustomJSONProvider(DefaultJSONProvider):
         except TypeError:
             return str(obj)
 
+
 app = Flask(__name__)
 app.json_provider_class = CustomJSONProvider
 app.json = CustomJSONProvider(app)
+
 CORS(app)
+
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
 
-# Register all blueprints
-app.register_blueprint(auth_bp, name='auth_routes')
-app.register_blueprint(users_bp, name='user_creation_routes')
-app.register_blueprint(user_edit_bp, name='user_edit_routes')
+# Register blueprints
+app.register_blueprint(auth_bp,        name='auth_routes')
+app.register_blueprint(users_bp,       name='user_creation_routes')
+app.register_blueprint(user_edit_bp,   name='user_edit_routes')
 app.register_blueprint(audit_trail_bp, name='audit_trail_routes')
 app.register_blueprint(access_logs_bp, url_prefix='/api/access-logs')
 app.register_blueprint(templates_bp)
@@ -155,6 +158,7 @@ app.register_blueprint(sync_bp)
 @app.route('/health', methods=['GET'])
 def health_check():
     return {'status': 'Backend is running'}, 200
+
 
 @app.route('/')
 def health():
@@ -191,4 +195,5 @@ scheduler.start()
 print('Scheduler started — fixed sync at 6AM, 12PM, 6PM, 12AM Sri Lanka time')
 
 if __name__ == '__main__':
+    start_scheduler()   # ← only called once, inside __main__
     app.run(debug=True, port=5000, use_reloader=False)
