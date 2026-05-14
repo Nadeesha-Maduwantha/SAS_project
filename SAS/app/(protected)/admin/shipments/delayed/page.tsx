@@ -7,55 +7,59 @@ import { getDelayedShipments, getDelayedStats } from '@/lib/services/shipment.se
 import { ShipmentStatusBadge } from '@/components/shipments/ShipmentStatusBadge'
 import { ShipmentStatsCard } from '@/components/shipments/ShipmentStatsCard'
 import { ShipmentPagination } from '@/components/shipments/ShipmentPagination'
-import { Shipment } from '@/types'
+import { Shipment, DelayedStats } from '@/types'
 import { ShipmentFilter } from '@/components/shipments/ShipmentFilter'
 import { exportDelayedShipmentsPDF } from '@/lib/Utils/exportPDF'
 import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
+import {
+  TRANSPORT_MODE_OPTIONS,
+  TRANSPORT_MODE_STYLES,
+  CURRENT_STAGE_OPTIONS,
+} from '@/constants/shipment.constants'
+
+// Constants 
+//  filterGroups, PAGE_SIZE and DEFAULT_FILTERS are outside the component
+// so they are not recreated on every render.
+const PAGE_SIZE = 10
+
+const DEFAULT_FILTERS: Record<string, string> = {
+  transportMode: '',
+  currentStage: '',
+}
+
+const filterGroups = [
+  {
+    label: 'By Department',
+    key: 'transportMode',
+    options: TRANSPORT_MODE_OPTIONS,
+  },
+  {
+    label: 'By Stage',
+    key: 'currentStage',
+    options: CURRENT_STAGE_OPTIONS,
+  },
+]
+
+const DEFAULT_STATS: DelayedStats = {
+  totalDelayed: 0,
+  highPriority: 0,
+  avgDelayDays: 0,
+  customsIssues: 0,
+}
+
+//Component
 
 export default function DelayedShipmentsPage() {
   const router = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
   const [shipments, setShipments] = useState<Shipment[]>([])
-  const [stats, setStats] = useState({ totalDelayed: 0, highPriority: 0, avgDelayDays: 0, customsIssues: 0 })
+  const [stats, setStats] = useState<DelayedStats>(DEFAULT_STATS)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({
-    transportMode: '',
-    currentStage: '',
-  })
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>(DEFAULT_FILTERS)
   const [searchQuery, setSearchQuery] = useState('')
 
-  const filteredShipments = shipments.filter((s) => {
-    if (activeFilters.transportMode && s.transportMode !== activeFilters.transportMode) return false
-    if (activeFilters.currentStage &&
-      s.llmIdentifiedType !== activeFilters.currentStage &&
-      s.currentStage !== activeFilters.currentStage) return false
-    if (searchQuery && !s.cargowiseId.toLowerCase().includes(searchQuery.toLowerCase())) return false
-    return true
-  })
-
-  const filterGroups = [
-    {
-      label: 'By Department',
-      key: 'transportMode',
-      options: [
-        { label: 'Air Freight', value: 'AIR' },
-        { label: 'Sea Freight', value: 'SEA' },
-        { label: 'Road Freight', value: 'ROAD' },
-      ],
-    },
-    {
-      label: 'By Stage',
-      key: 'currentStage',
-      options: [
-        { label: 'Delivered', value: 'Delivered' },
-        { label: 'Booking Approval', value: 'Booking Approval' },
-        { label: 'Delivery Date', value: 'Delivery Date' },
-        { label: 'Delivered to CFS warehouse', value: 'Delivered to CFS warehouse' },
-      ],
-    },
-  ]
-
+  // To fetching data 
   useEffect(() => {
     async function fetchData() {
       try {
@@ -66,8 +70,10 @@ export default function DelayedShipmentsPage() {
         ])
         setShipments(shipmentsData)
         setStats(statsData)
-      } catch {
-        setError('Failed to load delayed shipments')
+      } catch (err) {
+        
+        console.error('Failed to load delayed shipments:', err)
+        setError('Failed to load delayed shipments. Please try again.')
       } finally {
         setLoading(false)
       }
@@ -75,6 +81,25 @@ export default function DelayedShipmentsPage() {
     fetchData()
   }, [])
 
+  //  Filtering & Pagination
+  const filteredShipments = shipments.filter((s) => {
+    if (activeFilters.transportMode && s.transportMode !== activeFilters.transportMode) return false
+    if (
+      activeFilters.currentStage &&
+      s.llmIdentifiedType !== activeFilters.currentStage &&
+      s.currentStage !== activeFilters.currentStage
+    ) return false
+    if (searchQuery && !s.cargowiseId.toLowerCase().includes(searchQuery.toLowerCase())) return false
+    return true
+  })
+
+  // PAGE_SIZE constant used instead of magic number 10
+  const paginated = filteredShipments.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  )
+
+  // To show Loading / Error states.
   if (loading) return (
     <div className="p-6 flex items-center justify-center h-64">
       <p className="text-gray-500 text-sm">Loading delayed shipments...</p>
@@ -87,6 +112,7 @@ export default function DelayedShipmentsPage() {
     </div>
   )
 
+  // To render the component
   return (
     <div className="p-6">
       <div className="mb-5">
@@ -139,14 +165,15 @@ export default function DelayedShipmentsPage() {
             onFilterChange={(key, value) =>
               setActiveFilters((prev) => ({ ...prev, [key]: value }))
             }
-            onClearAll={() => setActiveFilters({ transportMode: '', currentStage: '' })}
+            onClearAll={() => setActiveFilters(DEFAULT_FILTERS)}
           />
           <button
             onClick={() => exportDelayedShipmentsPDF(filteredShipments)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
             Export PDF
           </button>
@@ -172,7 +199,7 @@ export default function DelayedShipmentsPage() {
                     No delayed shipments found
                   </td>
                 </tr>
-              ) : filteredShipments.map((shipment) => (
+              ) : paginated.map((shipment) => (
                 <tr key={shipment.id} className="hover:bg-gray-50 transition-colors">
 
                   {/* Shipment ID */}
@@ -212,17 +239,16 @@ export default function DelayedShipmentsPage() {
 
                   {/* Transport Mode */}
                   <td className="px-5 py-3.5">
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center',
-                      padding: '3px 10px', borderRadius: '9999px',
-                      fontSize: '12px', fontWeight: 600,
-                      background: shipment.transportMode === 'AIR' ? '#fef3c7' :
-                                  shipment.transportMode === 'ROAD' ? '#f0fdf4' : '#eff6ff',
-                      color: shipment.transportMode === 'AIR' ? '#92400e' :
-                             shipment.transportMode === 'ROAD' ? '#166534' : '#1e40af',
-                    }}>
-                      {shipment.transportMode ?? '—'}
-                    </span>
+                    {shipment.transportMode ? (() => {
+                      const modeStyle = TRANSPORT_MODE_STYLES[shipment.transportMode] ?? {
+                        bg: 'bg-gray-100', text: 'text-gray-600',
+                      }
+                      return (
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${modeStyle.bg} ${modeStyle.text}`}>
+                          {shipment.transportMode}
+                        </span>
+                      )
+                    })() : <span className="text-xs text-gray-400">—</span>}
                   </td>
 
                   {/* AI Note */}
@@ -234,7 +260,10 @@ export default function DelayedShipmentsPage() {
 
                   {/* Action */}
                   <td className="px-5 py-3.5">
-                    <button className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <button
+                      onClick={() => router.push(`/admin/shipments/${shipment.id}/action`)}
+                      className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
                       Take Action
                     </button>
                   </td>
@@ -258,8 +287,8 @@ export default function DelayedShipmentsPage() {
         <ShipmentPagination
           currentPage={currentPage}
           totalResults={filteredShipments.length}
-          totalPages={Math.ceil(filteredShipments.length / 10)}
-          pageSize={10}
+          totalPages={Math.ceil(filteredShipments.length / PAGE_SIZE)}
+          pageSize={PAGE_SIZE}
           onPageChange={setCurrentPage}
         />
       </div>
