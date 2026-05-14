@@ -13,7 +13,7 @@ const ROLE_CONFIG = {
       email:   s.operationsUser?.email ?? s.createdBy?.email ?? s.created_by_email ?? "",
       company: "Dart Global Logistics",
     }),
-    buttonLabel:  (m) => m.critical ? "Urgent - Alert Operations" : "Alert Operations User",
+    buttonLabel:  (m) => m.critical ? "Urgent — Alert Operations" : "Alert Operations User",
     buttonColor:  (m) => m.critical ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700",
     modalTitle:   "Alert Operations User",
     modalSubtitle:(s) => `This email will be sent to the Operations user responsible for this shipment`,
