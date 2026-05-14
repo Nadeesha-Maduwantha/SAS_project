@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from services.supabase_client import supabase
 from utils.auth_helper import require_auth, get_current_user
 
+
 custom_tables_bp = Blueprint('custom_tables', __name__)
 
 
