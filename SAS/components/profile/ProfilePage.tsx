@@ -105,7 +105,9 @@ export default function ProfilePage({ user }: ProfilePageProps) {
         return;
       }
 
-      alert("Password changed successfully!");
+      alert("Password changed successfully! Please log in again.");
+      localStorage.removeItem('access_token');
+      window.location.href = '/';
     } catch (error) {
       console.error(error);
       alert("Failed to change password.");

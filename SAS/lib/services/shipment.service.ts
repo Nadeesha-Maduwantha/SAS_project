@@ -337,9 +337,9 @@ export async function getShipmentsBySalesUser(
 export async function getMilestonesByShipmentId(shipmentId: string): Promise<ShipmentMilestone[]> {
   const { data, error } = await supabase
     .from('shipment_milestones')
-    .select('id, shipment_id, name, scheduled_date, actual_date, status, created_at')
+    .select('id, shipment_id, name, sequence_order, is_critical, status, assigned_to, due_date, completed_date, notes, location_label, location_lat, location_lng, days_from_booking, created_at')
     .eq('shipment_id', shipmentId)
-    .order('created_at', { ascending: true })
+    .order('sequence_order', { ascending: true })
 
   if (error) throw new Error(error.message)
   return data || []
@@ -348,7 +348,7 @@ export async function getMilestonesByShipmentId(shipmentId: string): Promise<Shi
 export async function getAllMilestones(): Promise<ShipmentMilestone[]> {
   const { data, error } = await supabase
     .from('shipment_milestones')
-    .select('id, shipment_id, name, scheduled_date, actual_date, status, created_at')
+    .select('id, shipment_id, name, sequence_order, is_critical, status, assigned_to, due_date, completed_date, notes, location_label, location_lat, location_lng, days_from_booking, created_at')
     .order('created_at', { ascending: false })
 
   if (error) throw new Error(error.message)
