@@ -12,7 +12,7 @@ def log_audit_action(user_id, action_type_id, entity_type_id, entity_id=None, ol
     try:
         supabase = get_supabase()
         
-        # Get IP and User-Agent if available from the current Flask request context
+        # Get IP and User-Agent safely
         ip_address = None
         user_agent = None
         try:
@@ -20,30 +20,35 @@ def log_audit_action(user_id, action_type_id, entity_type_id, entity_id=None, ol
                 ip_address = request.remote_addr
                 user_agent = request.headers.get('User-Agent')
         except RuntimeError:
-            # We might be outside a request context (e.g., background job)
-            pass
+            pass # Outside request context
 
+        # Prepare the record
         record = {
             'user_id': user_id,
             'action_type_id': action_type_id,
             'entity_type_id': entity_type_id,
-            'entity_id': str(entity_id) if entity_id else None,
-            'old_value': json.dumps(old_value) if old_value else None,
-            'new_value': json.dumps(new_value) if new_value else None,
             'description': description,
             'ip_address': ip_address,
             'user_agent': user_agent
         }
+
+        # Add optional items cleanly
+        if entity_id:
+            record['entity_id'] = str(entity_id)
+        if old_value:
+            record['old_value'] = old_value if isinstance(old_value, str) else json.dumps(old_value)
+        if new_value:
+            record['new_value'] = new_value if isinstance(new_value, str) else json.dumps(new_value)
+            
+        print(f"Attempting to write audit log: {record}") # <-- Good for debugging
         
+        # Execute Insert
         response = supabase.table('audit_trail').insert(record).execute()
         
-        if hasattr(response, 'error') and response.error:
-            print(f"Failed to write audit log: {response.error}")
-            return False
-            
+        print("Audit log successfully written.")
         return True
 
     except Exception as e:
-        print("Exception in log_audit_action:")
-        print(traceback.format_exc())
+        print(f"FAILED to write audit log. Error: {str(e)}")
+        # We don't want audit logging failures to crash the main request
         return False

@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 import './globals.css'
 import type { Metadata } from 'next'
 import React from 'react'
@@ -28,4 +26,3 @@ export default function RootLayout({
         </html>
     );
 }
->>>>>>> a3df50f55b6c5a3baa36738b5a9ea86acdefea4d

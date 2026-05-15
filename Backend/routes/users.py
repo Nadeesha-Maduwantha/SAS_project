@@ -1,4 +1,6 @@
 from flask import Blueprint, request, jsonify
+from datetime import datetime
+import traceback
 from services.supabase_service import get_supabase
 from utils.audit_logger import log_audit_action
 
@@ -67,7 +69,14 @@ def create_user():
     except Exception as e:
         print("=== ERROR ===")
         traceback.print_exc()
-        error_message = type(e).__name__
+        
+        # Pull out the exact message if Supabase provided one
+        error_message = str(e)
+        
+        # Provide a cleaner error message if it's the duplicate user error
+        if "User already registered" in error_message or "already exists" in error_message:
+            error_message = "An account with this email already exists."
+            
         return jsonify({'error': error_message}), 400
 
 @bp.route('/<user_id>', methods=['DELETE'])

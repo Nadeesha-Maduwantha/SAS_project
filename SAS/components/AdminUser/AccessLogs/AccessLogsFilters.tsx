@@ -74,10 +74,11 @@ export default function AccessLogsFilters({
             onChange={handleDateRangeChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
+            <option value="all">All Time</option>
             <option value="today">Today</option>
             <option value="week">This Week</option>
             <option value="month">This Month</option>
-            <option value="all">All Time</option>
+            
           </select>
         </div>
       </div>
