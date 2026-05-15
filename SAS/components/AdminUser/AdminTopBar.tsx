@@ -1,7 +1,6 @@
 'use client';
 
 import { Bell, HelpCircle, Search } from 'lucide-react';
-import ProfileDropdown from '@/components/profile/ProfileDropdown';
 import '@/styles/AdminStyles/AdminTopBar.css';
 
 export default function AdminTopBar() {
@@ -33,9 +32,13 @@ export default function AdminTopBar() {
             <HelpCircle className="admin-topbar__icon" />
           </button>
 
-          {/* Replace hardcoded user with dynamic ProfileDropdown */}
-          <ProfileDropdown />
-          
+          <div className="admin-topbar__user">
+            <div className="admin-topbar__avatar" />
+            <div className="admin-topbar__userText">
+              <div className="admin-topbar__userName">Amal Perera</div>
+              <div className="admin-topbar__userRole">Admin</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
