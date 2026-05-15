@@ -1,22 +1,28 @@
-import OperationLeftNavBar from '@/components/OperationUser/OperationLeftNavBar';
+// app/(protected)/operation_user/dashboard/page.tsx
+import UserDashboardMetricCards from '@/components/shared/UserDashboardMetricCards';
+import AlertFeedTable from '@/components/shared/AlertFeedTable';
+import PinnedTableStatCards from '@/components/shared/PinnedTableStatCard';
 
-import OperationDashboardHeader from '@/components/OperationUser/OperationDashboardHeader';
-import OperationStatsGrid from '@/components/OperationUser/OperationStatsGrid';
-import OperationPriorityShipments from '@/components/OperationUser/OperationPriorityShipments';
-
-import '@/styles/OperationStyles/OperationDashboardLayout.css';
-
-export default function OperationUserDashboardPage() {
+export default function OperationDashboardPage() {
   return (
-    <div className="op-layout">
-      <OperationLeftNavBar />
+    <div>
+      <h1 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 20, letterSpacing: '-0.02em' }}>
+        Operations Dashboard
+      </h1>
 
-      <div className="op-content">
-        <div className="op-inner">
-          <OperationDashboardHeader />
-          <OperationStatsGrid />
-          <OperationPriorityShipments />
-        </div>
+      {/* My Shipments + My Alerts stat cards */}
+      <UserDashboardMetricCards />
+
+      {/* Pinned custom table stat cards */}
+      <PinnedTableStatCards />
+
+      {/* Alert feed — shows all active alerts (filtered by dept when auth wired) */}
+      <div style={{ marginTop: 4 }}>
+        <AlertFeedTable
+          title="Department Alert Feed"
+          apiBase="http://localhost:5000"
+          maxRows={8}
+        />
       </div>
     </div>
   );

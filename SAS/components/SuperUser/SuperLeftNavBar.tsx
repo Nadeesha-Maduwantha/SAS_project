@@ -4,172 +4,122 @@ import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   LayoutGrid, FileText, Bell, Settings,
-  ChevronDown, Shield, Users, MapPin,
+  ChevronDown, MapPin, Users, TableProperties, Menu,
 } from 'lucide-react';
+import { useNav } from '@/contexts/NavContext';
+import '@/styles/ComponentStyles/AdminLeftNavBar.css';
 
-import '../../styles/ComponentStyles/SuperLeftNavBar.css';
+function CollapseTooltip({ text }: { text: string }) {
+  return <span className="nav-collapse-tooltip">{text}</span>;
+}
 
-type Props = {
-  alertsCount?: number;
-};
-
-export default function SuperLeftNavBar({ alertsCount = 0 }: Props) {
-  const router = useRouter();
-  const pathname = usePathname();
-
-  const [expandedSections, setExpandedSections] = useState({
-    shipments: false,
-    alerts: false,
-    milestones: false,
-    userManagement: false,
-    settings: false,
-  });
-
-  const toggleSection = (section: keyof typeof expandedSections) => {
-    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
-  };
-
-  const handleNavigation = (path: string) => router.push(path);
-
-  const isActiveRoute = (path: string) => {
-    if (!pathname) return false;
-    return pathname === path || pathname.startsWith(path);
-  };
-
+function IconBtn({ icon, tooltip, onClick }: {
+  icon: React.ReactNode; tooltip: string; onClick: () => void;
+}) {
   return (
-    <div className="super-nav-container">
+    <button className="nav-icon-btn" onClick={onClick} title={tooltip}>
+      {icon}<CollapseTooltip text={tooltip} />
+    </button>
+  );
+}
 
-      {/* Header */}
-      <div className="nav-header">
-        <div className="nav-logo" onClick={() => handleNavigation('/Super_user/dashboard')}>
-          <Shield className="logo-icon" />
-          <span className="logo-text">SAS Alert</span>
-        </div>
+function Section({ icon, label, isOpen, onToggle, children }: {
+  icon: React.ReactNode; label: string;
+  isOpen: boolean; onToggle: () => void; children: React.ReactNode;
+}) {
+  return (
+    <div className="nav-section">
+      <button className="nav-section-header" onClick={onToggle}>
+        {icon}<span>{label}</span>
+        <ChevronDown className={`chevron-icon ${isOpen ? 'expanded' : ''}`} />
+      </button>
+      {isOpen && <div className="nav-section-content">{children}</div>}
+    </div>
+  );
+}
+
+function NavItem({ label, isActive, onClick }: {
+  label: string; isActive: boolean; onClick: () => void;
+}) {
+  return <button className={`nav-item ${isActive ? 'active' : ''}`} onClick={onClick}>{label}</button>;
+}
+
+export default function SuperLeftNavBar({ topOffset = 57, alertsCount = 0 }: {
+  topOffset?: number; alertsCount?: number;
+}) {
+  const router   = useRouter();
+  const pathname = usePathname();
+  const { expanded, toggle, expand } = useNav();
+
+  const [open, setOpen] = useState({
+    shipments: false, alerts: false, milestones: false,
+    userManagement: false, customTables: false, settings: false,
+  });
+  const tog = (k: keyof typeof open) => setOpen(p => ({ ...p, [k]: !p[k] }));
+  const go  = (path: string) => router.push(path);
+  const active = (path: string) => !!pathname && (pathname === path || pathname.startsWith(path + '/'));
+
+  const ip = { size: 19, strokeWidth: 1.8 };
+  const containerStyle: React.CSSProperties = { top: topOffset, height: `calc(100vh - ${topOffset}px)` };
+
+  // ── Collapsed ────────────────────────────────────────────────────────────────
+  if (!expanded) {
+    return (
+      <div className="admin-nav-container collapsed" style={containerStyle}>
+        <button className="nav-toggle-btn" onClick={toggle} title="Expand sidebar">
+          <Menu size={18} /><CollapseTooltip text="Expand sidebar" />
+        </button>
+        <div className="nav-collapsed-divider" />
+        <IconBtn icon={<LayoutGrid      {...ip} />} tooltip="My Dashboard"    onClick={expand} />
+        <IconBtn icon={<FileText        {...ip} />} tooltip="Shipments"       onClick={expand} />
+        <IconBtn icon={<Bell            {...ip} />} tooltip="Alerts"          onClick={expand} />
+        <IconBtn icon={<MapPin          {...ip} />} tooltip="Milestones"      onClick={expand} />
+        <IconBtn icon={<Users           {...ip} />} tooltip="User Management" onClick={expand} />
+        <IconBtn icon={<TableProperties {...ip} />} tooltip="Custom Tables"   onClick={expand} />
+        <IconBtn icon={<Settings        {...ip} />} tooltip="Settings"        onClick={expand} />
+      </div>
+    );
+  }
+
+  // ── Expanded ─────────────────────────────────────────────────────────────────
+  return (
+    <div className="admin-nav-container expanded" style={containerStyle}>
+      <div className="nav-top-row">
+        <button className="nav-toggle-btn-expanded" onClick={toggle} title="Collapse sidebar">
+          <Menu size={18} />
+        </button>
       </div>
 
-      {/* Dashboard */}
-      <button
-        className={`nav-dashboard-btn ${isActiveRoute('/Super_user/dashboard') ? 'active' : ''}`}
-        onClick={() => handleNavigation('/Super_user/dashboard')}
-      >
-        <LayoutGrid className="nav-icon" />
-        <span>My Dashboard</span>
+      <button className={`nav-dashboard-btn ${active('/Super_user/dashboard') ? 'active' : ''}`} onClick={() => go('/Super_user/dashboard')}>
+        <LayoutGrid className="nav-icon" /><span>My Dashboard</span>
       </button>
 
-      {/* Shipments */}
-      <div className="nav-section">
-        <button className="nav-section-header" onClick={() => toggleSection('shipments')}>
-          <FileText className="nav-icon" />
-          <span>Shipments</span>
-          <ChevronDown className={`chevron-icon ${expandedSections.shipments ? 'expanded' : ''}`} />
-        </button>
-        {expandedSections.shipments && (
-          <div className="nav-section-content">
-            <button
-              className={`nav-item ${isActiveRoute('/Super_user/shipments') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/Super_user/shipments')}
-            >
-              Active Shipments
-            </button>
-          </div>
-        )}
-      </div>
+      <Section icon={<FileText className="nav-icon" />} label="Shipments" isOpen={open.shipments} onToggle={() => tog('shipments')}>
+        <NavItem label="Active Shipments" isActive={active('/Super_user/shipments')} onClick={() => go('/Super_user/shipments')} />
+      </Section>
 
-      {/* Alerts */}
-      <div className="nav-section">
-        <button className="nav-section-header" onClick={() => toggleSection('alerts')}>
-          <Bell className="nav-icon" />
-          <span>Alerts{alertsCount > 0 ? ` (${alertsCount})` : ''}</span>
-          <ChevronDown className={`chevron-icon ${expandedSections.alerts ? 'expanded' : ''}`} />
-        </button>
-        {expandedSections.alerts && (
-          <div className="nav-section-content">
-            <button
-              className={`nav-item ${isActiveRoute('/Super_user/alerts') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/Super_user/alerts')}
-            >
-              All Alerts
-            </button>
-          </div>
-        )}
-      </div>
+      <Section icon={<Bell className="nav-icon" />} label={`Alerts${alertsCount > 0 ? ` (${alertsCount})` : ''}`} isOpen={open.alerts} onToggle={() => tog('alerts')}>
+        <NavItem label="All Alerts" isActive={active('/Super_user/alerts')} onClick={() => go('/Super_user/alerts')} />
+      </Section>
 
-      {/* Milestones */}
-      <div className="nav-section">
-        <button className="nav-section-header" onClick={() => toggleSection('milestones')}>
-          <MapPin className="nav-icon" />
-          <span>Milestones</span>
-          <ChevronDown className={`chevron-icon ${expandedSections.milestones ? 'expanded' : ''}`} />
-        </button>
-        {expandedSections.milestones && (
-          <div className="nav-section-content">
-            <button
-              className={`nav-item ${isActiveRoute('/Super_user/milestone_templates_list') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/Super_user/milestone_templates_list')}
-            >
-              Templates List
-            </button>
-            <button
-              className={`nav-item ${isActiveRoute('/Super_user/milestone_template_create') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/Super_user/milestone_template_create')}
-            >
-              Create Template
-            </button>
-            <button
-              className={`nav-item ${isActiveRoute('/Super_user/current_milestone') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/Super_user/current_milestone')}
-            >
-              Current Milestones
-            </button>
+      <Section icon={<MapPin className="nav-icon" />} label="Milestones" isOpen={open.milestones} onToggle={() => tog('milestones')}>
+        <NavItem label="Templates List"     isActive={active('/Super_user/milestone_templates_list')}  onClick={() => go('/Super_user/milestone_templates_list')} />
+        <NavItem label="Create Template"    isActive={active('/Super_user/milestone_template_create')} onClick={() => go('/Super_user/milestone_template_create')} />
+        <NavItem label="Current Milestones" isActive={active('/Super_user/current_milestone')}         onClick={() => go('/Super_user/current_milestone')} />
+      </Section>
 
-          </div>
-        )}
-      </div>
+      <Section icon={<Users className="nav-icon" />} label="User Management" isOpen={open.userManagement} onToggle={() => tog('userManagement')}>
+        <NavItem label="Add New User" isActive={active('/Super_user/create-user')} onClick={() => go('/Super_user/create-user')} />
+        <NavItem label="Edit User"    isActive={active('/Super_user/edit-user')}   onClick={() => go('/Super_user/edit-user')} />
+      </Section>
 
-      {/* User Management */}
-      <div className="nav-section">
-        <button className="nav-section-header" onClick={() => toggleSection('userManagement')}>
-          <Users className="nav-icon" />
-          <span>User Management</span>
-          <ChevronDown className={`chevron-icon ${expandedSections.userManagement ? 'expanded' : ''}`} />
-        </button>
-        {expandedSections.userManagement && (
-          <div className="nav-section-content">
-            <button
-              className={`nav-item ${isActiveRoute('/Super_user/create-user') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/Super_user/create-user')}
-            >
-              Add New User
-            </button>
-            <button
-              className={`nav-item ${isActiveRoute('/Super_user/edit-user') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/Super_user/edit-user')}
-            >
-              Edit User
-            </button>
-          </div>
-        )}
-      </div>
+      <Section icon={<TableProperties className="nav-icon" />} label="Custom Tables" isOpen={open.customTables} onToggle={() => tog('customTables')}>
+        <NavItem label="My Tables" isActive={active('/Super_user/custom_tables')} onClick={() => go('/Super_user/custom_tables')} />
+      </Section>
 
-      {/* Settings */}
-      <div className="nav-section">
-        <button className="nav-section-header" onClick={() => toggleSection('settings')}>
-          <Settings className="nav-icon" />
-          <span>Settings</span>
-          <ChevronDown className={`chevron-icon ${expandedSections.settings ? 'expanded' : ''}`} />
-        </button>
-        {expandedSections.settings && (
-          <div className="nav-section-content">
-            <button
-              className={`nav-item ${isActiveRoute('/Super_user/profile') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/Super_user/profile')}
-            >
-              My Profile
-            </button>
-          </div>
-        )}
-      </div>
-
+      <Section icon={<Settings className="nav-icon" />} label="Settings" isOpen={open.settings} onToggle={() => tog('settings')}>
+        <NavItem label="My Profile" isActive={active('/Super_user/profile')} onClick={() => go('/Super_user/profile')} />
+      </Section>
     </div>
   );
 }

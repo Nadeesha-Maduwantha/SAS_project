@@ -4,20 +4,21 @@ import { Bell, HelpCircle, Search } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import ProfileDropdown from '@/components/profile/ProfileDropdown';
+// Reuse AdminTopBar CSS — identical styles
 import '@/styles/AdminStyles/AdminTopBar.css';
 
-export default function AdminTopBar() {
+export default function SalesTopBar() {
   const router = useRouter();
 
   return (
     <div className="admin-topbar">
       <div className="admin-topbar__inner">
 
-        {/* Left — company logo + title, no hamburger */}
+        {/* Left — logo + title */}
         <div className="admin-topbar__left">
           <div
             className="admin-topbar__logoWrap"
-            onClick={() => router.push('/admin/dashboard')}
+            onClick={() => router.push('/sales_user/dashboard')}
             title="Go to dashboard"
           >
             <Image
@@ -31,7 +32,7 @@ export default function AdminTopBar() {
           <span className="admin-topbar__title">Dart Global Logistic SAS System</span>
         </div>
 
-        {/* Center search */}
+        {/* Search */}
         <div className="admin-topbar__search">
           <Search className="admin-topbar__searchIcon" />
           <input className="admin-topbar__searchInput" placeholder="Search alerts, IDs..." />

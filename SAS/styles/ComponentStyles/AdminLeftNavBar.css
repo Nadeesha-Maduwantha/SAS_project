@@ -1,52 +1,151 @@
 @reference "../../app/globals.css";
 
+/* ── Container ───────────────────────────────────────────────────────────────── */
 .admin-nav-container {
   position: fixed;
-  top: 0;
   left: 0;
-  height: 100vh;
-  width: 260px;
-  max-width: 260px;
-  z-index: 100;
+  /* top and height are set via inline style from topOffset prop */
+  z-index: 100;           /* below topbar (102) so topbar always on top */
   background-color: #f5f5f7;
-  padding: 20px;
-  box-sizing: border-box;
-  overflow-y: auto;
+  border-right: 1px solid #e5e5e7;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  border-right: 1px solid #e5e5e7;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  /* No width transition — nav snaps instantly, no content shift animation */
 }
 
-/* Header Styles */
-.nav-header {
-  @apply flex items-center justify-center mb-5 p-3;
+.admin-nav-container.expanded {
+  width: 260px;
+  padding: 14px 16px 20px;
+  gap: 4px;
 }
 
-.nav-logo {
-  @apply flex items-center gap-3 cursor-pointer select-none;
+.admin-nav-container.collapsed {
+  width: 68px;
+  padding: 12px 0;
+  align-items: center;
+  gap: 2px;
 }
 
-.logo-icon {
-  @apply w-10 h-10 rounded-2xl p-2 text-white shrink-0 shadow-[0_12px_30px_rgba(37,99,235,0.22)];
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+/* ── Toggle button — top of expanded nav ─────────────────────────────────────── */
+.nav-top-row {
+  display: flex;
+  align-items: center;
+  padding: 2px 4px 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-.logo-textWrap {
-  @apply flex flex-col leading-[1.05];
+.nav-toggle-btn-expanded {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #374151;
+  transition: background 0.14s, border-color 0.14s;
+  flex-shrink: 0;
 }
 
-.logo-text {
-  @apply text-[16px] font-black text-slate-900 tracking-[-0.5px];
+.nav-toggle-btn-expanded:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
 }
 
-.logo-subtext {
-  @apply text-[12px] font-black text-slate-700 tracking-[1px];
+/* ── Toggle button — top of collapsed nav ───────────────────────────────────── */
+.nav-toggle-btn {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #374151;
+  transition: background 0.14s;
+  margin-bottom: 2px;
 }
 
-/* Dashboard Button */
+.nav-toggle-btn:hover {
+  background: #f3f4f6;
+}
+
+.nav-collapsed-divider {
+  width: 32px;
+  height: 1px;
+  background: #e5e7eb;
+  margin: 6px 0 8px;
+  flex-shrink: 0;
+}
+
+/* ── Collapsed icon buttons ──────────────────────────────────────────────────── */
+.nav-icon-btn {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748b;
+  transition: background 0.14s, color 0.14s;
+}
+
+.nav-icon-btn:hover {
+  background: rgba(0,0,0,0.07);
+  color: #1e293b;
+}
+
+/* Tooltip arrow + label */
+.nav-collapse-tooltip {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: #1f2937;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 7px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 200;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.nav-collapse-tooltip::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 5px solid transparent;
+  border-right-color: #1f2937;
+}
+
+.nav-icon-btn:hover .nav-collapse-tooltip,
+.nav-toggle-btn:hover .nav-collapse-tooltip {
+  opacity: 1;
+}
+
+/* ── Dashboard button ────────────────────────────────────────────────────────── */
 .nav-dashboard-btn {
-  @apply flex items-center gap-3 w-full px-5 py-4 bg-blue-100 border-0 rounded-2xl cursor-pointer text-[14px] font-black text-blue-900 transition-all duration-200 ease-in-out mb-3;
+  @apply flex items-center gap-3 w-full px-5 py-[13px] bg-blue-100 border-0 rounded-2xl cursor-pointer text-[14px] font-black text-blue-900 transition-all duration-200 ease-in-out mb-2 mt-1;
 }
 
 .nav-dashboard-btn:hover {
@@ -59,107 +158,56 @@
 }
 
 .nav-icon {
-  @apply w-5 h-5 shrink-0 text-slate-500;
+  @apply w-[19px] h-[19px] shrink-0 text-slate-500;
 }
 
-.nav-dashboard-btn.active .nav-icon {
-  @apply text-white;
-}
+.nav-dashboard-btn .nav-icon { @apply text-current; }
 
-/* Sections */
-.nav-section {
-  @apply flex flex-col gap-0 mb-2;
-}
+/* ── Sections ────────────────────────────────────────────────────────────────── */
+.nav-section { @apply flex flex-col gap-0; }
 
 .nav-section-header {
-  @apply flex items-center gap-3 w-full px-5 py-4 bg-transparent border-0 rounded-2xl cursor-pointer text-[14px] font-bold text-slate-800 transition-all duration-200 ease-in-out text-left;
+  @apply flex items-center gap-3 w-full px-4 py-[11px] bg-transparent border-0 rounded-xl cursor-pointer text-[13.5px] font-bold text-slate-700 transition-all duration-150 ease-in-out text-left;
 }
 
-.nav-section-header:hover {
-  @apply bg-black/5;
-}
+.nav-section-header:hover { @apply bg-black/5; }
+.nav-section-header.active { @apply bg-blue-100 text-blue-800; }
 
 .chevron-icon {
-  @apply w-5 h-5 ml-auto shrink-0 text-slate-400 transition-transform duration-300 ease-in-out;
+  @apply w-4 h-4 ml-auto shrink-0 text-slate-400 transition-transform duration-250 ease-in-out;
 }
 
-.chevron-icon.expanded {
-  @apply rotate-180;
-}
+.chevron-icon.expanded { @apply rotate-180; }
 
-/* Section Content */
+/* ── Section content ─────────────────────────────────────────────────────────── */
 .nav-section-content {
-  @apply flex flex-col gap-0 pl-3 border-l-2 border-slate-300 ml-4 mt-1;
-  animation: slideDown 0.2s ease;
+  @apply flex flex-col pl-3 border-l-2 border-slate-200 ml-[18px] mt-1 mb-1;
+  animation: navSlideDown 0.18s ease;
 }
 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    max-height: 0;
-    overflow: hidden;
-  }
-  to {
-    opacity: 1;
-    max-height: 500px;
-  }
+@keyframes navSlideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Items */
+/* ── Nav items ───────────────────────────────────────────────────────────────── */
 .nav-item {
-  @apply w-full px-4 py-3 bg-transparent border-0 rounded-xl cursor-pointer text-[14px] font-extrabold text-slate-500 text-left transition-all duration-200 ease-in-out;
+  @apply w-full px-3 py-[9px] bg-transparent border-0 rounded-lg cursor-pointer text-[13px] font-semibold text-slate-500 text-left transition-all duration-150 ease-in-out;
 }
 
 .nav-item:hover {
-  @apply bg-black/5 text-slate-800;
-  padding-left: 20px;
+  @apply bg-black/5 text-slate-700;
+  padding-left: 16px;
 }
 
 .nav-item.active {
-  @apply bg-blue-100 text-blue-800 border-l-[3px] border-blue-600;
-  padding-left: 13px;
+  @apply bg-blue-50 text-blue-700;
+  border-left: 3px solid #2563eb;
+  padding-left: 10px;
 }
 
-/* Scrollbar */
-.admin-nav-container::-webkit-scrollbar {
-  width: 6px;
-}
-.admin-nav-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-.admin-nav-container::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
-}
-.admin-nav-container::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .admin-nav-container {
-    width: 250px;
-    max-width: 250px;
-    padding: 16px;
-    gap: 6px;
-  }
-
-  .nav-dashboard-btn,
-  .nav-section-header,
-  .nav-item {
-    @apply text-[14px] px-4 py-3;
-  }
-
-  .nav-icon,
-  .chevron-icon {
-    @apply w-4 h-4;
-  }
-
-  .logo-text {
-    @apply text-sm;
-  }
-
-  .logo-subtext {
-    @apply text-[10px];
-  }
-}
+/* ── Scrollbar ───────────────────────────────────────────────────────────────── */
+.admin-nav-container::-webkit-scrollbar { width: 4px; }
+.admin-nav-container::-webkit-scrollbar-track { background: transparent; }
+.admin-nav-container::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+.admin-nav-container::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
