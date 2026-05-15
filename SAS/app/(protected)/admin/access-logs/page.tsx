@@ -70,6 +70,11 @@ export default function AccessLogsPage() {
       result = result.filter((log) => {
         const logDate = new Date(log.timestamp);
         
+        if (filters.dateRange === "today") {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0); // start of today at midnight
+        result = result.filter(log => new Date(log.timestamp) >= todayStart);
+        }
         if (filters.dateRange === "week") {
           const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
           return logDate >= weekAgo;
