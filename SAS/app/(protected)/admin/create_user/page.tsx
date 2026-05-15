@@ -61,15 +61,13 @@ export default function CreateUserPage() {
       
       // Optional: Reset the form so they can create another user
       setFormData({
-        fullName: '',
         email: '',
         password: '',
+        fullName: '',
+        age: 0,
+        ethnicity: '',
+        role: '',
         department: '',
-        role: 'user',
-        status: 'active',
-        phone: '',
-        joinDate: '',
-        employeeId: '',
         address: '',
       });
 
