@@ -1,23 +1,6 @@
 "use client";
 
-// =============================================================
-//  MilestoneSequenceEdit.jsx
-//  Path: components/milestones/MilestoneSequenceEdit.jsx
-//
-//  Editable milestone sequence with:
-//    - Drag and drop reorder
-//    - Remove with confirmation
-//    - Add milestone inline form
-//    - Save and Save as Copy actions
-//
-//  Props:
-//    milestones       — array of milestone objects
-//    onChange         — (newMilestones) => void
-//    onSave           — async () => void  — called for "Save"
-//    onSaveAsCopy     — async (copyName) => void — called for "Save as Copy"
-//    saving           — bool
-//    templateName     — string (used to pre-fill copy name)
-// =============================================================
+
 
 import { useState } from "react";
 import { T, solidBtn, outlineBtn, ghostBtn, inp, lbl } from "@/styles/tokens";

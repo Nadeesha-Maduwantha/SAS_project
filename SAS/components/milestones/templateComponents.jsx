@@ -464,7 +464,7 @@ export function MilestoneForm({ onAdd, onClose, submitLabel = "Add Milestone" })
   );
 }
 
-//  PAGE-LEVEL KEYFRAMES  (paste inside a <style> tag)
+//  PAGE-LEVEL KEYFRAMES  
 
 export const PAGE_KEYFRAMES = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');

@@ -6,7 +6,7 @@ import { T, solidBtn, outlineBtn, ghostBtn } from "@/styles/tokens";
 
 const BASE = "http://localhost:5000";
 
-// ── Icons ──────────────────────────────────────────────────────────────────────
+// Icons 
 const EyeIcon    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>;
 const EditIcon   = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
 const AssignIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>;
@@ -17,7 +17,7 @@ const IcoX       = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="n
 const formatDate = (d) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 const badge = "inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border";
 
-// ── Delete Confirmation Modal ──────────────────────────────────────────────────
+// Delete Confirmation Modal 
 function DeleteConfirmModal({ template, onConfirm, onClose, deleting }) {
   const [shipments,        setShipments]        = useState(null);
   const [loadingShipments, setLoadingShipments] = useState(false);
@@ -167,7 +167,7 @@ function DeleteConfirmModal({ template, onConfirm, onClose, deleting }) {
   );
 }
 
-// ── Main table ─────────────────────────────────────────────────────────────────
+// Main table
 export default function TemplatesTable({
   data       = [],
   totalCount = 0,
