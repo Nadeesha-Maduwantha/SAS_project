@@ -25,7 +25,58 @@ export interface CargowiseUser {
   email: string
 }
 
+<<<<<<< HEAD
 // ─── Shipment ─────────────────────────────────────────────────────────────────
+=======
+
+
+export interface User {
+  id: string;
+  fullName: string;
+  email: string;
+  department: string;
+  role: string;
+  status: 'Active' | 'Blocked' | 'Locked';
+  lastLogin: string;
+  lastLoginIP: string;
+  lastUpdated: string;
+  lastUpdatedBy: string;
+}
+
+export interface UserFormData {
+  id: string;
+  fullName: string;
+  email: string;
+  department: string;
+  role: string;
+  userAction: string;
+  resetPassword: boolean;
+  unlockAccount: boolean;
+}
+
+// ─── Profile Types ───────────────────────────────────────────
+export interface UserProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  department: string;
+  role: "admin" | "super-user" | "sales_user" | "operation_user";
+  status: "Active" | "Inactive";
+  isVerified: boolean;
+  lastLogin: string;
+  memberSince: string;
+  avatarUrl?: string;
+}
+
+export interface PasswordChange {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+
+>>>>>>> ce97f3e24df7599592ca00b09ad87d7fa7337d82
 export interface Shipment {
   id: string
   cargowiseId: string

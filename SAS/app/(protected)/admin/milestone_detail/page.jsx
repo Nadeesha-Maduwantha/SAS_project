@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import MilestoneMap from "@/app/components/MilestoneMap";
 import EmailComposeModal from "@/components/EmailComposeModal";
 
-// ─── Role config ──────────────────────────────────────────────────────────────
+// Role config : 
 const ROLE_CONFIG = {
   admin: {
     recipient:    (s) => ({
@@ -13,7 +13,7 @@ const ROLE_CONFIG = {
       email:   s.operationsUser?.email ?? s.createdBy?.email ?? s.created_by_email ?? "",
       company: "Dart Global Logistics",
     }),
-    buttonLabel:  (m) => m.critical ? "Urgent — Alert Operations" : "Alert Operations User",
+    buttonLabel:  (m) => m.critical ? "Urgent - Alert Operations" : "Alert Operations User",
     buttonColor:  (m) => m.critical ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700",
     modalTitle:   "Alert Operations User",
     modalSubtitle:(s) => `This email will be sent to the Operations user responsible for this shipment`,
@@ -93,14 +93,14 @@ const ROLE_CONFIG = {
   },
 };
 
-// ─── Status config ────────────────────────────────────────────────────────────
+//  Status config 
 const STATUS = {
   completed: { label: "Completed", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", dot: "bg-emerald-500" },
   overdue:   { label: "Overdue",   bg: "bg-red-50",     text: "text-red-700",     border: "border-red-200",     dot: "bg-red-500"     },
   pending:   { label: "Pending",   bg: "bg-gray-100",   text: "text-gray-500",    border: "border-gray-200",    dot: "bg-gray-400"    },
 };
 
-// ─── Icons ────────────────────────────────────────────────────────────────────
+//Icons 
 const ChevronLeft  = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>;
 const ChevronRight = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>;
 const MailIcon     = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>;
@@ -110,7 +110,7 @@ const CalendarIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill=
 const AlertIcon    = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
 const CheckIcon    = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// Page 
 export default function MilestonePage() {
   const searchParams = useSearchParams();
 
@@ -121,7 +121,7 @@ export default function MilestonePage() {
   const [showEmail,      setShowEmail]      = useState(false);
   const [sentMilestones, setSentMilestones] = useState(new Set());
 
-  const USER_ROLE = "admin"; // replace with real role from session later
+  const USER_ROLE = "admin"; //  real role 
 
   useEffect(() => {
     const shipmentId = searchParams.get("id") ?? "605ec73e-89d5-4d18-8721-5bd694bd9528";
@@ -187,14 +187,14 @@ export default function MilestonePage() {
   return (
     <div className="min-h-screen bg-gray-50 flex" style={{ height: "100vh" }}>
 
-      {/* ── Email Compose Modal ── */}
+      {/*Email Compose Modal*/ }
       <EmailComposeModal
         isOpen={showEmail}
         onClose={() => setShowEmail(false)}
         alertData={alertData}
       />
 
-      {/* ════════ LEFT ════════ */}
+      {/*  LEFT  */}
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
 
         {/* Shipment strip */}
