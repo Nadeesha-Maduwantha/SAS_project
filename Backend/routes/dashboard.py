@@ -52,7 +52,7 @@ def admin_shipment_feed():
             .order('job_last_edit_time', desc=True)
         )
 
-        # 🔍 Optional filter (for your "Filter" button)
+        #  Optional filter (for your "Filter" button)
         status = request.args.get('status')
         if status:
             query = query.eq('pickup_date_status', status)
@@ -66,16 +66,10 @@ def admin_shipment_feed():
                 "id": s["id"],
                 "cargo_id": s.get("cargowise_id"),
                 "branch": s.get("branch"),
-
                 #  lane logic
                 "lane": f'{s.get("gb_code", "")} → {s.get("gc_code", "")}',
-
                 #  stage from AI
                 "stage": s.get("llm_identified_type"),
-
-                #  description from AI
-                # "description": s.get("llm_note") or "",
-
                 "transport_mode": s.get("transport_mode"),
                 "pickup_status": s.get("pickup_date_status")
             })
@@ -84,35 +78,206 @@ def admin_shipment_feed():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
 
-# # OPERATION SUMMARY
-# @dashboard_bp.route('/api/dashboard/operation/summary', methods=['GET'])
-# def operation_summary():
-#     try:
-#         shipments = supabase.table('shipments').select('current_stage').execute()
+# SUPER USER METRICS
+@dashboard_bp.route('/api/dashboard/super/metrics', methods=['GET'])
+def super_metrics():
+    try:
+        # Department Shipments (Sea only)
+        dept_shipments = (
+            supabase.table('shipments')
+            .select('id')
+            .eq('transport_mode', 'SEA')
+            .execute()
+        )
 
-#         data = {
-#             "processing": 0,
-#             "in_transit": 0,
-#             "arrived": 0,
-#             "delayed": 0
-#         }
+        # Team Members (superuser role)
+        team_members = (
+            supabase.table('profiles')
+            .select('id')
+            .eq('role', 'superuser')
+            .execute()
+        )
 
-#         for s in shipments.data:
-#             stage = s['current_stage']
+        # Critical Milestones
+        critical = (
+            supabase.table('shipment_milestones')
+            .select('id')
+            .eq('is_critical', True)
+            .execute()
+        )
 
-#             if stage == 'Processing':
-#                 data["processing"] += 1
-#             elif stage == 'In Transit':
-#                 data["in_transit"] += 1
-#             elif stage == 'Arrived':
-#                 data["arrived"] += 1
-#             elif stage == 'Delayed':
-#                 data["delayed"] += 1
+        # Overdue Shipments
+        overdue = (
+            supabase.table('shipment_milestones')
+            .select('id')
+            .eq('status', 'overdue')
+            .execute()
+        )
 
-#         return jsonify({"data": data}), 200
+        return jsonify({
+            "data": {
+                "department_shipments": len(dept_shipments.data or []),
+                "team_members": len(team_members.data or []),
+                "critical_milestones": len(critical.data or []),
+                "overdue_shipments": len(overdue.data or [])
+            }
+        }), 200
 
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
+# super user recent activity 
+@dashboard_bp.route('/api/dashboard/super/recent-activity', methods=['GET'])
+def super_recent_activity():
+    try:
+        #  Get latest milestones (no filter)
+        milestones = (
+            supabase.table('shipment_milestones')
+            .select('id, name, status, due_date, shipment_id')
+            .order('due_date', desc=True)
+            .limit(5)
+            .execute()
+            .data
+        )
 
+        result = []
+
+        for m in milestones:
+            # Get shipment manually
+            shipment_res = (
+                supabase.table('shipments')
+                .select('cargowise_id, consignee_name')
+                .eq('id', m['shipment_id'])
+                .single()
+                .execute()
+            )
+
+            shipment = shipment_res.data if shipment_res.data else {}
+
+            result.append({
+                "shipment": shipment.get("cargowise_id"),
+                "client": shipment.get("consignee_name"),
+                "milestone": m.get("name"),
+                "status": m.get("status"),
+                "due_date": m.get("due_date")
+            })
+
+        return jsonify({"data": result}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+# super user critical alerts 
+@dashboard_bp.route('/api/dashboard/super/critical-alerts', methods=['GET'])
+def super_critical_alerts():
+    try:
+        alerts = (
+            supabase.table('shipment_milestones')
+            .select('id, notes, shipment_id')
+            .eq('is_critical', True)
+            .limit(3)
+            .execute()
+        )
+
+        result = []
+
+        for m in alerts.data or []:
+            shipment_res = (
+                supabase.table('shipments')
+                .select('cargowise_id')
+                .eq('id', m['shipment_id'])
+                .single()
+                .execute()
+            )
+
+            shipment = shipment_res.data if shipment_res.data else {}
+
+            result.append({
+                "shipment": shipment.get("cargowise_id"),
+                "note": m.get("notes"),
+            })
+
+        return jsonify({"data": result}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+    # OPERATION SHIPMENTS FEED
+@dashboard_bp.route('/api/dashboard/operation/shipment', methods=['GET'])
+def operation_shipment():
+    try:
+        query = (
+            supabase.table('shipments')
+            .select(
+                'id, cargowise_id, branch, gb_code, gc_code, '
+                'llm_identified_type, '
+                'transport_mode, pickup_date_status, created_at, job_last_edit_time'
+            )
+            .order('job_last_edit_time', desc=True)
+        )
+
+        #  Optional filter (for your "Filter" button)
+        status = request.args.get('status')
+        if status:
+            query = query.eq('pickup_date_status', status)
+
+        response = query.limit(5).execute()
+
+        result = []
+
+        for s in response.data:
+            result.append({
+                "cargo_id": s.get("cargowise_id"),
+                #  lane logic
+                "lane": f'{s.get("gb_code", "")} → {s.get("gc_code", "")}',
+                #  stage from AI
+                "stage": s.get("llm_identified_type"),
+                "transport_mode": s.get("transport_mode"),
+                "pickup_status": s.get("pickup_date_status")
+            })
+
+        return jsonify({"data": result}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+     # SALES SHIPMENTS FEED
+@dashboard_bp.route('/api/dashboard/sales/shipment', methods=['GET'])
+def sales_shipment():
+    try:
+        query = (
+            supabase.table('shipments')
+            .select(
+                'id, cargowise_id, branch, gb_code, gc_code, '
+                'llm_identified_type, '
+                'transport_mode, pickup_date_status, created_at, job_last_edit_time'
+            )
+            .order('job_last_edit_time', desc=True)
+        )
+
+        #  Optional filter (for your "Filter" button)
+        status = request.args.get('status')
+        if status:
+            query = query.eq('pickup_date_status', status)
+
+        response = query.limit(5).execute()
+
+        result = []
+
+        for s in response.data:
+            result.append({
+                "cargo_id": s.get("cargowise_id"),
+                #  lane logic
+                "lane": f'{s.get("gb_code", "")} → {s.get("gc_code", "")}',
+                #  stage from AI
+                "stage": s.get("llm_identified_type"),
+                "transport_mode": s.get("transport_mode"),
+                "pickup_status": s.get("pickup_date_status")
+            })
+
+        return jsonify({"data": result}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

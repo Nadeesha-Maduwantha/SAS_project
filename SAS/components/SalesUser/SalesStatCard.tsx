@@ -3,14 +3,14 @@ import '@/styles/SalesStyles/SalesStatCard.css';
 type Tone = 'amber' | 'blue' | 'purple' | 'green';
 
 type Props = {
-  tone: Tone;
+  
   title: string;
   value: string;
   
   icon: React.ReactNode;
 };
 
-export default function SalesStatCard({ tone, title, value,  icon }: Props) {
+export default function SalesStatCard({  title, value,  icon }: Props) {
   return (
     <div className="sales-stat">
       <div className="sales-stat__top">

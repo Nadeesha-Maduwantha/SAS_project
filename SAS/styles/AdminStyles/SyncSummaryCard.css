@@ -106,5 +106,5 @@
 }
 
 .sync-view {
-  @apply text-xs font-extrabold text-blue-600 hover:text-blue-700;
+  @apply text-xs font-extrabold text-red-600 hover:text-blue-700;
 }
