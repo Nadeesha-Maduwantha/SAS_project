@@ -8,6 +8,7 @@ import { UserFormData } from '@/types';
 
 const EditUserPage: React.FC = () => {
   const [formData, setFormData] = useState<UserFormData>({
+    id: '',
     fullName: '',
     email: '',
     department: '',
@@ -43,6 +44,7 @@ const EditUserPage: React.FC = () => {
 
   const handleCancel = () => {
     setFormData({
+      id: '',
       fullName: '',
       email: '',
       department: '',

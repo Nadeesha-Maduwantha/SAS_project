@@ -1,48 +1,21 @@
-import os
-from flask import Flask
-from flask_cors import CORS
-from flask.json.provider import DefaultJSONProvider
-from dotenv import load_dotenv
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
+from flask import Blueprint, jsonify
+from services.cargowise_service import fetch_shipments_from_api
+from services.supabase_service import upsert_shipment, save_sync_log, get_sync_logs, save_sync_error, get_sync_errors
+import time
 
-# Auth routes
-from routes.auth import bp as auth_bp
-from routes.users import bp as users_bp
-from routes.user_edit import bp as user_edit_bp
-from routes.audit_trail import bp as audit_trail_bp
-from routes.access_logs import access_logs_bp
-from routes.profile import bp as profile_bp # <-- Add this import
-from routes.change_password import bp as change_password_bp # <-- Add this import
+sync_bp = Blueprint('sync', __name__)
 
-# Shipment routes
-from routes.templates import templates_bp
-from routes.milestones import milestones_bp
-from routes.shipments import shipments_bp
-from routes.sync import sync_bp
-
-# Sync routes
-from routes.database_sync_routes import sync_bp        
-from sync.database_sync import start_scheduler         
-
-load_dotenv()
-
-<<<<<<< HEAD
-def run_sync_job():
+@sync_bp.route('/api/sync', methods=['GET', 'POST'])
+def run_sync():
     try:
-        from services.cargowise_service import fetch_shipments_from_api
-        from services.supabase_service import upsert_shipment, save_sync_log, save_sync_error
-        import time
-
-        print('Running scheduled sync...')
         start_time = time.time()
         raw_data = fetch_shipments_from_api()
 
         if not raw_data:
-            print('No data from API')
-            return
+            return jsonify({'error': 'No data from API'}), 500
 
         seen = set()
+        inserted = 0
         updated = 0
         errors = 0
         error_list = []
@@ -108,7 +81,7 @@ def run_sync_job():
 
         log = save_sync_log(
             status=status,
-            inserted=0,
+            inserted=inserted,
             updated=updated,
             errors=len(error_list),
             total_processed=len(seen),
@@ -116,9 +89,11 @@ def run_sync_job():
         )
 
         print(f'Log saved: {log}')
+        print(f'Error list count: {len(error_list)}')
 
         if log and error_list:
             sync_id = log.get('id')
+            print(f'Saving {len(error_list)} errors for sync_id: {sync_id}')
             for err in error_list:
                 save_sync_error(
                     sync_id=sync_id,
@@ -127,91 +102,83 @@ def run_sync_job():
                     error_reason=err['error_reason'],
                     severity=err['severity']
                 )
-            print(f'Saved {len(error_list)} errors')
 
-        print(f'Sync done — updated: {updated}, errors: {len(error_list)}')
+        return jsonify({
+            'success': True,
+            'inserted': inserted,
+            'updated': updated,
+            'errors': len(error_list),
+            'total_processed': len(seen),
+            'duration_seconds': duration,
+            'status': status
+        })
 
     except Exception as e:
-        print(f'SCHEDULER ERROR: {e}')
-        import traceback
-        traceback.print_exc()
-=======
-
->>>>>>> ce97f3e24df7599592ca00b09ad87d7fa7337d82
-class CustomJSONProvider(DefaultJSONProvider):
-    def default(self, obj):
-        try:
-            return super().default(obj)
-        except TypeError:
-            return str(obj)
+        return jsonify({'error': str(e)}), 500
 
 
-app = Flask(__name__)
-app.json_provider_class = CustomJSONProvider
-app.json = CustomJSONProvider(app)
-
-CORS(app)
-
-app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
-
-# Register blueprints
-app.register_blueprint(auth_bp,          name='auth_routes')
-app.register_blueprint(profile_bp,       name='profile_routes') 
-app.register_blueprint(users_bp,         name='user_creation_routes')
-app.register_blueprint(user_edit_bp,     name='user_edit_routes')
-app.register_blueprint(audit_trail_bp, name='audit_trail_routes')
-app.register_blueprint(access_logs_bp, url_prefix='/api/access-logs')
-app.register_blueprint(templates_bp)
-app.register_blueprint(milestones_bp)
-app.register_blueprint(shipments_bp)
-<<<<<<< HEAD
-app.register_blueprint(sync_bp)
-=======
-app.register_blueprint(change_password_bp, name='change_password_routes') 
-
->>>>>>> ce97f3e24df7599592ca00b09ad87d7fa7337d82
-
-def health_check():
-    return {'status': 'Backend is running'}, 200
+@sync_bp.route('/api/sync/logs', methods=['GET'])
+def get_logs():
+    try:
+        logs = get_sync_logs()
+        return jsonify({'data': logs})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
-@app.route('/')
-def health():
-    return {'status': 'Flask is running'}, 200
+@sync_bp.route('/api/sync/errors', methods=['GET'])
+def get_errors():
+    try:
+        errors = get_sync_errors()
+        return jsonify({'data': errors})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-# Start scheduler
-scheduler = BackgroundScheduler()
-scheduler.add_job(
-    run_sync_job,
-    CronTrigger(hour='0,6,12,18', minute=0, timezone='Asia/Colombo'),
-    id='fixed_sync'
-)
+from apscheduler.triggers.cron import CronTrigger
 
-<<<<<<< HEAD
-# Load custom schedule from database if exists
-try:
-    from services.supabase_service import get_sync_settings
-    settings = get_sync_settings()
-    if settings:
+@sync_bp.route('/api/sync/schedule', methods=['GET'])
+def get_schedule():
+    try:
+        from services.supabase_service import get_sync_settings
+        settings = get_sync_settings()
+        return jsonify({'data': settings}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@sync_bp.route('/api/sync/schedule', methods=['POST'])
+def save_schedule():
+    try:
+        from flask import request
+        from services.supabase_service import save_sync_settings
+        from app import scheduler, run_sync_job
+
+        data = request.get_json()
+        schedule_time = data.get('schedule_time')  # format: "HH:MM"
+
+        if not schedule_time:
+            return jsonify({'error': 'schedule_time is required'}), 400
+
+        hour, minute = schedule_time.split(':')
+
+        # Save to database
+        save_sync_settings(
+            schedule_hours=hour,
+            schedule_minute=int(minute)
+        )
+
+        # Add new job to scheduler
         scheduler.add_job(
             run_sync_job,
-            CronTrigger(
-                hour=settings['schedule_hours'],
-                minute=settings['schedule_minute'],
-                timezone='Asia/Colombo'
-            ),
+            CronTrigger(hour=hour, minute=int(minute), timezone='Asia/Colombo'),
             id='custom_sync',
             replace_existing=True
         )
-        print(f"Custom sync loaded: {settings['schedule_hours']}:{settings['schedule_minute']}")
-except Exception as e:
-    print(f'Could not load custom schedule: {e}')
 
-scheduler.start()
-print('Scheduler started — fixed sync at 6AM, 12PM, 6PM, 12AM Sri Lanka time')
-=======
->>>>>>> ce97f3e24df7599592ca00b09ad87d7fa7337d82
+        return jsonify({
+            'success': True,
+            'message': f'Schedule saved — sync will run at {schedule_time} Sri Lanka time'
+        }), 200
 
-if __name__ == '__main__':
-    start_scheduler()   
-    app.run(debug=True, port=5000, use_reloader=False)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
