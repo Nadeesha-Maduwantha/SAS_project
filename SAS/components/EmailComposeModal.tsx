@@ -23,7 +23,6 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }: EmailC
     const [bccValue, setBccValue] = useState('');
     const [toValue, setToValue] = useState('');
     const [subjectValue, setSubjectValue] = useState('');
-    const [editorHtml, setEditorHtml] = useState('');
     const [sendStatus, setSendStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [isSending, setIsSending] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,13 +38,15 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }: EmailC
 
         setToValue(clientEmail);
         setSubjectValue(`Update regarding ${shipmentId}`);
-        setEditorHtml(defaultBody);
         setCcValue('');
         setBccValue('');
         setShowCC(false);
         setShowBCC(false);
         setAttachments([]);
         setSendStatus(null);
+        if (editorRef.current) {
+            editorRef.current.innerHTML = defaultBody;
+        }
     }, [isOpen, clientEmail, shipmentId, defaultBody]);
 
     const handleFormat = (command: string, value: string | null = null) => {
@@ -122,7 +123,8 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }: EmailC
             return;
         }
 
-        const bodyText = buildPlainTextBody(editorHtml).trim();
+        const currentHtml = editorRef.current?.innerHTML || '';
+        const bodyText = buildPlainTextBody(currentHtml).trim();
         if (!bodyText) {
             setSendStatus({ type: 'error', message: 'Email body cannot be empty.' });
             return;
@@ -148,7 +150,7 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }: EmailC
                     cc: ccRecipients,
                     bcc: bccRecipients,
                     subject: subjectValue.trim(),
-                    html: editorHtml,
+                    html: currentHtml,
                     text: bodyText,
                     attachments: attachmentPayload,
                 }),
@@ -403,11 +405,7 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }: EmailC
                                 <button onMouseDown={(e) => handleAction(e, 'insertUnorderedList')} style={toolbarBtnStyle}><List size={18} /></button>
                                 <button onMouseDown={(e) => handleAction(e, 'insertOrderedList')} style={toolbarBtnStyle}><ListOrdered size={18} /></button>
                             </div>
-                            <button onMouseDown={(e) => {
-                                e.preventDefault();
-                                const url = window.prompt('Enter image URL:');
-                                if (url) handleFormat('insertImage', url);
-                            }} style={toolbarBtnStyle}><ImageIcon size={18} /></button>
+                            
                         </div>
 
                         {/* Text Area */}
@@ -417,16 +415,12 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }: EmailC
                                 className="rich-text-editor"
                                 contentEditable
                                 suppressContentEditableWarning
-                                onInput={(e) => setEditorHtml((e.target as HTMLDivElement).innerHTML)}
                                 style={{
                                     width: '100%', height: '100%', border: 'none', outline: 'none',
                                     overflowY: 'auto', fontSize: '14px', lineHeight: '1.6',
                                     color: '#374151', fontFamily: 'inherit',
                                     paddingBottom: '20px'
                                 } as React.CSSProperties}
-                                dangerouslySetInnerHTML={{
-                                    __html: editorHtml
-                                }}
                             />
                         </div>
 

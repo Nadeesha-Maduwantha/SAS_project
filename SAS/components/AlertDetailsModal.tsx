@@ -317,7 +317,7 @@ export default function AlertDetailsModal({ isOpen, onClose, alertData, onEmailC
                             color: '#4b5563', fontSize: '13px', fontWeight: 500,
                             cursor: 'pointer'
                         } as React.CSSProperties}>
-                            Email Client
+                            Send Email
                         </button>
                     )}
 

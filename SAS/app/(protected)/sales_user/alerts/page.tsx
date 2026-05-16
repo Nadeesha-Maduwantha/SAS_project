@@ -22,7 +22,7 @@ type Alert = {
     issue: string;
     delay: string;
     delayColor: string;
-    status: 'Get Action' | 'Action Taken' | 'Resolved';
+    status: 'Overdue' | 'Resolved';
     createdAt: Date;
 }
 
@@ -38,6 +38,7 @@ type SupabaseRow = {
     assigned_email: string;
     alert_sent: boolean;
     created_at?: string;
+    derived_status?: 'Overdue' | 'Resolved' | null;
 }
 
 const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
@@ -66,7 +67,28 @@ function getMilestoneIcon(name: string = ''): 'anchor' | 'truck' | 'warehouse' |
 function mapRow(row: SupabaseRow, idx: number): Alert {
     const assignedTo = row.assigned_to?.trim() || '—';
     const initial = String(assignedTo || '?')[0].toUpperCase();
-    const isOverdue = row.due_date && !row.completed_date && new Date(row.due_date) < new Date();
+    const isOverdue = row.derived_status === 'Overdue';
+    const isResolved = row.derived_status === 'Resolved';
+    const dueDateLabel = row.due_date ? new Date(row.due_date).toLocaleDateString() : '';
+    const completedDateLabel = row.completed_date ? new Date(row.completed_date).toLocaleDateString() : '';
+
+    // compute delay days when overdue
+    let delayLabel = '—';
+    let delayColor = '#15803d';
+    if (isOverdue) {
+        const now = new Date();
+        const due = row.due_date ? new Date(row.due_date) : null;
+        const days = due ? Math.floor((now.getTime() - due.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+        const dayText = days === 1 ? 'day' : 'days';
+        delayLabel = due
+            ? `Overdue by ${days} ${dayText} (since ${dueDateLabel})`
+            : `Overdue`;
+        delayColor = '#ef4444';
+    } else if (isResolved) {
+        delayLabel = `Resolved on ${completedDateLabel}`;
+        delayColor = '#15803d';
+    }
+
     return {
         id: `${row.shipment_id}-${idx}`,
         shipment_id: row.shipment_id,
@@ -77,11 +99,9 @@ function mapRow(row: SupabaseRow, idx: number): Alert {
         milestone: row.name || '—',
         milestoneIcon: getMilestoneIcon(row.name),
         issue: row.notes || '—',
-        delay: isOverdue ? `Overdue since ${new Date(row.due_date!).toLocaleDateString()}` : '—',
-        delayColor: isOverdue ? '#ef4444' : '#6b7280',
-        status: (row.status === 'Action Taken' || row.status === 'Resolved' || row.status === 'Get Action')
-            ? row.status
-            : 'Get Action',
+        delay: delayLabel,
+        delayColor: delayColor,
+        status: isResolved ? 'Resolved' : 'Overdue',
         createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     };
 }
@@ -109,9 +129,8 @@ function toAlertData(alert: Alert): AlertData {
 function PriorityBadge({ level }: { level: string }) {
     const map: Record<string, { bg: string; color: string; dot: string }> = {
         Critical: { bg: '#fef2f2', color: '#dc2626', dot: '#dc2626' },
-        High:     { bg: '#fff7ed', color: '#ea580c', dot: '#f97316' },
         Medium:   { bg: '#fefce8', color: '#ca8a04', dot: '#eab308' },
-        Low:      { bg: '#f0fdf4', color: '#16a34a', dot: '#22c55e' },
+    
     };
     const s = map[level] || map.Medium;
     return (
@@ -124,6 +143,7 @@ function PriorityBadge({ level }: { level: string }) {
 
 function StatusBadge({ status }: { status: string }) {
     const map: Record<string, { bg: string; color: string; border: string }> = {
+        Overdue:        { bg: '#fff0f0', color: '#dc2626', border: '#fca5a5' },
         'Get Action':   { bg: '#fff0f0', color: '#dc2626', border: '#fca5a5' },
         'Action Taken': { bg: '#eff6ff', color: '#2563eb', border: '#93c5fd' },
         'Resolved':     { bg: '#f0fdf4', color: '#15803d', border: '#86efac' },
@@ -207,36 +227,11 @@ export default function AlertDashboardPage() {
         setComposeOpen(true);
     };
 
-    const updateAlertStatus = async (alertId: string, newStatus: string) => {
-        const shipmentId = alertId.split('-').slice(0, -1).join('-');
-
-        try {
-            const response = await fetch(`${BACKEND_BASE_URL}/api/alerts/${shipmentId}/status`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: newStatus }),
-            });
-            const payload = await parseApiResponse(response);
-
-            if (!response.ok) {
-                throw new Error(payload?.error || 'Failed to update status');
-            }
-
-            setAlerts(prev => prev.map(alert =>
-                alert.id === alertId ? { ...alert, status: newStatus as Alert['status'] } : alert
-            ));
-            return true;
-        } catch (err) {
-            console.error('Error updating status:', err);
-            return false;
-        }
-    };
-
     const fetchAlerts = async () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(`${BACKEND_BASE_URL}/api/alerts`);
+            const response = await fetch(`${BACKEND_BASE_URL}/api/alerts?scope=sales_user`);
             const payload = await parseApiResponse(response);
             if (!response.ok) {
                 throw new Error(payload?.error || 'Failed to load alerts');
@@ -256,7 +251,7 @@ export default function AlertDashboardPage() {
         const matchSearch   = search === '' ||
             a.id.toLowerCase().includes(search.toLowerCase()) ||
             a.milestone.toLowerCase().includes(search.toLowerCase());
-        return matchPriority && matchStatus && matchSearch;
+        return (a.status === 'Overdue' || a.status === 'Resolved') && matchPriority && matchStatus && matchSearch;
     });
 
     const toggleRow = (id: string) => {
@@ -264,12 +259,12 @@ export default function AlertDashboardPage() {
     };
 
     const highPriority = alerts.filter(a => a.priority === 'Critical').length;
-    const pending      = alerts.filter(a => a.status === 'Get Action').length;
+    const pending      = alerts.filter(a => a.status === 'Overdue').length;
     const resolved     = alerts.filter(a => a.status === 'Resolved').length;
 
     const statsCards = [
         { icon: <AlertCircle size={26} color="#ef4444" />, iconBg: '#fef2f2', count: highPriority, label: 'High Priority Alerts', borderColor: '#fca5a5' },
-        { icon: <Clock size={26} color="#f97316" />,        iconBg: '#fff7ed', count: pending,      label: 'Pending Review',       borderColor: '#fdba74' },
+        { icon: <Clock size={26} color="#f97316" />,        iconBg: '#fff7ed', count: pending,      label: 'Overdue Alerts',       borderColor: '#fdba74' },
         { icon: <CheckCircle2 size={26} color="#22c55e" />, iconBg: '#f0fdf4', count: resolved,     label: 'Resolved',             borderColor: '#86efac' },
     ];
 
@@ -277,7 +272,9 @@ export default function AlertDashboardPage() {
     if (error)   return <div style={{ padding: '40px', textAlign: 'center', color: '#dc2626' }}>{error}</div>;
 
     return (
+    
         <div>
+            
             {/* ── Modals ── */}
             <AlertDetailsModal
                 isOpen={detailsOpen}
@@ -297,9 +294,7 @@ export default function AlertDashboardPage() {
                     <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1a1a2e', letterSpacing: '-0.4px' }}>Alert Dashboard</h1>
                     <p style={{ fontSize: '13.5px', color: '#6b7280', marginTop: '4px' }}>Overview of shipment delays and critical issues requiring attention.</p>
                 </div>
-                <button style={{ display: 'flex', alignItems: 'center', gap: '7px', background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 500, color: '#374151', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-                    <Download size={14} /> Export Report
-                </button>
+                
             </div>
 
             {/* Stats cards */}
@@ -324,7 +319,7 @@ export default function AlertDashboardPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 20px', borderBottom: '1px solid #f0f0f0', flexWrap: 'wrap' }}>
                     {[
                         { label: priorityFilter, options: ['All Priorities', 'Critical', 'Medium'], setter: setPriorityFilter },
-                        { label: statusFilter,   options: ['All Statuses', 'Get Action', 'Action Taken', 'Resolved'], setter: setStatusFilter },
+                        { label: statusFilter,   options: ['All Statuses', 'Overdue', 'Resolved'], setter: setStatusFilter },
                     ].map((f) => (
                         <div key={f.label} style={{ position: 'relative' }}>
                             <select value={f.label} onChange={(e) => f.setter(e.target.value)} style={{ appearance: 'none', background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '7px 30px 7px 12px', fontSize: '13px', color: '#374151', cursor: 'pointer', outline: 'none' }}>
@@ -390,17 +385,8 @@ export default function AlertDashboardPage() {
                                         <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 <ActionBtn icon={<Eye size={14} />}  title="View"  onClick={() => openDetails(alert)} />
-                                                <ActionBtn icon={<Mail size={14} />} title="Email" onClick={() => openCompose(toAlertData(alert))} />
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={alert.status === 'Action Taken'}
-                                                    onChange={async (e) => {
-                                                        e.stopPropagation();
-                                                        const newStatus = e.target.checked ? 'Action Taken' : 'Get Action';
-                                                        await updateAlertStatus(alert.id, newStatus);
-                                                    }}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                />
+                                                <ActionBtn icon={<Mail size={14} />} title="Send Email" onClick={() => openCompose(toAlertData(alert))} />
+                                                
                                             </div>
                                         </td>
                                     </tr>
@@ -430,17 +416,8 @@ export default function AlertDashboardPage() {
                                 </div>
                                 <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '6px' }} onClick={(e) => e.stopPropagation()}>
                                     <ActionBtn icon={<Eye size={14} />}  title="View"  onClick={() => openDetails(alert)} />
-                                    <ActionBtn icon={<Mail size={14} />} title="Email" onClick={() => openCompose(toAlertData(alert))} />
-                                    <input 
-                                        type="checkbox" 
-                                        checked={alert.status === 'Action Taken'}
-                                        onChange={async (e) => {
-                                            e.stopPropagation();
-                                            const newStatus = e.target.checked ? 'Action Taken' : 'Get Action';
-                                            await updateAlertStatus(alert.id, newStatus);
-                                        }}
-                                        style={{ marginLeft: '4px', cursor: 'pointer' }}
-                                    />
+                                    <ActionBtn icon={<Mail size={14} />} title="Send Email" onClick={() => openCompose(toAlertData(alert))} />
+                                
                                 </div>
                             </div>
                         ))}
