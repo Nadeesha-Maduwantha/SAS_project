@@ -12,6 +12,8 @@ from routes.users import bp as users_bp
 from routes.user_edit import bp as user_edit_bp
 from routes.audit_trail import bp as audit_trail_bp
 from routes.access_logs import access_logs_bp
+from routes.profile import bp as profile_bp # <-- Add this import
+from routes.change_password import bp as change_password_bp # <-- Add this import
 
 # Shipment routes
 from routes.templates import templates_bp
@@ -19,8 +21,13 @@ from routes.milestones import milestones_bp
 from routes.shipments import shipments_bp
 from routes.sync import sync_bp
 
+# Sync routes
+from routes.database_sync_routes import sync_bp        
+from sync.database_sync import start_scheduler         
+
 load_dotenv()
 
+<<<<<<< HEAD
 def run_sync_job():
     try:
         from services.cargowise_service import fetch_shipments_from_api
@@ -128,6 +135,9 @@ def run_sync_job():
         print(f'SCHEDULER ERROR: {e}')
         import traceback
         traceback.print_exc()
+=======
+
+>>>>>>> ce97f3e24df7599592ca00b09ad87d7fa7337d82
 class CustomJSONProvider(DefaultJSONProvider):
     def default(self, obj):
         try:
@@ -135,30 +145,39 @@ class CustomJSONProvider(DefaultJSONProvider):
         except TypeError:
             return str(obj)
 
+
 app = Flask(__name__)
 app.json_provider_class = CustomJSONProvider
 app.json = CustomJSONProvider(app)
+
 CORS(app)
+
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
 
-# Register all blueprints
-app.register_blueprint(auth_bp, name='auth_routes')
-app.register_blueprint(users_bp, name='user_creation_routes')
-app.register_blueprint(user_edit_bp, name='user_edit_routes')
+# Register blueprints
+app.register_blueprint(auth_bp,          name='auth_routes')
+app.register_blueprint(profile_bp,       name='profile_routes') 
+app.register_blueprint(users_bp,         name='user_creation_routes')
+app.register_blueprint(user_edit_bp,     name='user_edit_routes')
 app.register_blueprint(audit_trail_bp, name='audit_trail_routes')
 app.register_blueprint(access_logs_bp, url_prefix='/api/access-logs')
 app.register_blueprint(templates_bp)
 app.register_blueprint(milestones_bp)
 app.register_blueprint(shipments_bp)
+<<<<<<< HEAD
 app.register_blueprint(sync_bp)
+=======
+app.register_blueprint(change_password_bp, name='change_password_routes') 
 
-@app.route('/health', methods=['GET'])
+>>>>>>> ce97f3e24df7599592ca00b09ad87d7fa7337d82
+
 def health_check():
     return {'status': 'Backend is running'}, 200
 
+
 @app.route('/')
 def health():
-    return {"status": "Flask is running"}, 200
+    return {'status': 'Flask is running'}, 200
 
 # Start scheduler
 scheduler = BackgroundScheduler()
@@ -168,6 +187,7 @@ scheduler.add_job(
     id='fixed_sync'
 )
 
+<<<<<<< HEAD
 # Load custom schedule from database if exists
 try:
     from services.supabase_service import get_sync_settings
@@ -189,6 +209,9 @@ except Exception as e:
 
 scheduler.start()
 print('Scheduler started — fixed sync at 6AM, 12PM, 6PM, 12AM Sri Lanka time')
+=======
+>>>>>>> ce97f3e24df7599592ca00b09ad87d7fa7337d82
 
 if __name__ == '__main__':
+    start_scheduler()   
     app.run(debug=True, port=5000, use_reloader=False)

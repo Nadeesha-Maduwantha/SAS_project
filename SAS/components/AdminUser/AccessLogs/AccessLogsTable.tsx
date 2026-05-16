@@ -51,8 +51,8 @@ const AccessLogsTable: React.FC<AccessLogsTableProps> = ({
               >
                 <td className="px-4 py-3 text-gray-700 align-middle whitespace-nowrap">{log.timestamp}</td>
                 <td className="px-4 py-3 align-middle">
-                  <p className="font-medium text-gray-800 text-sm">{log.user.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{log.user.email}</p>
+                  <div className="text-sm font-medium text-gray-900">{log.user.name}</div>
+                  <div className="text-sm text-gray-500 mt-0.5">{log.user.role || 'Unknown'}</div>
                 </td>
                 <td className="px-4 py-3 text-gray-700 align-middle">{log.action}</td>
                 <td className="px-4 py-3 text-gray-700 align-middle">{log.ipAddress}</td>
