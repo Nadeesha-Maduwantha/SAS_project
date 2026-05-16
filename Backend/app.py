@@ -10,6 +10,8 @@ from routes.users import bp as users_bp
 from routes.user_edit import bp as user_edit_bp
 from routes.audit_trail import bp as audit_trail_bp
 from routes.access_logs import access_logs_bp
+from routes.profile import bp as profile_bp # <-- Add this import
+from routes.change_password import bp as change_password_bp # <-- Add this import
 
 # Shipment routes
 from routes.templates import templates_bp
@@ -39,19 +41,19 @@ CORS(app)
 
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
 
-
-app.register_blueprint(auth_bp,        name='auth_routes')
-app.register_blueprint(users_bp,       name='user_creation_routes')
-app.register_blueprint(user_edit_bp,   name='user_edit_routes')
+# Register blueprints
+app.register_blueprint(auth_bp,          name='auth_routes')
+app.register_blueprint(profile_bp,       name='profile_routes') 
+app.register_blueprint(users_bp,         name='user_creation_routes')
+app.register_blueprint(user_edit_bp,     name='user_edit_routes')
 app.register_blueprint(audit_trail_bp, name='audit_trail_routes')
 app.register_blueprint(access_logs_bp, url_prefix='/api/access-logs')
 app.register_blueprint(templates_bp)
 app.register_blueprint(milestones_bp)
 app.register_blueprint(shipments_bp)
-app.register_blueprint(sync_bp)        
+app.register_blueprint(change_password_bp, name='change_password_routes') 
 
 
-@app.route('/health', methods=['GET'])
 def health_check():
     return {'status': 'Backend is running'}, 200
 
@@ -59,6 +61,7 @@ def health_check():
 @app.route('/')
 def health():
     return {'status': 'Flask is running'}, 200
+
 
 
 if __name__ == '__main__':

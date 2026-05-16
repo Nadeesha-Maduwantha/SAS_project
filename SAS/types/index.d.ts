@@ -33,11 +33,12 @@ export interface User {
 }
 
 export interface UserFormData {
+  id: string;
   fullName: string;
   email: string;
   department: string;
   role: string;
-  userAction: 'block' | 'unblock' | '';
+  userAction: string;
   resetPassword: boolean;
   unlockAccount: boolean;
 }
