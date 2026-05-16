@@ -1,21 +1,8 @@
-# sync/sync_runner.py
-##added to temp_dev
-# Runs the milestone sync on a schedule using APScheduler.
-# Start this alongside Flask by running: python sync/sync_runner.py
-#
-# Or import start_scheduler() into app.py to run it in the same process.
-#
-# The scheduler runs milestone_sync every 30 minutes by default.
-# Change the interval below to match your CargoWise sync frequency.
-#
-# Install APScheduler if you haven't:
-#   pip install apscheduler
 
 import os
 import sys
 
-# Make sure the Backend/ folder is in the Python path
-# so we can import from services/, sync/, etc.
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -29,9 +16,7 @@ from sync.milestone_sync import run_milestone_sync
 from sync.database_sync_log import get_recent_logs, get_last_sync
 
 
-# ── How often to run the sync ─────────────────────────────────
-# Change this to match your CargoWise sync frequency
-# minutes=30 means it runs every 30 minutes
+
 SYNC_INTERVAL_MINUTES = 30
 
 
@@ -43,9 +28,7 @@ def job_milestone_sync():
     print(f"\n[sync_runner] Running scheduled milestone sync...")
     result = run_milestone_sync()
 
-    # Print summary to console
-    # When we add notifications later, we send alerts here
-    # if result['status'] == 'failed' or len(result['errors']) > 0
+
     print(f"[sync_runner] Result: {result['status'].upper()}")
     print(f"  Total:   {result.get('total', 0)}")
     print(f"  Updated: {result.get('updated', 0)}")
@@ -53,9 +36,8 @@ def job_milestone_sync():
     print(f"  Errors:  {len(result.get('errors', []))}")
     print(f"  Time:    {result.get('duration_ms', 0)}ms")
 
-    # ── NOTIFICATION HOOK ─────────────────────────────────────
-    # This is where we will add alerts later.
-    # For now it just prints. Later we will send emails/Slack here.
+    # NOTIFICATION HOOK
+
     if result.get('status') == 'failed':
         _notify_sync_failed(result)
     elif result.get('errors'):
@@ -95,11 +77,7 @@ def start_scheduler():
     """
     scheduler = BackgroundScheduler()
 
-    # Add the milestone sync job
-    # trigger='interval' means it repeats every X minutes
-    # minutes=SYNC_INTERVAL_MINUTES sets the interval
-    # misfire_grace_time=60 means if the server was busy and missed
-    # a scheduled run by less than 60 seconds, it still runs it
+
     scheduler.add_job(
         func=job_milestone_sync,
         trigger='interval',
@@ -124,9 +102,7 @@ def start_scheduler():
     return scheduler
 
 
-# ── Run standalone (python sync/sync_runner.py) ───────────────
-# This lets you run the scheduler as a separate process
-# independently from Flask if you want
+
 if __name__ == '__main__':
     print("[sync_runner] Starting standalone scheduler...")
     scheduler = start_scheduler()
@@ -144,4 +120,3 @@ if __name__ == '__main__':
         print("[sync_runner] Scheduler stopped")
 
 
-#added to temp_dev

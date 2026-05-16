@@ -18,7 +18,9 @@ from routes.templates import templates_bp
 from routes.milestones import milestones_bp
 from routes.shipments import shipments_bp
 
-
+# Sync routes
+from routes.database_sync_routes import sync_bp        
+from sync.database_sync import start_scheduler         
 
 load_dotenv()
 
@@ -60,9 +62,8 @@ def health_check():
 def health():
     return {'status': 'Flask is running'}, 200
 
-if __name__ == '__main__':
-    app.run(debug=True, port=5000, use_reloader=False)
 
 
 if __name__ == '__main__':
+    start_scheduler()   
     app.run(debug=True, port=5000, use_reloader=False)
