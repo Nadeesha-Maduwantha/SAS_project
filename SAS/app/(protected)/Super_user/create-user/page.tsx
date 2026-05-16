@@ -8,11 +8,15 @@ interface FormData {
   email: string
   password: string
   fullName: string
-  age: number
-  ethnicity: string
+  age?: number
+  ethnicity?: string
   role: string
   department: string
   address: string
+  status?: string
+  phone?: string
+  joinDate?: string
+  employeeId?: string
 }
 
 export default function CreateUserPage() {

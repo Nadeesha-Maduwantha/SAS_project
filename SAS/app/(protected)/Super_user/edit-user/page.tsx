@@ -13,6 +13,7 @@ const EditUserPage: React.FC = () => {
   const [searchError, setSearchError] = useState('');
 
   const [formData, setFormData] = useState<UserFormData & { id?: string }>({
+    id: '',
     fullName: '',
     email: '',
     department: '',
@@ -85,6 +86,7 @@ const EditUserPage: React.FC = () => {
 
   const handleCancel = () => {
     setFormData({
+      id: '',
       fullName: '',
       email: '',
       department: '',
