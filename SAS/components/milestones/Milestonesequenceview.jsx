@@ -1,16 +1,6 @@
 "use client";
 
-// =============================================================
-//  MilestoneSequenceView.jsx
-//  Path: components/milestones/MilestoneSequenceView.jsx
-//
-//  Read-only display of a milestone sequence.
-//
-//  Props:
-//    milestones  — array of milestone objects (sorted by sequence_order)
-//    loading     — bool, shows skeleton while fetching
-//    error       — string | null, shows error state
-// =============================================================
+
 
 import { T } from "@/styles/tokens";
 

@@ -326,12 +326,12 @@ export default function MilestoneTemplatePage() {
                     onClick={() => setShowAssign(true)}
                     disabled={loading || !tmpl}
                     style={{
-                      ...outlineBtn(T.green, T.greenBorder, T.greenBg),
+                      ...outlineBtn(T.pink, T.greenBorder, T.greenBg),
                       width: "100%", justifyContent: "center",
                       opacity: loading || !tmpl ? 0.5 : 1,
                       cursor: loading || !tmpl ? "not-allowed" : "pointer",
                     }}
-                    onMouseEnter={e => { if (!loading && tmpl) e.currentTarget.style.background = "#D1FAE5"; }}
+                    onMouseEnter={e => { if (!loading && tmpl) e.currentTarget.style.background = "#e316dc"; }}
                     onMouseLeave={e => e.currentTarget.style.background = T.greenBg}
                   >
                     Assign to Shipments
@@ -344,7 +344,7 @@ export default function MilestoneTemplatePage() {
                   {/* Assign */}
                   <button
                     onClick={() => setShowAssign(true)}
-                    style={{ ...outlineBtn(T.green, T.greenBorder, T.greenBg), width: "100%", justifyContent: "center" }}
+                    style={{ ...outlineBtn(T.pink, T.greenBorder, T.greenBg), width: "100%", justifyContent: "center" }}
                     onMouseEnter={e => e.currentTarget.style.background = "#D1FAE5"}
                     onMouseLeave={e => e.currentTarget.style.background = T.greenBg}
                   >
