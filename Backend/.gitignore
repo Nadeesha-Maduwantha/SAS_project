@@ -4,3 +4,13 @@ __pycache__/
 .env
 venv/
 .pytest_cache/
+<<<<<<< HEAD
+.venv/
+__pycache__/
+*.pyc
+.env
+package-lock.json
+=======
+*.pyc
+*.env
+>>>>>>> ce97f3e24df7599592ca00b09ad87d7fa7337d82
