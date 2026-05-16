@@ -196,7 +196,6 @@ def run_milestone_sync() -> dict:
                                 'due_date':         data.get('due_date'),
                                 'completed_date':   data.get('completed_date'),
                                 'notes':            data.get('notes'),
-                                # columns that exist in table but we don't use yet
                                 'automated':        False,
                                 'assigned_to':      None,
                                 'assigned_email':   None,
@@ -224,7 +223,6 @@ def run_milestone_sync() -> dict:
                             'due_date':         data.get('due_date'),
                             'completed_date':   data.get('completed_date'),
                             'notes':            data.get('notes'),
-                            # columns that exist in table but we don't use yet
                             'automated':        False,
                             'assigned_to':      None,
                             'assigned_email':   None,
@@ -279,4 +277,3 @@ def run_milestone_sync() -> dict:
         }
 
 
-#added to temp_dev
