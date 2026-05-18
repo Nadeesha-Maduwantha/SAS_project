@@ -9,6 +9,18 @@ def get_supabase() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
+supabase = get_supabase()
+
+def get_all_shipments():
+    response = supabase.table('shipments').select('*').execute()
+    return response.data
+
+supabase = get_supabase()
+
+def get_all_shipments():
+    response = supabase.table('shipments').select('*').execute()
+    return response.data
+
 def get_shipment_milestones(shipment_id):
     supabase = get_supabase()  
 
