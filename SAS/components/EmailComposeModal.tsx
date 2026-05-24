@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import {
-    X, Save,
+    X, Save, Wand2, Send,
     Bold, Italic, Underline, Undo, Redo, List, ListOrdered, Image as ImageIcon,
     Paperclip, ChevronDown, Sparkles, Eye, Bot
 } from 'lucide-react';

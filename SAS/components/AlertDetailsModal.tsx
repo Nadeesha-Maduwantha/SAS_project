@@ -40,6 +40,11 @@ function MilestoneIcon({ type }: MilestoneIconProps) {
     return icons[type] || <Package {...props} />;
 }
 
+interface BadgeProps {
+    level?: AlertData['priority'];
+    status?: AlertData['status'];
+}
+
 function PriorityBadge({ level }: { level: AlertData['priority'] }) {
     const map = {
         Critical: { bg: '#fef2f2', color: '#dc2626', dot: '#dc2626' },
