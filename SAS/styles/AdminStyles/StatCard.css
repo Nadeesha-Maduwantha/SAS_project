@@ -9,7 +9,7 @@
 }
 
 .stat-card__left {
-  @apply flex items-center gap-[10px];
+  @apply   gap-[10px];
 }
 
 .stat-card__iconWrap {

@@ -78,3 +78,71 @@
 .admin-topbar__userRole {
   @apply text-[11px] text-slate-500 mt-[2px];
 }
+
+/* WRAPPER */
+.notif-wrap {
+  position: relative;
+}
+
+/* DROPDOWN */
+.notif-dropdown {
+  position: absolute;
+  right: 0;
+  top: 48px;
+  width: 300px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  overflow: hidden;
+  z-index: 100;
+}
+
+/* HEADER */
+.notif-header {
+  padding: 12px 16px;
+  font-weight: 700;
+  border-bottom: 1px solid #eee;
+}
+
+/* LIST */
+.notif-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* ITEM */
+.notif-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f1f1;
+  cursor: pointer;
+}
+
+.notif-item:hover {
+  background: #f9fafb;
+}
+
+/* TEXT */
+.notif-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.notif-time {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* FOOTER */
+.notif-footer {
+  padding: 12px;
+  text-align: center;
+  font-weight: 600;
+  color: #2563eb;
+  cursor: pointer;
+}
+
+.notif-footer:hover {
+  background: #f1f5f9;
+}

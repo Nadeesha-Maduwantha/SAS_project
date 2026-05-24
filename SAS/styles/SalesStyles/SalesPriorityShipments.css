@@ -1,43 +1,65 @@
 @reference "tailwindcss";
 
+/* ============================= */
+/* CARD LAYOUT - ADMIN THEME */
+/* ============================= */
+
 .sales-tableCard {
-  @apply bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden;
+  @apply bg-white border border-slate-100 rounded-[14px]
+  shadow-[0_10px_24px_rgba(15,23,42,0.04)]
+  overflow-hidden flex flex-col relative;
 }
 
+/* ============================= */
+/* TABLE AREA */
+/* ============================= */
+
 .sales-tableWrap {
-  @apply overflow-x-auto;
+  @apply overflow-x-auto flex-1;
+  min-height: 360px;
 }
 
 .sales-table {
-  @apply w-full text-base;
+  @apply w-full text-[13px] border-collapse;
 }
 
 .sales-table thead th {
-  @apply text-left text-xs uppercase tracking-wide text-slate-500 bg-white px-7 py-5 border-b border-slate-100;
+  @apply text-left text-[11px] uppercase tracking-[0.7px]
+  text-slate-500 bg-slate-50 border-y border-slate-100
+  px-4 py-3;
 }
 
 .sales-table tbody td {
-  @apply px-7 py-6 border-b border-slate-100 align-middle;
+  @apply px-4 py-3 border-b border-slate-100 align-top;
 }
 
 .sales-table tbody tr:hover {
-  @apply bg-slate-50;
+  background: rgba(15, 23, 42, 0.02);
 }
 
+/* ============================= */
+/* TABLE TEXT */
+/* ============================= */
+
 .sales-strong {
-  @apply text-slate-900 font-black;
+  @apply font-black text-blue-600;
 }
 
 .sales-muted {
   @apply text-slate-600 font-semibold;
+
 }
 
+/* ============================= */
+/* CLIENT & ACTIONS */
+/* ============================= */
+
 .sales-client {
-  @apply flex items-center gap-4;
+  @apply flex items-center gap-3;
 }
 
 .sales-avatar {
-  @apply w-11 h-11 rounded-full bg-blue-100 text-blue-700 font-black flex items-center justify-center;
+  @apply w-9 h-9 rounded-full bg-blue-100 text-blue-700 text-xs font-black flex items-center justify-center;
 }
 
 .sales-clientName {
@@ -49,9 +71,9 @@
 }
 
 .sales-moreBtn {
-  @apply w-10 h-10 rounded-xl hover:bg-slate-100 flex items-center justify-center;
+  @apply w-9 h-9 rounded-[10px] hover:bg-slate-100 flex items-center justify-center transition;
 }
 
 .sales-moreIcon {
-  @apply w-5 h-5 text-slate-400;
+  @apply w-4 h-4 text-slate-400;
 }
