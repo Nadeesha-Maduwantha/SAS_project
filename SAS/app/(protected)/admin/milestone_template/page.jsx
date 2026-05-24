@@ -99,7 +99,7 @@ export default function MilestoneTemplatePage() {
     const fetchTemplate = async () => {
       try {
         setError(null);
-        const response = await fetch(`http://localhost:5000/api/templates/${templateId}`);
+        const response = await fetch(`http://127.0.0.1:5001/api/templates/${templateId}`);
         const result   = await response.json();
         if (response.ok) {
           setTmpl(result.data);
@@ -137,7 +137,7 @@ export default function MilestoneTemplatePage() {
   const handleSaveCopy = async () => {
     if (!copyName.trim()) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/templates/${tmpl.id}/copy`, {
+      const response = await fetch(`http://127.0.0.1:5001/api/templates/${tmpl.id}/copy`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: copyName }),
@@ -160,7 +160,7 @@ export default function MilestoneTemplatePage() {
 
   const handleDelete = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/templates/${tmpl.id}`, { method: "DELETE" });
+      const response = await fetch(`http://127.0.0.1:5001/api/templates/${tmpl.id}`, { method: "DELETE" });
       if (response.ok) {
         setShowDelete(false);
         router.push("/admin/milestone_templates_list");

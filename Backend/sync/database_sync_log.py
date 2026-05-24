@@ -1,12 +1,3 @@
-# sync/sync_log.py
-#
-# Handles writing sync results to the sync_logs table in Supabase.
-# Every time a sync runs — success or failure — a row is written here.
-# This gives you a complete history of every sync run.
-#
-# When we add notifications later, we read from this table to decide
-# whether to send an alert (e.g. error_count > 0, or sync hasn't
-# run in X hours).
 
 import time
 from datetime import datetime, timezone
@@ -141,4 +132,3 @@ def get_last_sync(sync_type: str) -> dict:
     except Exception:
         return {}
     
-#added to temp_dev
