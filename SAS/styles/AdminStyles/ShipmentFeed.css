@@ -72,27 +72,22 @@
 }
 
 /* Selection column header */
-.shipment-table thead th:first-child {
-  @apply w-10 px-3;
-}
-
 .shipment-table tbody td {
-  @apply px-4 py-[14px] border-b border-slate-100 align-top;
+  @apply px-4 py-3 border-b border-slate-100 align-top;
 }
 
 /* Selection column cell */
-.shipment-table tbody td:first-child {
-  @apply w-10 px-3 align-middle;
-}
 
 .shipment-table tbody tr:hover {
   background: rgba(15, 23, 42, 0.02);
 }
+/* ORIGIN → DEST */
+.shipment-od__main {
+  @apply font-bold text-slate-900 leading-tight;
+}
 
-/* Checkbox styling */
-.shipment-table input[type='checkbox'] {
-  @apply h-4 w-4 cursor-pointer rounded border border-slate-300
-  text-blue-600 focus:ring-2 focus:ring-blue-200;
+.shipment-od__sub {
+  @apply mt-1 flex items-center gap-1 text-[11px] text-slate-400;
 }
 
 /* ============================= */
@@ -171,7 +166,7 @@
 /* ============================= */
 
 .shipment-filterPop {
-  @apply absolute right-0 top-[52px]
+  @apply absolute right-0 top-[48px]
   z-50 w-[280px]
   rounded-2xl border border-slate-200
   bg-white
@@ -233,4 +228,17 @@
 .shipment-empty {
   @apply text-center text-sm font-bold
   text-slate-500 py-24;
+}
+
+.status-pill {
+  @apply text-[11px] font-black px-[10px] py-[6px]
+  rounded-full border inline-block whitespace-nowrap;
+}
+
+.shipment-empty {
+  @apply text-center text-sm font-bold text-slate-500 py-20;
+}
+
+.shipment-table tbody tr:hover {
+  background: rgba(15, 23, 42, 0.03);
 }

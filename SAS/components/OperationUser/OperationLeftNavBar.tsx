@@ -9,7 +9,7 @@ import {
   Settings,
   ChevronDown,
   Shield,
-  Clock,
+  MapPin,
 } from 'lucide-react';
 
 import '../../styles/ComponentStyles/OperationLeftNavBar.css';
@@ -23,6 +23,7 @@ export default function OperationLeftNavBar({ alertsCount = 0 }: Props) {
   const pathname = usePathname();
 
   const [expandedSections, setExpandedSections] = useState({
+    milestones: false,
     settings: false,
   });
 
@@ -48,47 +49,60 @@ export default function OperationLeftNavBar({ alertsCount = 0 }: Props) {
       <div className="nav-header">
         <div className="nav-logo" onClick={() => handleNavigation('/operation_user/dashboard')}>
           <Shield className="logo-icon" />
-          <span className="logo-text">SAS ALERT</span>
+          <div className="logo-textWrap">
+            <span className="logo-text">SAS SYSTEM</span>
+            <span className="logo-subtext">MANAGEMENT</span>
+          </div>
         </div>
       </div>
 
       {/* My Dashboard */}
       <button
-        className={`nav-dashboard-btn ${isActiveRoute('/operation_user/dashboard') ? 'active' : ''}`}
+        className={`nav-item-lead ${isActiveRoute('/operation_user/dashboard') ? 'active' : ''}`}
         onClick={() => handleNavigation('/operation_user/dashboard')}
       >
         <LayoutGrid className="nav-icon" />
         <span>My Dashboard</span>
       </button>
 
-      {/* My Shipments (NO dropdown) */}
+      {/* My Shipments */}
       <button
-        className={`nav-section-header ${isActiveRoute('/operation_user/shipments') ? 'active' : ''}`}
+        className={`nav-item-lead ${isActiveRoute('/operation_user/shipments') ? 'active' : ''}`}
         onClick={() => handleNavigation('/operation_user/shipments')}
       >
         <Package className="nav-icon" />
         <span>My Shipments</span>
       </button>
 
-      {/* My Alerts (NO dropdown) */}
+      {/* My Alerts */}
       <button
-        className={`nav-section-header ${isActiveRoute('/operation_user/alerts') ? 'active' : ''}`}
+        className={`nav-item-lead ${isActiveRoute('/operation_user/alerts') ? 'active' : ''}`}
         onClick={() => handleNavigation('/operation_user/alerts')}
       >
         <Bell className="nav-icon" />
         <span>My Alerts{alertsCount > 0 ? ` (${alertsCount})` : ''}</span>
       </button>
 
-      {/* History (single) */}
-      <button
-        className={`nav-section-header ${isActiveRoute('/operation_user/history') ? 'active' : ''}`}
-        onClick={() => handleNavigation('/operation_user/history')}
-      >
-        <Clock className="nav-icon" />
-        <span className="nav-history-label">Histroy</span>
-      </button>
+      {/* Milestones */}
+      <div className="nav-section">
+        <button className="nav-section-header" onClick={() => toggleSection('milestones')}>
+          <MapPin className="nav-icon" />
+          <span>Milestones</span>
+          <ChevronDown className={`chevron-icon ${expandedSections.milestones ? 'expanded' : ''}`} />
+        </button>
+        {expandedSections.milestones && (
+          <div className="nav-section-content">
+            <button
+              className={`nav-item ${isActiveRoute('/operation_user/current_milestone') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/operation_user/current_milestone')}
+            >
+              Current Milestones
+            </button>
+          </div>
+        )}
+      </div>
 
-      {/* Settings (dropdown) */}
+      {/* Settings */}
       <div className="nav-section">
         <button
           className="nav-section-header"
@@ -104,19 +118,10 @@ export default function OperationLeftNavBar({ alertsCount = 0 }: Props) {
         {expandedSections.settings && (
           <div className="nav-section-content">
             <button
-              className={`nav-item ${isActiveRoute('/operation_user/settings/profile') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/operation_user/settings/profile')}
+              className={`nav-item ${isActiveRoute('/operation_user/profile') ? 'active' : ''}`}
+              onClick={() => handleNavigation('/operation_user/profile')}
             >
-              
               <span>My Profile</span>
-            </button>
-
-            <button
-              className={`nav-item ${isActiveRoute('/operation_user/settings/notifications') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/operation_user/settings/notifications')}
-            >
-              
-              <span>Notification Preferences</span>
             </button>
           </div>
         )}
