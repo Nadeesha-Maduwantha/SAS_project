@@ -1,0 +1,120 @@
+@reference "tailwindcss";
+
+/* ============================= */
+/* CARD */
+/* ============================= */
+
+.super-table-card {
+  @apply bg-white border border-slate-100 rounded-[14px]
+  shadow-[0_10px_24px_rgba(15,23,42,0.04)]
+  overflow-hidden;
+}
+
+/* ============================= */
+/* HEADER */
+/* ============================= */
+
+.super-table-header {
+  @apply flex items-center justify-between px-5 py-4 border-b border-slate-100;
+}
+
+.super-table-header h3 {
+  @apply text-sm font-black text-slate-900;
+}
+
+/* ============================= */
+/* FILTER */
+/* ============================= */
+
+.super-table-filter {
+  @apply flex items-center gap-2;
+}
+
+.super-table-filter input {
+  @apply px-3 py-2 text-xs rounded-xl border border-slate-200
+  outline-none bg-white;
+}
+
+.super-table-filter button {
+  @apply px-4 py-2 text-xs font-black rounded-xl
+  bg-blue-600 text-white hover:bg-blue-700 transition;
+}
+
+/* ============================= */
+/* TABLE WRAPPER */
+/* ============================= */
+
+.super-table-wrapper {
+  @apply overflow-x-auto;
+}
+
+/* ============================= */
+/* TABLE */
+/* ============================= */
+
+.super-table {
+  @apply w-full text-[13px] border-collapse;
+}
+
+/* HEADER */
+.super-table thead th {
+  @apply text-left text-[11px] uppercase tracking-[0.7px]
+  text-slate-500 bg-slate-50 border-y border-slate-100
+  px-5 py-3;
+}
+
+/* BODY */
+.super-table tbody td {
+  @apply px-5 py-[14px] border-b border-slate-100 align-top;
+}
+
+.super-table tbody tr:hover {
+  background: rgba(15, 23, 42, 0.02);
+}
+
+/* ============================= */
+/* TEXT */
+/* ============================= */
+
+.super-table td:first-child {
+  @apply font-bold text-blue-600;
+}
+
+/* ============================= */
+/* STATUS BADGES */
+/* ============================= */
+
+.status-badge {
+  @apply text-[11px] font-black px-[10px] py-[5px]
+  rounded-full border inline-block;
+}
+
+/* COLORS */
+.status-completed {
+  @apply bg-green-50 border-green-200 text-emerald-700;
+}
+
+.status-pending {
+  @apply bg-blue-50 border-blue-200 text-blue-700;
+}
+
+.status-overdue {
+  @apply bg-red-50 border-red-200 text-red-600;
+}
+
+/* fallback */
+.status-unknown {
+  @apply bg-gray-100 border-gray-300 text-gray-600;
+}
+
+/* ============================= */
+/* STATES */
+/* ============================= */
+
+.super-loading {
+  @apply text-center text-sm font-bold text-slate-500 py-10;
+}
+
+.super-empty {
+  @apply text-center text-sm font-bold text-slate-400 py-10;
+}

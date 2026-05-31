@@ -1,0 +1,16 @@
+@reference "tailwindcss";
+
+.sales-layout {
+  @apply flex min-h-screen bg-slate-50;
+}
+
+.sales-content {
+  @apply flex-1;
+}
+
+.sales-inner {
+  @apply max-w-[1200px] mx-auto px-8 py-8;
+}
+.sales-content {
+  @apply ml-[260px] min-h-screen;
+}

@@ -1,0 +1,13 @@
+@reference "tailwindcss";
+
+.super-header__title {
+  @apply text-[18px] font-black text-slate-900;
+}
+
+.super-header__sub {
+  @apply mt-2 text-sm text-slate-500;
+}
+
+.super-header {
+  @apply mb-8;
+}

@@ -1,0 +1,49 @@
+@reference "tailwindcss";
+
+/* Root: no need flex when sidebar is fixed */
+.admin-layout {
+  @apply min-h-screen bg-slate-50;
+}
+
+/* RIGHT CONTENT: push to the right of fixed sidebar */
+.admin-content {
+  @apply ml-[260px] min-h-screen flex flex-col;
+}
+
+/* Inner container */
+.admin-inner {
+  @apply p-6 max-w-[1400px] w-full;
+}
+
+/* Spacing */
+.section-gap {
+  @apply mt-[18px];
+}
+
+/* Stats Grid */
+.stats-grid {
+  @apply mt-[18px] grid gap-[14px] grid-cols-1;
+}
+
+@media (min-width: 768px) {
+  .stats-grid {
+    @apply grid-cols-2;
+  }
+}
+
+@media (min-width: 1200px) {
+  .stats-grid {
+    @apply grid-cols-4;
+  }
+}
+
+/* Bottom grid */
+.bottom-grid {
+  @apply mt-[18px] grid gap-[14px] grid-cols-1;
+}
+
+@media (min-width: 1100px) {
+  .bottom-grid {
+    @apply grid-cols-2;
+  }
+}

@@ -1,0 +1,13 @@
+@reference "tailwindcss";
+
+.op-layout {
+  @apply flex min-h-screen bg-white;
+}
+
+.op-content {
+  @apply flex-1 min-h-screen;
+}
+
+.op-inner {
+  @apply w-full px-4 py-6;
+}
