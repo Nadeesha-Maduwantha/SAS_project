@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, FormEvent, ChangeEvent } from 'react';
-<<<<<<< HEAD
+
+import { useRouter } from 'next/navigation';
+
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
@@ -83,43 +85,56 @@ export default function LoginPage() {
       {/* Left Side Container - Hero Title Brand Description Showcase Panel Graphics */}
       <div className="hidden lg:flex lg:w-2/3 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-600 text-white p-12 flex-col justify-between relative overflow-hidden">
         {/* Abstract blur backdrop stylistic components visual generation  */}
-=======
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberDevice, setRememberDevice] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log({ email, password, rememberDevice });
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('http://127.0.0.1:5001/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.user) {
+        router.push('/dashboard');
+      } else {
+        setError(data.error || 'Login failed. Please verify credentials.');
+      }
+    } catch (err) {
+      console.error('Login Error:', err);
+      setError('Connection failed. Please ensure the backend is running.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value);
-  };
-
-  const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setPassword(e.target.value);
-  };
-
-  const handleRememberChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setRememberDevice(e.target.checked);
-  };
+  const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value);
+  const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value);
+  const handleRememberChange = (e: ChangeEvent<HTMLInputElement>) => setRememberDevice(e.target.checked);
 
   return (
     <div className="flex min-h-screen">
       {/* Left Side - Brand Section */}
       <div className="hidden lg:flex lg:w-2/3 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-600 text-white p-12 flex-col justify-between relative overflow-hidden">
-        {/* Decorative circles */}
->>>>>>> 21f793f1dab44f11c2278ee83fb129acbd8148ce
+
         <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-700 rounded-full opacity-20 blur-3xl"></div>
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500 rounded-full opacity-20 blur-3xl"></div>
-        
+
         <div className="relative z-10">
           <h1 className="text-sm font-semibold tracking-wider mb-20">SAS SYSTEMS</h1>
-          
           <div className="max-w-xl">
             <h2 className="text-5xl font-bold mb-6 leading-tight">Dart Global Logistic</h2>
             <p className="text-lg text-blue-100 leading-relaxed">
@@ -144,11 +159,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-<<<<<<< HEAD
       {/* Right Side User Information Handling Inputs - Authentication Screen Form Context */}
-=======
-      {/* Right Side - Login Form */}
->>>>>>> 21f793f1dab44f11c2278ee83fb129acbd8148ce
       <div className="w-full lg:w-1/3 bg-gray-50 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="mb-8">
@@ -159,11 +170,7 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-<<<<<<< HEAD
             {/* Email Form Field Context Bind Input Action Reference */}
-=======
-            {/* Email Field */}
->>>>>>> 21f793f1dab44f11c2278ee83fb129acbd8148ce
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Work Email
@@ -179,11 +186,7 @@ export default function LoginPage() {
               />
             </div>
 
-<<<<<<< HEAD
             {/* Credential Data Payload Auth Input Area Text Secret Handling Rules */}
-=======
-            {/* Password Field */}
->>>>>>> 21f793f1dab44f11c2278ee83fb129acbd8148ce
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700">
@@ -204,18 +207,17 @@ export default function LoginPage() {
               />
             </div>
 
-<<<<<<< HEAD
-            {/* Error Message rendering condition visibility flag status triggers div container appearance */}
+
+            {/* Error Message */}
+
             {error && (
               <div className="text-red-500 text-sm text-center font-medium bg-red-50 py-2 rounded-md">
                 {error}
               </div>
             )}
 
-            {/* Device Local Store Memory Session Cache Cookie Context Check Config */}
-=======
-            {/* Remember Device Checkbox */}
->>>>>>> 21f793f1dab44f11c2278ee83fb129acbd8148ce
+            {/* Remember Device */}
+
             <div className="flex items-center">
               <input
                 type="checkbox"
@@ -229,7 +231,6 @@ export default function LoginPage() {
               </label>
             </div>
 
-<<<<<<< HEAD
             {/* Action Validation Primary Control Button */}
             <button
               type="submit"
@@ -239,14 +240,8 @@ export default function LoginPage() {
               }`}
             >
               {loading ? 'Signing In...' : 'Sign In to Dashboard'}
-=======
-            {/* Submit Button */}
-            <button
-              type="submit"
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              Sign In to Dashboard
->>>>>>> 21f793f1dab44f11c2278ee83fb129acbd8148ce
+
+              {loading ? 'Signing In...' : 'Sign In to Dashboard'}
             </button>
           </form>
         </div>

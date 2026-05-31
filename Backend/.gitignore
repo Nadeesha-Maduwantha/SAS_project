@@ -3,4 +3,13 @@ __pycache__/
 *$py.class
 .env
 venv/
+
 .pytest_cache/
+.venv/
+__pycache__/
+*.pyc
+.env
+package-lock.json
+
+.pytest_cache/
+
