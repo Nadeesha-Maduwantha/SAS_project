@@ -88,7 +88,7 @@ export default function CreateTemplatePage() {
     setSaving(true); // disable the button while request is in flight
 
     try {
-      const response = await fetch('http://127.0.0.1:5001/api/templates', {
+      const response = await fetch('http://localhost:5000/api/templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

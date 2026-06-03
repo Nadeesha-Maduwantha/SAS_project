@@ -145,7 +145,6 @@ class CustomJSONProvider(DefaultJSONProvider):
         except TypeError:
             return str(obj)
 
-
 app = Flask(__name__)
 app.json_provider_class = CustomJSONProvider
 app.json = CustomJSONProvider(app)
