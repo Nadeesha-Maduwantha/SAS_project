@@ -1,90 +1,7 @@
 'use client';
 
 import { useState, FormEvent, ChangeEvent } from 'react';
-
 import { useRouter } from 'next/navigation';
-
-import { useRouter } from 'next/navigation';
-
-export default function LoginPage() {
-  const router = useRouter(); // Initialize router for dashboard redirecting post-login
-  
-  // Local React state handling for user inputs and UI interactions
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberDevice, setRememberDevice] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(''); // Initialized state to capture backend error returns
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); // Prevents default form window refresh submission
-    setLoading(true);
-    setError('');
-
-    try {
-      // 1. Send the sign-in network POST request to validation endpoint to authenticate against Python logic
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.user) {
-        // Validation was successful. Standardizing dropdown fields/database formats 
-        
-        // Dictionary Mapping fixing text case discrepancy returning from Python models 
-        const deptMapping: Record<string, string> = {
-          'sales': 'Sales',
-          'operations': 'Operations'
-        };
-
-        const roleMapping: Record<string, string> = {
-          'admin': 'Admin',
-          'super user': 'Super User',
-          'super_user': 'Super User',
-          'operation user': 'Operation User',
-          'operation_user': 'Operation User',
-          'sales user': 'Sales User',
-          'sales_user': 'Sales User',
-          'custom configuration': 'Custom Configuration'
-        };
-
-        const dbDept = (data.user.department || '').toLowerCase();
-        const dbRole = (data.user.role || '').toLowerCase();
-
-        // Note: For future integration, implement context saving mechanism (Context API/Zustand)
-        // setFormData or auth session tokenization will be initialized here
-
-        // Route to the dashboard location layout upon processing logic conclusion completion checks
-        router.push('/dashboard'); 
-
-      } else {
-        // Trigger generic failure error bound state tracking to alert prompt field red label
-        setError(data.error || 'Login failed. Please verify credentials.');
-      }
-    } catch (err) {
-      console.error('Login Error:', err);
-      // Handles completely failed request connections (e.g., API backend server offline)
-      setError('Connection failed. Please ensure the backend is running.');
-    } finally {
-        // Disables the processing UI flag after connection resolves successfully or fails out
-      setLoading(false);
-    }
-  };
-
-  // Explicit type-safe react event handlers 
-  const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value);
-  const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value);
-  const handleRememberChange = (e: ChangeEvent<HTMLInputElement>) => setRememberDevice(e.target.checked);
-
-  return (
-    // Responsive view scaling viewport rendering configurations
-    <div className="flex min-h-screen">
-      {/* Left Side Container - Hero Title Brand Description Showcase Panel Graphics */}
-      <div className="hidden lg:flex lg:w-2/3 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-600 text-white p-12 flex-col justify-between relative overflow-hidden">
-        {/* Abstract blur backdrop stylistic components visual generation  */}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -206,7 +123,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right Side User Information Handling Inputs - Authentication Screen Form Context */}
+      {/* Right Side - Login Form */}
       <div className="w-full lg:w-1/3 bg-gray-50 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="mb-8">
@@ -217,7 +134,7 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email Form Field Context Bind Input Action Reference */}
+            {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Work Email
@@ -233,7 +150,7 @@ export default function LoginPage() {
               />
             </div>
 
-            {/* Credential Data Payload Auth Input Area Text Secret Handling Rules */}
+            {/* Password Field */}
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700">
@@ -254,9 +171,7 @@ export default function LoginPage() {
               />
             </div>
 
-
             {/* Error Message */}
-
             {error && (
               <div className="text-red-500 text-sm text-center font-medium bg-red-50 py-2 rounded-md">
                 {error}
@@ -277,7 +192,7 @@ export default function LoginPage() {
               </label>
             </div>
 
-            {/* Action Validation Primary Control Button */}
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading || !isValidEmail(email)}
@@ -285,8 +200,6 @@ export default function LoginPage() {
                 loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
               }`}
             >
-              {loading ? 'Signing In...' : 'Sign In to Dashboard'}
-
               {loading ? 'Signing In...' : 'Sign In to Dashboard'}
             </button>
           </form>
