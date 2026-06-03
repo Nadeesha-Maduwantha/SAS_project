@@ -52,21 +52,6 @@ export default function AdminTopBar() {
         {/* RIGHT */}
         <div className="admin-topbar__right">
 
-          {/* 🔔 NOTIFICATION */}
-          <div className="notif-wrap" ref={wrapRef}>
-            <button
-              className="admin-topbar__iconBtn"
-              onClick={() => setOpen((p) => !p)}
-            >
-              <Bell className="admin-topbar__icon" />
-            </button>
-
-            {open && (
-              <div className="notif-dropdown">
-                <div className="notif-header">
-                  Notifications
-                </div>
-
                 <div className="notif-list">
                   {alerts.map((a) => (
                     <div key={a.id} className="notif-item">

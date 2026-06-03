@@ -2,7 +2,6 @@
 import os
 import sys
 
-
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -16,7 +15,6 @@ from sync.milestone_sync import run_milestone_sync
 from sync.database_sync_log import get_recent_logs, get_last_sync
 
 
-
 SYNC_INTERVAL_MINUTES = 30
 
 
@@ -27,7 +25,6 @@ def job_milestone_sync():
     """
     print(f"\n[sync_runner] Running scheduled milestone sync...")
     result = run_milestone_sync()
-
 
     print(f"[sync_runner] Result: {result['status'].upper()}")
     print(f"  Total:   {result.get('total', 0)}")
@@ -77,7 +74,6 @@ def start_scheduler():
     """
     scheduler = BackgroundScheduler()
 
-
     scheduler.add_job(
         func=job_milestone_sync,
         trigger='interval',
@@ -100,7 +96,6 @@ def start_scheduler():
     scheduler.start()
     print(f"[sync_runner] Scheduler started — milestone sync every {SYNC_INTERVAL_MINUTES} minutes")
     return scheduler
-
 
 
 if __name__ == '__main__':

@@ -19,6 +19,7 @@ export default function SuperUserDashboard() {
         <div className="super-grid-2__right">
           <SuperCriticalAlertsCard />
         </div>
+        <SuperCriticalAlertsCard />
       </div>
 
       <div className="super-section-gap">
