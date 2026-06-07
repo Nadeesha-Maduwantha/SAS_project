@@ -256,7 +256,7 @@ const EditUserPage: React.FC = () => {
         {/* Search Error Feedback */}
         {searchError && (
           <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-lg text-sm font-medium border border-red-100">
-            ⚠️ {searchError}
+            ️ {searchError}
           </div>
         )}
 

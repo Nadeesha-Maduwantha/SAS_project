@@ -183,7 +183,7 @@ export default function ShipmentMilestonesPage() {
             border: "1px solid #fecaca", borderRadius: "8px",
             fontSize: "13px", color: "#dc2626",
           }}>
-            ⚠ {error}
+             {error}
           </div>
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
