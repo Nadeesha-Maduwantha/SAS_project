@@ -416,11 +416,12 @@ function AlertCard({
 
 // ── Table row (unchanged logic from original) ──────────────────────────────────
 function ShipmentAlertRow({
-  group, onEmailClick, onShipmentClick,
+  group, onEmailClick, onShipmentClick, onMilestoneClick,
 }: {
-  group:            ShipmentAlertGroup;
-  onEmailClick:     (d: AlertData) => void;
-  onShipmentClick:  (shipmentId: string) => void;  // ← ADD THIS LINE
+  group:             ShipmentAlertGroup;
+  onEmailClick:      (d: AlertData) => void;
+  onShipmentClick:   (shipmentId: string) => void;
+  onMilestoneClick?: (milestoneId: string, shipmentId: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [visible,  setVisible]  = useState(false);
@@ -558,7 +559,13 @@ function ShipmentAlertRow({
                   status: 'Get Action',
                 });
                 return (
-                  <div key={alert.milestone_id} onClick={handleClick} style={{
+                  <div key={alert.milestone_id} onClick={() => {
+                    if (onMilestoneClick) {
+                      onMilestoneClick(alert.milestone_id, group.shipment_id);
+                    } else {
+                      handleClick();
+                    }
+                  }} style={{
                     display: 'grid', gridTemplateColumns: '48px 1fr 150px 140px 130px',
                     alignItems: 'center', paddingRight: 16, background: '#fff',
                     borderBottom: idx < group.alerts.length - 1 ? '1px solid #F3F4F6' : 'none',
@@ -678,6 +685,7 @@ export default function AlertFeedTable({
   const [emailData, setEmailData] = useState<AlertData | null>(null);
   const [shipmentModalId, setShipmentModalId] = useState<string | null>(null);
   const [milestoneDetail, setMilestoneDetail] = useState<{ milestone: any; shipment: any } | null>(null);
+  const [popupGroup, setPopupGroup] = useState<ShipmentAlertGroup | null>(null);
 
   // ── Popup (card click) ──────────────────────────────────────
   
@@ -910,7 +918,7 @@ export default function AlertFeedTable({
           }}>
             {displayed.map((group, idx) => (
               <div key={group.shipment_id} style={{ animation: `cardIn 0.25s ease ${idx * 40}ms both` }}>
-                <AlertCard group={group} onClick={() => setShipmentModalId(group.shipment_id)} />
+                <AlertCard group={group} onClick={() => setPopupGroup(group)} />
               </div>
             ))}
           </div>
@@ -928,14 +936,17 @@ export default function AlertFeedTable({
                 </tr>
               </thead>
               <tbody>
-                {displayed.map(group => (
-                  <ShipmentAlertRow
-                    key={group.shipment_id}
-                    group={group}
-                    onEmailClick={setEmailData}
-                    onShipmentClick={setShipmentModalId}   // ← ADD THIS LINE
-                  />
-                ))}
+              {displayed.map(group => (
+                <ShipmentAlertRow
+                  key={group.shipment_id}
+                  group={group}
+                  onEmailClick={setEmailData}
+                  onShipmentClick={setShipmentModalId}
+                  onMilestoneClick={(milestoneId, shipmentId) => {
+                    setShipmentModalId(shipmentId);
+                  }}
+                />
+              ))}
               </tbody>
             </table>
           </div>
@@ -977,6 +988,13 @@ export default function AlertFeedTable({
       </div>
 
       {/* ── Card click popup ────────────────────────────────────── */}
+      {popupGroup && (
+        <MilestonePopup
+          group={popupGroup}
+          onClose={() => setPopupGroup(null)}
+          onEmailClick={setEmailData}
+        />
+      )}
 
       {/* ── Email modal ─────────────────────────────────────────── */}
 

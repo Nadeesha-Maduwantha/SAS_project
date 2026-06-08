@@ -210,3 +210,75 @@
 .admin-nav-container::-webkit-scrollbar-track { background: transparent; }
 .admin-nav-container::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
 .admin-nav-container::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+
+/* =============================================================
+   APPEND TO BOTTOM OF: styles/ComponentStyles/AdminLeftNavBar.css
+   (or whichever path your sidebar CSS lives at)
+   
+   These rules make the sidebar go dark when html.dark is set.
+============================================================= */
+
+html.dark .admin-nav-container {
+  background:   #0F172A;
+  border-right: 1px solid #1E293B;
+  box-shadow:   2px 0 8px rgba(0,0,0,0.3);
+}
+
+html.dark .nav-header {
+  border-bottom: 1px solid #1E293B;
+  background:    #0F172A;
+}
+
+html.dark .logo-text  { color: #F1F5F9; }
+html.dark .logo-subtext { color: #64748B; }
+
+html.dark .nav-icon   { color: #64748B; }
+
+html.dark .nav-dashboard-btn {
+  color: #94A3B8;
+}
+html.dark .nav-dashboard-btn:hover {
+  background: #1E293B;
+  color:      #F1F5F9;
+}
+html.dark .nav-dashboard-btn.active {
+  background: #1E3A5F;
+  color:      #60A5FA;
+}
+html.dark .nav-dashboard-btn.active .nav-icon {
+  color: #60A5FA;
+}
+
+html.dark .nav-section-header {
+  color: #64748B;
+}
+html.dark .nav-section-header:hover {
+  background: #1E293B;
+  color:      #94A3B8;
+}
+
+html.dark .nav-section-content {
+  background: transparent;
+}
+
+html.dark .nav-item {
+  color: #475569;
+}
+html.dark .nav-item:hover {
+  background: #1E293B;
+  color:      #94A3B8;
+}
+html.dark .nav-item.active {
+  background: #1E3A5F;
+  color:      #60A5FA;
+}
+
+html.dark .chevron-icon {
+  color: #475569;
+}
+
+/* Logo wrap */
+html.dark .nav-logo {
+  color: #F1F5F9;
+}

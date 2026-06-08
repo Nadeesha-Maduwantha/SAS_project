@@ -1,57 +1,219 @@
-@reference "../../app/globals.css";
+@import url("../../app/globals.css");
 
+/* ═══════════════════════════════════════════════════════════
+   AdminTopBar.css — shared by ALL role topbars
+   Supports light + dark mode via html.dark selector
+═══════════════════════════════════════════════════════════ */
+
+/* ── Container ──────────────────────────────────────────── */
 .admin-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 102;   /* above nav (100) so topbar always fully visible */
-  @apply w-full bg-white border-b border-slate-100;
+  position:         sticky;
+  top:              0;
+  z-index:          102;
+  height:           57px;
+  background:       rgba(255, 255, 255, 0.92);
+  backdrop-filter:  blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom:    1px solid #E2E8F0;
+  box-shadow:       0 1px 3px rgba(15, 23, 42, 0.04),
+                    0 0 0 1px rgba(15, 23, 42, 0.02);
+  transition:       background 0.3s, border-color 0.3s, box-shadow 0.3s;
 }
 
+html.dark .admin-topbar {
+  background:    rgba(15, 23, 42, 0.92);
+  border-bottom: 1px solid #1E293B;
+  box-shadow:    0 1px 3px rgba(0, 0, 0, 0.2),
+                 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+/* ── Inner layout ───────────────────────────────────────── */
 .admin-topbar__inner {
-  @apply px-6 py-[10px] flex items-center justify-between gap-[14px];
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  height:          100%;
+  padding:         0 20px;
+  gap:             16px;
 }
 
+/* ── Left — logo + title ────────────────────────────────── */
 .admin-topbar__left {
-  @apply flex items-center gap-3;
+  display:     flex;
+  align-items: center;
+  gap:         12px;
+  flex-shrink: 0;
 }
 
-/* Company logo */
 .admin-topbar__logoWrap {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  border-radius: 8px;
-  overflow: hidden;
-  transition: opacity 0.15s;
-  flex-shrink: 0;
+  display:       flex;
+  align-items:   center;
+  justify-content: center;
+  width:         36px;
+  height:        36px;
+  border-radius: 10px;
+  cursor:        pointer;
+  overflow:      hidden;
+  flex-shrink:   0;
+  transition:    opacity 0.15s;
+  border:        1px solid #E2E8F0;
+  background:    #fff;
+}
+
+html.dark .admin-topbar__logoWrap {
+  border-color: #1E293B;
+  background:   #0F172A;
 }
 
 .admin-topbar__logoWrap:hover { opacity: 0.8; }
 
 .admin-topbar__title {
-  @apply text-sm font-bold text-slate-900;
+  font-size:      14px;
+  font-weight:    700;
+  color:          #0F172A;
+  letter-spacing: -0.01em;
+  white-space:    nowrap;
+  font-family:    'DM Sans', -apple-system, sans-serif;
+  transition:     color 0.3s;
 }
 
-/* Center search */
+html.dark .admin-topbar__title { color: #F1F5F9; }
+
+/* ── Search ─────────────────────────────────────────────── */
 .admin-topbar__search {
-  @apply flex-1 max-w-[520px] hidden items-center gap-2 bg-slate-50 border border-slate-200 rounded-[10px] px-[10px] py-2;
+  display:       flex;
+  align-items:   center;
+  gap:           8px;
+  flex:          1;
+  max-width:     420px;
+  background:    #F8FAFC;
+  border:        1px solid #E2E8F0;
+  border-radius: 10px;
+  padding:       0 14px;
+  height:        36px;
+  transition:    background 0.3s, border-color 0.3s, box-shadow 0.2s;
 }
 
-@media (min-width: 768px) {
-  .admin-topbar__search { @apply flex; }
+html.dark .admin-topbar__search {
+  background:   #1E293B;
+  border-color: #334155;
 }
 
-.admin-topbar__searchIcon { @apply w-4 h-4 text-slate-500; }
+.admin-topbar__search:focus-within {
+  border-color: #3B82F6;
+  box-shadow:   0 0 0 3px rgba(59, 130, 246, 0.1);
+  background:   #fff;
+}
+
+html.dark .admin-topbar__search:focus-within {
+  background: #0F172A;
+}
+
+.admin-topbar__searchIcon {
+  width:      15px;
+  height:     15px;
+  color:      #94A3B8;
+  flex-shrink: 0;
+  transition:  color 0.2s;
+}
+
+.admin-topbar__search:focus-within .admin-topbar__searchIcon {
+  color: #3B82F6;
+}
+
 .admin-topbar__searchInput {
-  @apply w-full bg-transparent border-0 outline-none text-[13px] text-slate-700;
+  flex:       1;
+  background: transparent;
+  border:     none;
+  outline:    none;
+  font-size:  13px;
+  font-family:'DM Sans', -apple-system, sans-serif;
+  color:      #0F172A;
+  transition: color 0.3s;
 }
 
-/* Right */
-.admin-topbar__right { @apply flex items-center gap-[10px]; }
+html.dark .admin-topbar__searchInput { color: #F1F5F9; }
 
+.admin-topbar__searchInput::placeholder {
+  color: #94A3B8;
+  font-size: 13px;
+}
+
+/* ── Right — icons + profile ────────────────────────────── */
+.admin-topbar__right {
+  display:     flex;
+  align-items: center;
+  gap:         4px;
+  flex-shrink: 0;
+}
+
+/* Icon buttons — bell, help */
 .admin-topbar__iconBtn {
-  @apply h-9 w-9 rounded-[10px] border border-slate-200 bg-white cursor-pointer flex items-center justify-center transition-colors duration-200;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  width:           36px;
+  height:          36px;
+  border-radius:   10px;
+  border:          none;
+  background:      transparent;
+  cursor:          pointer;
+  color:           #64748B;
+  transition:      background 0.15s, color 0.15s;
+  position:        relative;
 }
 
-.admin-topbar__iconBtn:hover { @apply bg-slate-50; }
-.admin-topbar__icon { @apply w-4 h-4 text-slate-700; }
+html.dark .admin-topbar__iconBtn { color: #94A3B8; }
+
+.admin-topbar__iconBtn:hover {
+  background: #F1F5F9;
+  color:      #0F172A;
+}
+
+html.dark .admin-topbar__iconBtn:hover {
+  background: #1E293B;
+  color:      #F1F5F9;
+}
+
+.admin-topbar__icon {
+  width:  18px;
+  height: 18px;
+}
+
+/* Notification badge dot */
+.admin-topbar__iconBtn .notification-dot {
+  position:      absolute;
+  top:           7px;
+  right:         7px;
+  width:         7px;
+  height:        7px;
+  border-radius: 50%;
+  background:    #EF4444;
+  border:        2px solid #fff;
+}
+
+html.dark .admin-topbar__iconBtn .notification-dot {
+  border-color: #0F172A;
+}
+
+/* Divider between icon group and profile */
+.admin-topbar__divider {
+  width:      1px;
+  height:     22px;
+  background: #E2E8F0;
+  margin:     0 6px;
+  flex-shrink: 0;
+}
+
+html.dark .admin-topbar__divider { background: #334155; }
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .admin-topbar__title   { display: none; }
+  .admin-topbar__search  { max-width: 200px; }
+}
+
+@media (max-width: 480px) {
+  .admin-topbar__search  { display: none; }
+  .admin-topbar__inner   { padding: 0 12px; }
+}

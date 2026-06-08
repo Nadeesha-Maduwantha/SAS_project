@@ -6,7 +6,7 @@ import RouterLoadingOverlay from '@/components/shared/RouterLoadingOverlay';
 import { NavProvider } from '@/contexts/NavContext';
 // ↓ Re-use your existing sales topbar — update it to match AdminTopBar:
 //   remove any hamburger button, add company logo image, set z-index: 102
-import SalesTopBar from '@/components/SalesUser/SalesLeftNavBar';
+import SalesTopBar from '@/components/SalesUser/SalesTopBar';
 
 const TOPBAR_H = 57;
 

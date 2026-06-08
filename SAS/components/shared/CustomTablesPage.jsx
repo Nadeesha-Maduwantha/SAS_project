@@ -178,38 +178,209 @@ function AlertsDefaultTab() {
   );
 }
 
+//default tables
+
 function MilestonesDefaultTab() {
-  const [rows, setRows] = useState([]);
+  const [rows,    setRows]    = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search,  setSearch]  = useState('');
+  const [statusFilter, setStatusFilter] = useState('');   // '' = all
+  const [critFilter,   setCritFilter]   = useState('');   // '' | 'true'
+
   useEffect(() => {
-    fetch(`${API}/api/shipments`, { headers: authHeaders() })
-      .then(r => r.json()).then(d => setRows(d.data || [])).catch(() => {}).finally(() => setLoading(false));
-  }, []);
-  const filtered = rows.filter(r => !search || (r.name || '').toLowerCase().includes(search.toLowerCase()));
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (statusFilter) params.set('status',      statusFilter);
+    if (critFilter)   params.set('is_critical', critFilter);
+
+    fetch(`${API}/api/milestones?${params.toString()}`, { headers: authHeaders() })
+      .then(r => r.json())
+      .then(d => setRows(d.data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [statusFilter, critFilter]);
+
+  const filtered = rows.filter(r => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      (r.name          || '').toLowerCase().includes(q) ||
+      (r.job_number    || '').toLowerCase().includes(q) ||
+      (r.consignee_name|| '').toLowerCase().includes(q) ||
+      (r.assigned_to   || '').toLowerCase().includes(q)
+    );
+  });
+
+  const STATUS_OPTIONS = [
+    { value: '',          label: 'All Statuses' },
+    { value: 'pending',   label: 'Pending'      },
+    { value: 'current',   label: 'Current'      },
+    { value: 'overdue',   label: 'Overdue'      },
+    { value: 'completed', label: 'Completed'    },
+  ];
+
   return (
     <div>
-      <TableToolbar search={search} onSearch={setSearch} count={filtered.length} label="milestones" />
-      {loading ? <Spinner /> : (
+      {/* ── Toolbar ─────────────────────────────────────── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '12px 20px', borderBottom: '1px solid #F3F4F6',
+        flexWrap: 'wrap',
+      }}>
+        {/* Search */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: '#F9FAFB', border: '1px solid #E5E7EB',
+          borderRadius: 8, padding: '7px 12px', width: 260,
+        }}>
+          <Search size={13} color="#9CA3AF" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search milestones, shipments..."
+            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 13, width: '100%', fontFamily: 'inherit' }}
+          />
+        </div>
+
+        {/* Status filter */}
+        <div style={{ position: 'relative' }}>
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            style={{
+              padding: '7px 28px 7px 10px', borderRadius: 8, fontSize: 12,
+              border: '1px solid #E5E7EB', background: '#fff', color: '#374151',
+              cursor: 'pointer', fontFamily: 'inherit', appearance: 'none', outline: 'none',
+            }}
+          >
+            {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <ChevronDown size={12} color="#9CA3AF" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+        </div>
+
+        {/* Critical filter */}
+        <button
+          onClick={() => setCritFilter(p => p === 'true' ? '' : 'true')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+            background:   critFilter === 'true' ? '#FEE2E2' : '#F9FAFB',
+            color:        critFilter === 'true' ? '#B91C1C' : '#6B7280',
+            border:       critFilter === 'true' ? '1px solid #FECACA' : '1px solid #E5E7EB',
+          }}
+        >
+          ⚠ Critical only
+        </button>
+
+        <span style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 'auto' }}>
+          {filtered.length} milestone{filtered.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+
+      {/* ── Table ───────────────────────────────────────── */}
+      {loading ? (
+        <Spinner />
+      ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr style={{ background: '#F9FAFB', borderBottom: '2px solid #E5E7EB' }}>
-              {['Milestone Name','Status','Critical','Due Date','Completed At','Notes'].map(h => <th key={h} style={TH}>{h}</th>)}
-            </tr></thead>
+            <thead>
+              <tr style={{ background: '#F9FAFB', borderBottom: '2px solid #E5E7EB' }}>
+                {['Milestone', 'Shipment', 'Client', 'Mode', 'Status', 'Critical', 'Due Date', 'Completed At', 'Assigned To', 'Notes'].map(h => (
+                  <th key={h} style={TH}>{h}</th>
+                ))}
+              </tr>
+            </thead>
             <tbody>
-              {filtered.length === 0 ? <tr><td colSpan={6}><EmptyState message="No milestones found." /></td></tr>
-              : filtered.map((r, i) => (
-                <tr key={r.id || i} style={rowStyle(i)}>
-                  <td style={{ ...TD, fontWeight: 600, color: '#111827' }}>{r.name || '—'}</td>
-                  <td style={TD}><Badge label={r.status || '—'} color={statusColor(r.status)} /></td>
-                  <td style={TD}>{r.is_critical ? <Badge label="Critical" color="red" /> : <span style={{ color: '#D1D5DB', fontSize: 12 }}>—</span>}</td>
-                  <td style={{ ...TD, color: '#6B7280', fontSize: 12 }}>{fmtDate(r.due_date)}</td>
-                  <td style={{ ...TD, color: '#6B7280', fontSize: 12 }}>{fmtDate(r.completed_date)}</td>
-                  <td style={{ ...TD, color: '#6B7280', fontSize: 12, maxWidth: 200 }}>
-                    <span style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.notes || '—'}</span>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={10}>
+                    <EmptyState message="No milestones match your filters." />
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filtered.map((r, i) => (
+                  <tr key={r.id || i} style={rowStyle(i)}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#F0F7FF')}
+                    onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#FAFAFA')}
+                  >
+                    {/* Milestone name */}
+                    <td style={{ ...TD, fontWeight: 600, color: '#111827', minWidth: 160 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{
+                          width: 20, height: 20, borderRadius: 5, flexShrink: 0,
+                          background: r.status === 'completed' ? '#D1FAE5'
+                            : r.status === 'overdue'   ? '#FEE2E2'
+                            : r.status === 'current'   ? '#DBEAFE'
+                            : '#F3F4F6',
+                          color: r.status === 'completed' ? '#065F46'
+                            : r.status === 'overdue'   ? '#B91C1C'
+                            : r.status === 'current'   ? '#1D4ED8'
+                            : '#6B7280',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 9, fontWeight: 800,
+                        }}>
+                          {(r.sequence_order ?? 0) + 1}
+                        </span>
+                        {r.name || '—'}
+                      </div>
+                    </td>
+
+                    {/* Shipment job number */}
+                    <td style={{ ...TD, fontFamily: 'monospace', fontSize: 12, color: '#1D4ED8', fontWeight: 700 }}>
+                      {r.job_number ? `#${r.job_number}` : '—'}
+                    </td>
+
+                    {/* Consignee */}
+                    <td style={{ ...TD, color: '#374151', maxWidth: 160 }}>
+                      <span style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {r.consignee_name || '—'}
+                      </span>
+                    </td>
+
+                    {/* Transport mode */}
+                    <td style={TD}>
+                      {r.transport_mode
+                        ? <Badge label={r.transport_mode} color="blue" />
+                        : <span style={{ color: '#D1D5DB' }}>—</span>}
+                    </td>
+
+                    {/* Status */}
+                    <td style={TD}>
+                      <Badge label={r.status || '—'} color={statusColor(r.status)} />
+                    </td>
+
+                    {/* Critical */}
+                    <td style={{ ...TD, textAlign: 'center' }}>
+                      {r.is_critical
+                        ? <Badge label="⚠ Critical" color="red" />
+                        : <span style={{ color: '#D1D5DB', fontSize: 12 }}>—</span>}
+                    </td>
+
+                    {/* Due date */}
+                    <td style={{ ...TD, color: '#6B7280', fontSize: 12, whiteSpace: 'nowrap' }}>
+                      {fmtDate(r.due_date)}
+                    </td>
+
+                    {/* Completed at */}
+                    <td style={{ ...TD, color: '#6B7280', fontSize: 12, whiteSpace: 'nowrap' }}>
+                      {fmtDate(r.completed_date)}
+                    </td>
+
+                    {/* Assigned to */}
+                    <td style={{ ...TD, color: '#374151', fontSize: 12 }}>
+                      {r.assigned_to || <span style={{ color: '#D1D5DB' }}>Unassigned</span>}
+                    </td>
+
+                    {/* Notes */}
+                    <td style={{ ...TD, color: '#6B7280', fontSize: 12, maxWidth: 200 }}>
+                      <span style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {r.notes || <span style={{ color: '#D1D5DB' }}>—</span>}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
