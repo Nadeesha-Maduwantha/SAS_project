@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronRight, Mail, RefreshCw, AlertTriangle, LayoutGrid, List, Search, ChevronDown, X } from 'lucide-react';
 import EmailComposeModal from '@/components/EmailComposeModal';
 import { AlertData } from '@/components/AlertDetailsModal';
+import ShipmentMilestonesModal from '@/components/Shipmentmilestonesmodal';
+import MilestoneDetailModal    from '@/components/Milestonedetailmodal';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface AlertMilestone {
@@ -414,10 +416,11 @@ function AlertCard({
 
 // ── Table row (unchanged logic from original) ──────────────────────────────────
 function ShipmentAlertRow({
-  group, onEmailClick,
+  group, onEmailClick, onShipmentClick,
 }: {
-  group:        ShipmentAlertGroup;
-  onEmailClick: (d: AlertData) => void;
+  group:            ShipmentAlertGroup;
+  onEmailClick:     (d: AlertData) => void;
+  onShipmentClick:  (shipmentId: string) => void;  // ← ADD THIS LINE
 }) {
   const [expanded, setExpanded] = useState(false);
   const [visible,  setVisible]  = useState(false);
@@ -455,12 +458,19 @@ function ShipmentAlertRow({
         </span>
       </div>
       <div style={{ width: 160, flexShrink: 0 }}>
-        <Tooltip text={`Shipment: ${group.job_number}`}>
-          <span style={{
-            fontFamily: 'monospace', fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em',
-            background: t.bg, color: t.text, border: `1px solid ${t.border}`,
-            padding: '4px 11px', borderRadius: 6, cursor: 'help',
-          }}>
+        <Tooltip text={`Shipment: ${group.job_number} — click to view`}>
+          <span
+            onClick={e => { e.stopPropagation(); onShipmentClick(group.shipment_id); }}
+            style={{
+              fontFamily: 'monospace', fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em',
+              background: t.bg, color: t.text, border: `1px solid ${t.border}`,
+              padding: '4px 11px', borderRadius: 6,
+              cursor: 'pointer',                      // ← was 'help', now 'pointer'
+              textDecoration: 'underline',            // ← ADD
+              textDecorationStyle: 'dotted',          // ← ADD
+              textDecorationColor: t.border,          // ← ADD
+            }}
+          >
             {group.job_number}
           </span>
         </Tooltip>
@@ -666,9 +676,11 @@ export default function AlertFeedTable({
   const [error,     setError]     = useState<string | null>(null);
   const [showAll,   setShowAll]   = useState(false);
   const [emailData, setEmailData] = useState<AlertData | null>(null);
+  const [shipmentModalId, setShipmentModalId] = useState<string | null>(null);
+  const [milestoneDetail, setMilestoneDetail] = useState<{ milestone: any; shipment: any } | null>(null);
 
   // ── Popup (card click) ──────────────────────────────────────
-  const [popupGroup, setPopupGroup] = useState<ShipmentAlertGroup | null>(null);
+  
 
   // ── View: table or cards — default cards, remembered ───────
   const [view, setView] = useState<'table' | 'cards'>(() => {
@@ -898,7 +910,7 @@ export default function AlertFeedTable({
           }}>
             {displayed.map((group, idx) => (
               <div key={group.shipment_id} style={{ animation: `cardIn 0.25s ease ${idx * 40}ms both` }}>
-                <AlertCard group={group} onClick={() => setPopupGroup(group)} />
+                <AlertCard group={group} onClick={() => setShipmentModalId(group.shipment_id)} />
               </div>
             ))}
           </div>
@@ -917,7 +929,12 @@ export default function AlertFeedTable({
               </thead>
               <tbody>
                 {displayed.map(group => (
-                  <ShipmentAlertRow key={group.shipment_id} group={group} onEmailClick={setEmailData} />
+                  <ShipmentAlertRow
+                    key={group.shipment_id}
+                    group={group}
+                    onEmailClick={setEmailData}
+                    onShipmentClick={setShipmentModalId}   // ← ADD THIS LINE
+                  />
                 ))}
               </tbody>
             </table>
@@ -960,15 +977,26 @@ export default function AlertFeedTable({
       </div>
 
       {/* ── Card click popup ────────────────────────────────────── */}
-      {popupGroup && (
-        <MilestonePopup
-          group={popupGroup}
-          onClose={() => setPopupGroup(null)}
-          onEmailClick={(d) => { setPopupGroup(null); setEmailData(d); }}
-        />
-      )}
 
       {/* ── Email modal ─────────────────────────────────────────── */}
+
+        <ShipmentMilestonesModal
+          isOpen={Boolean(shipmentModalId)}
+          onClose={() => setShipmentModalId(null)}
+          shipmentId={shipmentModalId}
+          apiBase={apiBase}
+          onMilestoneClick={(milestone, shipment) => {
+            setMilestoneDetail({ milestone, shipment });
+          }}
+        />
+
+        <MilestoneDetailModal
+          isOpen={Boolean(milestoneDetail)}
+          onClose={() => setMilestoneDetail(null)}
+          milestone={milestoneDetail?.milestone ?? null}
+          shipment={milestoneDetail?.shipment  ?? null}
+        />
+      
       <EmailComposeModal isOpen={Boolean(emailData)} onClose={() => setEmailData(null)} alertData={emailData} />
     </>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   LayoutGrid, Users, Building2, Truck, Bell,
@@ -10,10 +10,12 @@ import {
 import { useNav } from '@/contexts/NavContext';
 import '@/styles/ComponentStyles/AdminLeftNavBar.css';
 
+// ── Tooltip shown beside icon when nav is collapsed ────────────────────────────
 function CollapseTooltip({ text }: { text: string }) {
   return <span className="nav-collapse-tooltip">{text}</span>;
 }
 
+// ── Icon-only button for collapsed state ───────────────────────────────────────
 function IconBtn({ icon, tooltip, onClick }: {
   icon: React.ReactNode; tooltip: string; onClick: () => void;
 }) {
@@ -25,22 +27,33 @@ function IconBtn({ icon, tooltip, onClick }: {
   );
 }
 
-function Section({ icon, label, isOpen, onToggle, children }: {
-  icon: React.ReactNode; label: string;
-  isOpen: boolean; onToggle: () => void; children: React.ReactNode;
+// ── Expandable section ─────────────────────────────────────────────────────────
+// showLabel controls whether text is visible — delayed until animation completes
+function Section({ icon, label, isOpen, onToggle, children, showLabel }: {
+  icon:      React.ReactNode;
+  label:     string;
+  isOpen:    boolean;
+  onToggle:  () => void;
+  children:  React.ReactNode;
+  showLabel: boolean;
 }) {
   return (
     <div className="nav-section">
       <button className="nav-section-header" onClick={onToggle}>
         {icon}
-        <span>{label}</span>
-        <ChevronDown className={`chevron-icon ${isOpen ? 'expanded' : ''}`} />
+        {showLabel && <span>{label}</span>}
+        {showLabel && (
+          <ChevronDown className={`chevron-icon ${isOpen ? 'expanded' : ''}`} />
+        )}
       </button>
-      {isOpen && <div className="nav-section-content">{children}</div>}
+      {isOpen && showLabel && (
+        <div className="nav-section-content">{children}</div>
+      )}
     </div>
   );
 }
 
+// ── Single nav item ────────────────────────────────────────────────────────────
 function NavItem({ label, isActive, onClick }: {
   label: string; isActive: boolean; onClick: () => void;
 }) {
@@ -51,17 +64,51 @@ function NavItem({ label, isActive, onClick }: {
   );
 }
 
-// ── Main ───────────────────────────────────────────────────────────────────────
+// ── Main component ─────────────────────────────────────────────────────────────
 export default function AdminLeftNavBar({ topOffset = 57 }: { topOffset?: number }) {
   const router   = useRouter();
   const pathname = usePathname();
   const { expanded, toggle, expand } = useNav();
 
+  // ── Show text labels only after the slide animation finishes ──────────────
+  // Prevents labels from wrapping to 2 lines while width is still animating.
+  // 340ms matches the 0.35s CSS transition on .admin-nav-container.
+  const [fullyExpanded, setFullyExpanded] = useState(false);
+
+  useEffect(() => {
+    if (expanded) {
+      const t = setTimeout(() => setFullyExpanded(true), 340);
+      return () => clearTimeout(t);
+    } else {
+      setFullyExpanded(false); // hide text immediately when collapsing
+    }
+  }, [expanded]);
+
+  // ── Section open/close state ───────────────────────────────────────────────
   const [open, setOpen] = useState({
-    userManagement: false, departmentManagement: false,
-    shipments: false, alerts: false, customTables: false,
-    milestones: false, securityAudit: false,
+    userManagement:       false,
+    departmentManagement: false,
+    shipments:            false,
+    alerts:               false,
+    customTables:         false,
+    milestones:           false,
+    securityAudit:        false,
   });
+
+  // Close all sections when nav collapses so they don't re-open mid-animation
+  useEffect(() => {
+    if (!expanded) {
+      setOpen({
+        userManagement:       false,
+        departmentManagement: false,
+        shipments:            false,
+        alerts:               false,
+        customTables:         false,
+        milestones:           false,
+        securityAudit:        false,
+      });
+    }
+  }, [expanded]);
 
   const toggleSec = (k: keyof typeof open) =>
     setOpen(p => ({ ...p, [k]: !p[k] }));
@@ -70,18 +117,20 @@ export default function AdminLeftNavBar({ topOffset = 57 }: { topOffset?: number
 
   const active = (path: string, exact = false) => {
     if (!pathname) return false;
-    return exact ? pathname === path : pathname === path || pathname.startsWith(path + '/');
+    return exact
+      ? pathname === path
+      : pathname === path || pathname.startsWith(path + '/');
   };
 
   const ip = { size: 19, strokeWidth: 1.8 };
 
-  // Inline style sets top + height so nav starts below topbar
+  // Nav sits below topbar — inline style sets top + height
   const containerStyle: React.CSSProperties = {
     top:    topOffset,
     height: `calc(100vh - ${topOffset}px)`,
   };
 
-  // ── Collapsed ───────────────────────────────────────────────────────────────
+  // ── Collapsed view ─────────────────────────────────────────────────────────
   if (!expanded) {
     return (
       <div className="admin-nav-container collapsed" style={containerStyle}>
@@ -103,11 +152,11 @@ export default function AdminLeftNavBar({ topOffset = 57 }: { topOffset?: number
     );
   }
 
-  // ── Expanded ────────────────────────────────────────────────────────────────
+  // ── Expanded view ──────────────────────────────────────────────────────────
   return (
     <div className="admin-nav-container expanded" style={containerStyle}>
 
-      {/* Collapse button at top */}
+      {/* Collapse toggle */}
       <div className="nav-top-row">
         <button className="nav-toggle-btn-expanded" onClick={toggle} title="Collapse sidebar">
           <Menu size={18} />
@@ -120,56 +169,146 @@ export default function AdminLeftNavBar({ topOffset = 57 }: { topOffset?: number
         onClick={() => go('/admin/dashboard')}
       >
         <LayoutGrid className="nav-icon" />
-        <span>My Dashboard</span>
+        {fullyExpanded && <span>My Dashboard</span>}
       </button>
 
-      <Section icon={<Users className="nav-icon" />} label="User Management"
-        isOpen={open.userManagement} onToggle={() => toggleSec('userManagement')}>
+      {/* User Management */}
+      <Section
+        icon={<Users className="nav-icon" />}
+        label="User Management"
+        isOpen={open.userManagement}
+        onToggle={() => toggleSec('userManagement')}
+        showLabel={fullyExpanded}
+      >
         <NavItem label="Add New User"  isActive={active('/admin/create_user')} onClick={() => go('/admin/create_user')} />
         <NavItem label="Edit User"     isActive={active('/admin/edit-user')}   onClick={() => go('/admin/edit-user')} />
         <NavItem label="Activity Logs" isActive={active('/admin/access-logs')} onClick={() => go('/admin/access-logs')} />
       </Section>
 
-      <Section icon={<Building2 className="nav-icon" />} label="Department Management"
-        isOpen={open.departmentManagement} onToggle={() => toggleSec('departmentManagement')}>
-        <NavItem label="Departments" isActive={active('/admin/department_overview')} onClick={() => go('/admin/department_overview')} />
+      {/* Department Management */}
+      <Section
+        icon={<Building2 className="nav-icon" />}
+        label="Department Management"
+        isOpen={open.departmentManagement}
+        onToggle={() => toggleSec('departmentManagement')}
+        showLabel={fullyExpanded}
+      >
+        <NavItem
+          label="Departments"
+          isActive={active('/admin/department_overview')}
+          onClick={() => go('/admin/department_overview')}
+        />
       </Section>
 
-      <Section icon={<Truck className="nav-icon" />} label="All Shipments"
-        isOpen={open.shipments} onToggle={() => toggleSec('shipments')}>
-        <NavItem label="Active Shipments"  isActive={pathname === '/admin/shipments'}    onClick={() => go('/admin/shipments')} />
-        <NavItem label="Delayed Shipments" isActive={active('/admin/shipments/delayed')} onClick={() => go('/admin/shipments/delayed')} />
-        <NavItem label="Archive"           isActive={active('/admin/shipments/archive')} onClick={() => go('/admin/shipments/archive')} />
+      {/* All Shipments */}
+      <Section
+        icon={<Truck className="nav-icon" />}
+        label="All Shipments"
+        isOpen={open.shipments}
+        onToggle={() => toggleSec('shipments')}
+        showLabel={fullyExpanded}
+      >
+        <NavItem
+          label="Active Shipments"
+          isActive={pathname === '/admin/shipments'}
+          onClick={() => go('/admin/shipments')}
+        />
+        <NavItem
+          label="Delayed Shipments"
+          isActive={active('/admin/shipments/delayed')}
+          onClick={() => go('/admin/shipments/delayed')}
+        />
+        <NavItem
+          label="Archive"
+          isActive={active('/admin/shipments/archive')}
+          onClick={() => go('/admin/shipments/archive')}
+        />
       </Section>
 
-      <Section icon={<Bell className="nav-icon" />} label="All Alerts"
-        isOpen={open.alerts} onToggle={() => toggleSec('alerts')}>
-        <NavItem label="All Alerts" isActive={active('/admin/alerts')} onClick={() => go('/admin/alerts')} />
+      {/* All Alerts */}
+      <Section
+        icon={<Bell className="nav-icon" />}
+        label="All Alerts"
+        isOpen={open.alerts}
+        onToggle={() => toggleSec('alerts')}
+        showLabel={fullyExpanded}
+      >
+        <NavItem
+          label="All Alerts"
+          isActive={active('/admin/alerts')}
+          onClick={() => go('/admin/alerts')}
+        />
       </Section>
 
-      <Section icon={<TableProperties className="nav-icon" />} label="Custom Tables"
-        isOpen={open.customTables} onToggle={() => toggleSec('customTables')}>
-        <NavItem label="My Tables" isActive={active('/admin/custom_tables')} onClick={() => go('/admin/custom_tables')} />
+      {/* Custom Tables */}
+      <Section
+        icon={<TableProperties className="nav-icon" />}
+        label="Custom Tables"
+        isOpen={open.customTables}
+        onToggle={() => toggleSec('customTables')}
+        showLabel={fullyExpanded}
+      >
+        <NavItem
+          label="My Tables"
+          isActive={active('/admin/custom_tables')}
+          onClick={() => go('/admin/custom_tables')}
+        />
       </Section>
 
-      <Section icon={<MapPin className="nav-icon" />} label="Milestones"
-        isOpen={open.milestones} onToggle={() => toggleSec('milestones')}>
-        <NavItem label="Templates List"     isActive={active('/admin/milestone_templates_list')}  onClick={() => go('/admin/milestone_templates_list')} />
-        <NavItem label="Create Template"    isActive={active('/admin/milestone_template_create')} onClick={() => go('/admin/milestone_template_create')} />
-        <NavItem label="Current Milestones" isActive={active('/admin/current_milestones')}        onClick={() => go('/admin/current_milestones')} />
+      {/* Milestones */}
+      <Section
+        icon={<MapPin className="nav-icon" />}
+        label="Milestones"
+        isOpen={open.milestones}
+        onToggle={() => toggleSec('milestones')}
+        showLabel={fullyExpanded}
+      >
+        <NavItem
+          label="Templates List"
+          isActive={active('/admin/milestone_templates_list')}
+          onClick={() => go('/admin/milestone_templates_list')}
+        />
+        <NavItem
+          label="Create Template"
+          isActive={active('/admin/milestone_template_create')}
+          onClick={() => go('/admin/milestone_template_create')}
+        />
+        <NavItem
+          label="Current Milestones"
+          isActive={active('/admin/current_milestones')}
+          onClick={() => go('/admin/current_milestones')}
+        />
       </Section>
 
+      {/* Sync — single link, no dropdown */}
       <div className="nav-section">
-        <button className={`nav-section-header ${active('/admin/sync', true) ? 'active' : ''}`} onClick={() => go('/admin/sync')}>
+        <button
+          className={`nav-section-header ${active('/admin/sync', true) ? 'active' : ''}`}
+          onClick={() => go('/admin/sync')}
+        >
           <RefreshCw className="nav-icon" />
-          <span>Sync</span>
+          {fullyExpanded && <span>Sync</span>}
         </button>
       </div>
 
-      <Section icon={<ShieldCheck className="nav-icon" />} label="Security & Audit"
-        isOpen={open.securityAudit} onToggle={() => toggleSec('securityAudit')}>
-        <NavItem label="Audit Logs"        isActive={active('/admin/audit-trail')}       onClick={() => go('/admin/audit-trail')} />
-        <NavItem label="Security Settings" isActive={active('/admin/security-settings')} onClick={() => go('/admin/security-settings')} />
+      {/* Security & Audit */}
+      <Section
+        icon={<ShieldCheck className="nav-icon" />}
+        label="Security & Audit"
+        isOpen={open.securityAudit}
+        onToggle={() => toggleSec('securityAudit')}
+        showLabel={fullyExpanded}
+      >
+        <NavItem
+          label="Audit Logs"
+          isActive={active('/admin/audit-trail')}
+          onClick={() => go('/admin/audit-trail')}
+        />
+        <NavItem
+          label="Security Settings"
+          isActive={active('/admin/security-settings')}
+          onClick={() => go('/admin/security-settings')}
+        />
       </Section>
 
     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   LayoutGrid, Package, Bell, Settings,
@@ -23,17 +23,19 @@ function IconBtn({ icon, tooltip, onClick }: {
   );
 }
 
-function Section({ icon, label, isOpen, onToggle, children }: {
+function Section({ icon, label, isOpen, onToggle, children, showLabel }: {
   icon: React.ReactNode; label: string;
   isOpen: boolean; onToggle: () => void; children: React.ReactNode;
+  showLabel: boolean;
 }) {
   return (
     <div className="nav-section">
       <button className="nav-section-header" onClick={onToggle}>
-        {icon}<span>{label}</span>
-        <ChevronDown className={`chevron-icon ${isOpen ? 'expanded' : ''}`} />
+        {icon}
+        {showLabel && <span>{label}</span>}
+        {showLabel && <ChevronDown className={`chevron-icon ${isOpen ? 'expanded' : ''}`} />}
       </button>
-      {isOpen && <div className="nav-section-content">{children}</div>}
+      {isOpen && showLabel && <div className="nav-section-content">{children}</div>}
     </div>
   );
 }
@@ -41,7 +43,11 @@ function Section({ icon, label, isOpen, onToggle, children }: {
 function NavItem({ label, isActive, onClick }: {
   label: string; isActive: boolean; onClick: () => void;
 }) {
-  return <button className={`nav-item ${isActive ? 'active' : ''}`} onClick={onClick}>{label}</button>;
+  return (
+    <button className={`nav-item ${isActive ? 'active' : ''}`} onClick={onClick}>
+      {label}
+    </button>
+  );
 }
 
 export default function OperationLeftNavBar({ topOffset = 57, alertsCount = 0 }: {
@@ -51,13 +57,38 @@ export default function OperationLeftNavBar({ topOffset = 57, alertsCount = 0 }:
   const pathname = usePathname();
   const { expanded, toggle, expand } = useNav();
 
-  const [open, setOpen] = useState({ milestones: false, customTables: false, settings: false });
-  const tog = (k: keyof typeof open) => setOpen(p => ({ ...p, [k]: !p[k] }));
-  const go  = (path: string) => router.push(path);
-  const active = (path: string) => !!pathname && (pathname === path || pathname.startsWith(path + '/'));
+  // Show labels only after slide animation completes (340ms = 0.35s CSS transition)
+  const [fullyExpanded, setFullyExpanded] = useState(false);
+
+  useEffect(() => {
+    if (expanded) {
+      const t = setTimeout(() => setFullyExpanded(true), 340);
+      return () => clearTimeout(t);
+    } else {
+      setFullyExpanded(false);
+    }
+  }, [expanded]);
+
+  const [open, setOpen] = useState({
+    milestones: false, customTables: false, settings: false,
+  });
+
+  // Reset all sections when nav collapses
+  useEffect(() => {
+    if (!expanded) {
+      setOpen({ milestones: false, customTables: false, settings: false });
+    }
+  }, [expanded]);
+
+  const tog    = (k: keyof typeof open) => setOpen(p => ({ ...p, [k]: !p[k] }));
+  const go     = (path: string) => router.push(path);
+  const active = (path: string) =>
+    !!pathname && (pathname === path || pathname.startsWith(path + '/'));
 
   const ip = { size: 19, strokeWidth: 1.8 };
-  const containerStyle: React.CSSProperties = { top: topOffset, height: `calc(100vh - ${topOffset}px)` };
+  const containerStyle: React.CSSProperties = {
+    top: topOffset, height: `calc(100vh - ${topOffset}px)`,
+  };
 
   // ── Collapsed ────────────────────────────────────────────────────────────────
   if (!expanded) {
@@ -67,12 +98,12 @@ export default function OperationLeftNavBar({ topOffset = 57, alertsCount = 0 }:
           <Menu size={18} /><CollapseTooltip text="Expand sidebar" />
         </button>
         <div className="nav-collapsed-divider" />
-        <IconBtn icon={<LayoutGrid      {...ip} />} tooltip="My Dashboard"   onClick={expand} />
-        <IconBtn icon={<Package         {...ip} />} tooltip="My Shipments"   onClick={expand} />
-        <IconBtn icon={<Bell            {...ip} />} tooltip="My Alerts"      onClick={expand} />
-        <IconBtn icon={<MapPin          {...ip} />} tooltip="Milestones"     onClick={expand} />
-        <IconBtn icon={<TableProperties {...ip} />} tooltip="Custom Tables"  onClick={expand} />
-        <IconBtn icon={<Settings        {...ip} />} tooltip="Settings"       onClick={expand} />
+        <IconBtn icon={<LayoutGrid      {...ip} />} tooltip="My Dashboard"  onClick={expand} />
+        <IconBtn icon={<Package         {...ip} />} tooltip="My Shipments"  onClick={expand} />
+        <IconBtn icon={<Bell            {...ip} />} tooltip="My Alerts"     onClick={expand} />
+        <IconBtn icon={<MapPin          {...ip} />} tooltip="Milestones"    onClick={expand} />
+        <IconBtn icon={<TableProperties {...ip} />} tooltip="Custom Tables" onClick={expand} />
+        <IconBtn icon={<Settings        {...ip} />} tooltip="Settings"      onClick={expand} />
       </div>
     );
   }
@@ -86,29 +117,82 @@ export default function OperationLeftNavBar({ topOffset = 57, alertsCount = 0 }:
         </button>
       </div>
 
-      <button className={`nav-dashboard-btn ${active('/operation_user/dashboard') ? 'active' : ''}`} onClick={() => go('/operation_user/dashboard')}>
-        <LayoutGrid className="nav-icon" /><span>My Dashboard</span>
+      {/* Dashboard */}
+      <button
+        className={`nav-dashboard-btn ${active('/operation_user/dashboard') ? 'active' : ''}`}
+        onClick={() => go('/operation_user/dashboard')}
+      >
+        <LayoutGrid className="nav-icon" />
+        {fullyExpanded && <span>My Dashboard</span>}
       </button>
 
-      <button className={`nav-section-header ${active('/operation_user/shipments') ? 'active' : ''}`} onClick={() => go('/operation_user/shipments')}>
-        <Package className="nav-icon" /><span>My Shipments</span>
-      </button>
+      {/* My Shipments — single link */}
+      <div className="nav-section">
+        <button
+          className={`nav-section-header ${active('/operation_user/shipments') ? 'active' : ''}`}
+          onClick={() => go('/operation_user/shipments')}
+        >
+          <Package className="nav-icon" />
+          {fullyExpanded && <span>My Shipments</span>}
+        </button>
+      </div>
 
-      <button className={`nav-section-header ${active('/operation_user/alerts') ? 'active' : ''}`} onClick={() => go('/operation_user/alerts')}>
-        <Bell className="nav-icon" />
-        <span>My Alerts{alertsCount > 0 ? ` (${alertsCount})` : ''}</span>
-      </button>
+      {/* My Alerts — single link */}
+      <div className="nav-section">
+        <button
+          className={`nav-section-header ${active('/operation_user/alerts') ? 'active' : ''}`}
+          onClick={() => go('/operation_user/alerts')}
+        >
+          <Bell className="nav-icon" />
+          {fullyExpanded && (
+            <span>My Alerts{alertsCount > 0 ? ` (${alertsCount})` : ''}</span>
+          )}
+        </button>
+      </div>
 
-      <Section icon={<MapPin className="nav-icon" />} label="Milestones" isOpen={open.milestones} onToggle={() => tog('milestones')}>
-        <NavItem label="Current Milestones" isActive={active('/operation_user/current_milestone')} onClick={() => go('/operation_user/current_milestone')} />
+      {/* Milestones */}
+      <Section
+        icon={<MapPin className="nav-icon" />}
+        label="Milestones"
+        isOpen={open.milestones}
+        onToggle={() => tog('milestones')}
+        showLabel={fullyExpanded}
+      >
+        <NavItem
+          label="Current Milestones"
+          isActive={active('/operation_user/current_milestone')}
+          onClick={() => go('/operation_user/current_milestone')}
+        />
       </Section>
 
-      <Section icon={<TableProperties className="nav-icon" />} label="Custom Tables" isOpen={open.customTables} onToggle={() => tog('customTables')}>
-        <NavItem label="My Tables" isActive={active('/operation_user/custom_tables')} onClick={() => go('/operation_user/custom_tables')} />
+      {/* Custom Tables */}
+      <Section
+        icon={<TableProperties className="nav-icon" />}
+        label="Custom Tables"
+        isOpen={open.customTables}
+        onToggle={() => tog('customTables')}
+        showLabel={fullyExpanded}
+      >
+        <NavItem
+          label="My Tables"
+          isActive={active('/operation_user/custom_tables')}
+          onClick={() => go('/operation_user/custom_tables')}
+        />
       </Section>
 
-      <Section icon={<Settings className="nav-icon" />} label="Settings" isOpen={open.settings} onToggle={() => tog('settings')}>
-        <NavItem label="My Profile" isActive={active('/operation_user/profile')} onClick={() => go('/operation_user/profile')} />
+      {/* Settings */}
+      <Section
+        icon={<Settings className="nav-icon" />}
+        label="Settings"
+        isOpen={open.settings}
+        onToggle={() => tog('settings')}
+        showLabel={fullyExpanded}
+      >
+        <NavItem
+          label="My Profile"
+          isActive={active('/operation_user/profile')}
+          onClick={() => go('/operation_user/profile')}
+        />
       </Section>
     </div>
   );
