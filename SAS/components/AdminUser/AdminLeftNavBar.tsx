@@ -212,15 +212,6 @@ export default function AdminLeftNavBar() {
           </div>
         )}
       </div>
-      <div className="nav-section">
-        <button
-              className={`nav-section-header ${isActiveRoute('/admin/sync') ? 'active' : ''}`}
-              onClick={() => handleNavigation('/admin/sync')}
-            >
-              <RefreshCw className="nav-icon" />
-          <span>System Configuration</span>
-        </button>
-      </div>
 
       {/* Sync */}
       <div className="nav-section">

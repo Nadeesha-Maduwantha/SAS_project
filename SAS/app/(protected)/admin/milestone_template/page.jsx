@@ -99,11 +99,7 @@ export default function MilestoneTemplatePage() {
     const fetchTemplate = async () => {
       try {
         setError(null);
-<<<<<<< HEAD
-        const response = await fetch(`http://localhost:5000/api/templates/${templateId}`);
-=======
         const response = await fetch(`http://127.0.0.1:5001/api/templates/${templateId}`);
->>>>>>> 00b1f12198237ee758264d19ff4a22469f101a48
         const result   = await response.json();
         if (response.ok) {
           setTmpl(result.data);
@@ -141,11 +137,7 @@ export default function MilestoneTemplatePage() {
   const handleSaveCopy = async () => {
     if (!copyName.trim()) return;
     try {
-<<<<<<< HEAD
-      const response = await fetch(`http://localhost:5000/api/templates/${tmpl.id}/copy`, {
-=======
       const response = await fetch(`http://127.0.0.1:5001/api/templates/${tmpl.id}/copy`, {
->>>>>>> 00b1f12198237ee758264d19ff4a22469f101a48
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: copyName }),
@@ -168,11 +160,7 @@ export default function MilestoneTemplatePage() {
 
   const handleDelete = async () => {
     try {
-<<<<<<< HEAD
-      const response = await fetch(`http://localhost:5000/api/templates/${tmpl.id}`, { method: "DELETE" });
-=======
       const response = await fetch(`http://127.0.0.1:5001/api/templates/${tmpl.id}`, { method: "DELETE" });
->>>>>>> 00b1f12198237ee758264d19ff4a22469f101a48
       if (response.ok) {
         setShowDelete(false);
         router.push("/admin/milestone_templates_list");
