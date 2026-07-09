@@ -3,8 +3,12 @@ from flask import Blueprint, request, jsonify
 from services.supabase_service import get_supabase
 from utils.auth_helper import require_auth, get_current_user
 from datetime import datetime
+import os
 
 bp = Blueprint('auth', __name__, url_prefix='/api/auth')
+
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+reset_redirect = f"{FRONTEND_URL.rstrip('/')}/reset-password"
 
 # --- HELPER FUNCTIONS FOR DEVICE AND LOCATION ---
 def get_location_from_ip(ip):
@@ -204,3 +208,19 @@ def get_me():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.json
+    email = data.get('email')
+
+    if not email:
+        return jsonify({'error': 'Email is required'}), 400
+
+    supabase = get_supabase()
+    supabase.auth.reset_password_email(
+        email=email,
+        redirect_to=reset_redirect,
+    )
+
+    return jsonify({'message': 'Password reset email sent'}), 200
