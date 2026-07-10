@@ -71,7 +71,7 @@ export default function AdminTopBar() {
                   See all
                 </div>
               </div>
-            )}
+  
           </div>
 
           {/* HELP */}
@@ -88,7 +88,6 @@ export default function AdminTopBar() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+
   );
 }
