@@ -23,6 +23,7 @@ from routes.milestones import milestones_bp
 from routes.shipments import shipments_bp
 from routes.sync import sync_bp
 from routes.alerts import alerts_bp
+from routes.milestone_library import milestone_library_bp
 
 load_dotenv()
 
