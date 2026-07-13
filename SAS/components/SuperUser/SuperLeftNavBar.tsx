@@ -141,8 +141,13 @@ export default function SuperLeftNavBar({ topOffset = 57, alertsCount = 0 }: {
       >
         <NavItem
           label="Active Shipments"
-          isActive={active('/Super_user/shipments')}
+          isActive={pathname === '/Super_user/shipments'}
           onClick={() => go('/Super_user/shipments')}
+        />
+        <NavItem
+          label="Archive Shipments"
+          isActive={active('/Super_user/shipments/archive')}
+          onClick={() => go('/Super_user/shipments/archive')}
         />
       </Section>
 

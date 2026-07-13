@@ -11,6 +11,9 @@ import { exportAllShipmentsPDF } from '@/lib/Utils/exportPDF'
 import { Shipment, DepartmentStats } from '@/types'
 import { getActiveShipmentsByDepartment, getDepartmentStats } from '@/lib/services/shipment.service'
 import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
+import ShipmentDetailModal from '@/components/shipments/ShipmentDetailModal'
+import { ShipmentCard } from '@/components/shipments/ShipmentCard'
+import { ShipmentViewToggle, ShipmentView } from '@/components/shipments/ShipmentViewToggle'
 import { useAuth } from '@/lib/hooks/useAuth'
 import {
   CURRENT_STAGE_OPTIONS,
@@ -81,6 +84,8 @@ export default function SuperUserActiveShipmentsPage() {
   const [error, setError]                = useState<string | null>(null)
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>(DEFAULT_FILTERS)
   const [searchQuery, setSearchQuery]    = useState('')
+  const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null)
+  const [view, setView] = useState<ShipmentView>('table')
 
   // To Fetching Data on component mount and when department changes.
   useEffect(() => {
@@ -145,6 +150,24 @@ export default function SuperUserActiveShipmentsPage() {
       <p className="text-red-500 text-sm">{error}</p>
     </div>
   )
+
+  // Shared "Take Action" button — used by both the table row and the card
+  // footer. stopPropagation keeps it from also triggering the row/card click
+  // (which opens the detail modal).
+  function renderAction(shipment: Shipment) {
+    if (shipment.llmIdentifiedType?.toLowerCase().includes('delivered')) return null
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          router.push(`/Super_user/shipments/${shipment.id}/action`)
+        }}
+        className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+      >
+        Take Action
+      </button>
+    )
+  }
 
   // To render the component
   return (
@@ -242,121 +265,127 @@ export default function SuperUserActiveShipmentsPage() {
               </svg>
               Export PDF
             </button>
+            <ShipmentViewToggle view={view} onChange={setView} />
           </div>
         </div>
 
         <div className="border-t border-gray-100" />
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                <th className="text-left px-5 py-3">Shipment ID</th>
-                <th className="text-left px-5 py-3">Consignee</th>
-                <th className="text-left px-5 py-3">Status</th>
-                <th className="text-left px-5 py-3">Pickup Date</th>
-                <th className="text-left px-5 py-3">Pickup Status</th>
-                <th className="text-left px-5 py-3">Priority</th>
-                <th className="text-left px-5 py-3">Action</th>
-                <th className="text-left px-5 py-3">Detail</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-5 py-10 text-center text-sm text-gray-400">
-                    No shipments found
-                  </td>
+        {view === 'table' ? (
+          /* Table */
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  <th className="text-left px-5 py-3">Shipment ID</th>
+                  <th className="text-left px-5 py-3">Consignee</th>
+                  <th className="text-left px-5 py-3">Status</th>
+                  <th className="text-left px-5 py-3">Pickup Date</th>
+                  <th className="text-left px-5 py-3">Pickup Status</th>
+                  <th className="text-left px-5 py-3">Priority</th>
+                  <th className="text-left px-5 py-3">Action</th>
                 </tr>
-              ) : paginated.map((shipment) => (
-                <tr key={shipment.id} className="hover:bg-gray-50 transition-colors">
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {paginated.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-5 py-10 text-center text-sm text-gray-400">
+                      No shipments found
+                    </td>
+                  </tr>
+                ) : paginated.map((shipment) => (
+                  <tr
+                    key={shipment.id}
+                    onClick={() => setSelectedShipment(shipment)}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
 
-                  {/* Shipment ID */}
-                  <td className="px-5 py-3.5">
-                    <p className="text-sm font-semibold text-gray-900">#{shipment.cargowiseId}</p>
-                    {shipment.branch && (
-                      <p className="text-xs text-gray-400 mt-0.5">Branch: {shipment.branch}</p>
-                    )}
-                  </td>
+                    {/* Shipment ID */}
+                    <td className="px-5 py-3.5">
+                      <p className="text-sm font-semibold text-gray-900">#{shipment.cargowiseId}</p>
+                      {shipment.branch && (
+                        <p className="text-xs text-gray-400 mt-0.5">Branch: {shipment.branch}</p>
+                      )}
+                    </td>
 
-                  {/* Consignee */}
-                  <td className="px-5 py-3.5">
-                    <p className="text-sm text-gray-900">{shipment.consigneeName ?? '—'}</p>
-                    {shipment.gcCode && (
-                      <p className="text-xs text-gray-400 mt-0.5">{shipment.gcCode}</p>
-                    )}
-                  </td>
+                    {/* Consignee */}
+                    <td className="px-5 py-3.5">
+                      <p className="text-sm text-gray-900">{shipment.consigneeName ?? '—'}</p>
+                      {shipment.gcCode && (
+                        <p className="text-xs text-gray-400 mt-0.5">{shipment.gcCode}</p>
+                      )}
+                    </td>
 
-                  {/* Status */}
-                  <td className="px-5 py-3.5">
-                    <ShipmentStatusBadge status={shipment.llmIdentifiedType ?? shipment.currentStage} />
-                    {shipment.stNoteText && (
-                      <p className="text-xs text-gray-400 mt-1 max-w-xs truncate">
-                        {shipment.stNoteText}
-                      </p>
-                    )}
-                  </td>
+                    {/* Status */}
+                    <td className="px-5 py-3.5">
+                      <ShipmentStatusBadge status={shipment.llmIdentifiedType ?? shipment.currentStage} />
+                      {shipment.stNoteText && (
+                        <p className="text-xs text-gray-400 mt-1 max-w-xs truncate">
+                          {shipment.stNoteText}
+                        </p>
+                      )}
+                    </td>
 
-                  {/* Pickup Date */}
-                  <td className="px-5 py-3.5 text-sm text-gray-700">
-                    {formatPickupDate(shipment.llmCargoPickupDate)}
-                  </td>
+                    {/* Pickup Date */}
+                    <td className="px-5 py-3.5 text-sm text-gray-700">
+                      {formatPickupDate(shipment.llmCargoPickupDate)}
+                    </td>
 
-                  {/* Pickup Status */}
-                  
-                  <td className="px-5 py-3.5">
-                    {shipment.pickupDateStatus ? (() => {
-                      const pickupStyle = PICKUP_STATUS_STYLES[shipment.pickupDateStatus] ?? {
-                        bg: 'bg-gray-50', text: 'text-gray-600',
-                      }
-                      return (
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${pickupStyle.bg} ${pickupStyle.text}`}>
-                          {shipment.pickupDateStatus}
-                        </span>
-                      )
-                    })() : <span className="text-xs text-gray-400">—</span>}
-                  </td>
+                    {/* Pickup Status */}
 
-                  {/* Priority */}
-                  <td className="px-5 py-3.5">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                      shipment.isPriority
-                        ? 'bg-red-100 text-red-600'
-                        : 'bg-gray-100 text-gray-500'
-                    }`}>
-                      {shipment.isPriority ? 'HIGH' : 'STANDARD'}
-                    </span>
-                  </td>
+                    <td className="px-5 py-3.5">
+                      {shipment.pickupDateStatus ? (() => {
+                        const pickupStyle = PICKUP_STATUS_STYLES[shipment.pickupDateStatus] ?? {
+                          bg: 'bg-gray-50', text: 'text-gray-600',
+                        }
+                        return (
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${pickupStyle.bg} ${pickupStyle.text}`}>
+                            {shipment.pickupDateStatus}
+                          </span>
+                        )
+                      })() : <span className="text-xs text-gray-400">—</span>}
+                    </td>
 
-                  {/* Action */}
-                  
-                  <td className="px-5 py-3.5">
-                    {!shipment.llmIdentifiedType?.toLowerCase().includes('delivered') && (
-                      <button
-                        onClick={() => router.push(`/Super_user/shipments/${shipment.id}/action`)}
-                        className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                      >
-                        Take Action
-                      </button>
-                    )}
-                  </td>
+                    {/* Priority */}
+                    <td className="px-5 py-3.5">
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        shipment.isPriority
+                          ? 'bg-red-100 text-red-600'
+                          : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {shipment.isPriority ? 'HIGH' : 'STANDARD'}
+                      </span>
+                    </td>
 
-                  {/* Detail */}
-                  <td className="px-5 py-3.5">
-                    <button
-                      onClick={() => router.push(`/admin/shipments/${shipment.id}?from=/Super_user/shipments`)}
-                      className="text-xs font-medium text-blue-600 hover:underline"
-                    >
-                      View Details
-                    </button>
-                  </td>
+                    {/* Action */}
+                    <td className="px-5 py-3.5">
+                      {renderAction(shipment)}
+                    </td>
 
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          /* Cards */
+          <div className="p-5">
+            {paginated.length === 0 ? (
+              <p className="text-center text-sm text-gray-400 py-10">No shipments found</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {paginated.map((shipment) => (
+                  <ShipmentCard
+                    key={shipment.id}
+                    shipment={shipment}
+                    onClick={() => setSelectedShipment(shipment)}
+                    actionSlot={renderAction(shipment)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/*PAGE_SIZE constant used instead of magic number 10 */}
         <ShipmentPagination
@@ -367,6 +396,12 @@ export default function SuperUserActiveShipmentsPage() {
           onPageChange={setCurrentPage}
         />
       </div>
+
+      <ShipmentDetailModal
+        isOpen={!!selectedShipment}
+        onClose={() => setSelectedShipment(null)}
+        shipment={selectedShipment}
+      />
     </div>
   )
 }

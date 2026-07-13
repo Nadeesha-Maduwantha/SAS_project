@@ -9,6 +9,9 @@ import { ShipmentStatsCard } from '@/components/shipments/ShipmentStatsCard'
 import { ShipmentPagination } from '@/components/shipments/ShipmentPagination'
 import { ShipmentFilter } from '@/components/shipments/ShipmentFilter'
 import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
+import ShipmentDetailModal from '@/components/shipments/ShipmentDetailModal'
+import { ShipmentCard } from '@/components/shipments/ShipmentCard'
+import { ShipmentViewToggle, ShipmentView } from '@/components/shipments/ShipmentViewToggle'
 import { exportAllShipmentsPDF } from '@/lib/Utils/exportPDF'
 import { Shipment } from '@/types'
 import { useAuth } from '@/lib/hooks/useAuth'
@@ -75,6 +78,8 @@ export default function SalesUserShipmentsPage() {
   const [error, setError]                = useState<string | null>(null)
   const [searchQuery, setSearchQuery]    = useState('')
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>(DEFAULT_FILTERS)
+  const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null)
+  const [view, setView] = useState<ShipmentView>('table')
 
   // To Fetching shipments, we use useEffect to call getShipmentsBySalesUser with the staffCode from auth.
   useEffect(() => {
@@ -167,7 +172,27 @@ export default function SalesUserShipmentsPage() {
     </div>
   )
 
-  //Render 
+  // Shared "Take Action" button — used by both the table row and the card
+  // footer. stopPropagation keeps it from also triggering the row/card click
+  // (which opens the detail modal).
+  function renderAction(shipment: Shipment) {
+    if (shipment.llmIdentifiedType?.toLowerCase().includes('delivered')) {
+      return <span className="text-xs text-gray-400 font-medium">Archive</span>
+    }
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          router.push(`/sales_user/shipments/${shipment.id}/action`)
+        }}
+        className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+      >
+        Take Action
+      </button>
+    )
+  }
+
+  //Render
   return (
     <div className="p-6">
 
@@ -249,151 +274,153 @@ export default function SalesUserShipmentsPage() {
             </svg>
             Export PDF
           </button>
+          <ShipmentViewToggle view={view} onChange={setView} />
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                <th className="text-left px-5 py-3">Shipment ID</th>
-                <th className="text-left px-5 py-3">Client Name</th>
-                <th className="text-left px-5 py-3">Status</th>
-                <th className="text-left px-5 py-3">Transport Mode</th>
-                <th className="text-left px-5 py-3">Pickup Date</th>
-                <th className="text-left px-5 py-3">Pickup Status</th>
-                <th className="text-left px-5 py-3">Action</th>
-                <th className="text-left px-5 py-3">Detail</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-5 py-10 text-center text-sm text-gray-400">
-                    No shipments found
-                  </td>
+        {view === 'table' ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  <th className="text-left px-5 py-3">Shipment ID</th>
+                  <th className="text-left px-5 py-3">Client Name</th>
+                  <th className="text-left px-5 py-3">Status</th>
+                  <th className="text-left px-5 py-3">Transport Mode</th>
+                  <th className="text-left px-5 py-3">Pickup Date</th>
+                  <th className="text-left px-5 py-3">Pickup Status</th>
+                  <th className="text-left px-5 py-3">Action</th>
                 </tr>
-              ) : paginated.map((shipment) => {
-                const clientInitials = (shipment.consigneeName ?? 'CL')
-                  .split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
-
-                // transport mode icon background uses TRANSPORT_MODE_STYLES
-                // instead of inline hex ternary
-                const modeStyle = TRANSPORT_MODE_STYLES[shipment.transportMode ?? ''] ?? {
-                  bg: 'bg-gray-100', text: 'text-gray-600',
-                }
-
-                return (
-                  <tr key={shipment.id} className="hover:bg-gray-50 transition-colors">
-
-                    {/* Shipment ID */}
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-2">
-                        
-                        <div className={`w-8 h-8 rounded-lg ${modeStyle.bg} flex items-center justify-center flex-shrink-0`}>
-                          <Truck className={`w-4 h-4 ${modeStyle.text}`} />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900">#{shipment.cargowiseId}</p>
-                          {shipment.branch && (
-                            <p className="text-xs text-gray-400 mt-0.5">Branch: {shipment.branch}</p>
-                          )}
-                        </div>
-                      </div>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {paginated.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-5 py-10 text-center text-sm text-gray-400">
+                      No shipments found
                     </td>
-
-                    {/* Client Name */}
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
-                          <span className="text-xs font-bold text-violet-700">
-                            {clientInitials}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {shipment.consigneeName ?? '—'}
-                          </p>
-                          {shipment.gcCode && (
-                            <p className="text-xs text-gray-400 mt-0.5">{shipment.gcCode}</p>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Status */}
-                    <td className="px-5 py-3.5">
-                      <ShipmentStatusBadge status={shipment.llmIdentifiedType ?? shipment.currentStage} />
-                      {shipment.stNoteText && (
-                        <p className="text-xs text-gray-400 mt-1 max-w-xs truncate">
-                          {shipment.stNoteText}
-                        </p>
-                      )}
-                    </td>
-
-                    {/* Transport Mode */}
-                    
-                    <td className="px-5 py-3.5">
-                      {shipment.transportMode ? (
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${modeStyle.bg} ${modeStyle.text}`}>
-                          {shipment.transportMode}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-400">—</span>
-                      )}
-                    </td>
-
-                    {/* Pickup Date */}
-                    <td className="px-5 py-3.5 text-sm text-gray-700">
-                      {formatPickupDate(shipment.llmCargoPickupDate)}
-                    </td>
-
-                    {/* Pickup Status */}
-                    
-                    <td className="px-5 py-3.5">
-                      {shipment.pickupDateStatus ? (() => {
-                        const pickupStyle = PICKUP_STATUS_STYLES[shipment.pickupDateStatus] ?? {
-                          bg: 'bg-gray-50', text: 'text-gray-600',
-                        }
-                        return (
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${pickupStyle.bg} ${pickupStyle.text}`}>
-                            {shipment.pickupDateStatus}
-                          </span>
-                        )
-                      })() : <span className="text-xs text-gray-400">—</span>}
-                    </td>
-
-                    {/* Action */}
-                    
-                    <td className="px-5 py-3.5">
-                      {!shipment.llmIdentifiedType?.toLowerCase().includes('delivered') ? (
-                        <button
-                          onClick={() => router.push(`/sales_user/shipments/${shipment.id}/action`)}
-                          className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                        >
-                          Take Action
-                        </button>
-                      ) : (
-                        <span className="text-xs text-gray-400 font-medium">Archive</span>
-                      )}
-                    </td>
-
-                    {/* Detail */}
-                    <td className="px-5 py-3.5">
-                      <button
-                        onClick={() => router.push(`/admin/shipments/${shipment.id}?from=/sales_user/shipments`)}
-                        className="text-xs font-medium text-blue-600 hover:underline"
-                      >
-                        View Details
-                      </button>
-                    </td>
-
                   </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                ) : paginated.map((shipment) => {
+                  const clientInitials = (shipment.consigneeName ?? 'CL')
+                    .split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+
+                  // transport mode icon background uses TRANSPORT_MODE_STYLES
+                  // instead of inline hex ternary
+                  const modeStyle = TRANSPORT_MODE_STYLES[shipment.transportMode ?? ''] ?? {
+                    bg: 'bg-gray-100', text: 'text-gray-600',
+                  }
+
+                  return (
+                    <tr
+                      key={shipment.id}
+                      onClick={() => setSelectedShipment(shipment)}
+                      className="hover:bg-gray-50 transition-colors cursor-pointer"
+                    >
+
+                      {/* Shipment ID */}
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2">
+
+                          <div className={`w-8 h-8 rounded-lg ${modeStyle.bg} flex items-center justify-center flex-shrink-0`}>
+                            <Truck className={`w-4 h-4 ${modeStyle.text}`} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">#{shipment.cargowiseId}</p>
+                            {shipment.branch && (
+                              <p className="text-xs text-gray-400 mt-0.5">Branch: {shipment.branch}</p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Client Name */}
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-violet-700">
+                              {clientInitials}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {shipment.consigneeName ?? '—'}
+                            </p>
+                            {shipment.gcCode && (
+                              <p className="text-xs text-gray-400 mt-0.5">{shipment.gcCode}</p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-5 py-3.5">
+                        <ShipmentStatusBadge status={shipment.llmIdentifiedType ?? shipment.currentStage} />
+                        {shipment.stNoteText && (
+                          <p className="text-xs text-gray-400 mt-1 max-w-xs truncate">
+                            {shipment.stNoteText}
+                          </p>
+                        )}
+                      </td>
+
+                      {/* Transport Mode */}
+
+                      <td className="px-5 py-3.5">
+                        {shipment.transportMode ? (
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${modeStyle.bg} ${modeStyle.text}`}>
+                            {shipment.transportMode}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
+
+                      {/* Pickup Date */}
+                      <td className="px-5 py-3.5 text-sm text-gray-700">
+                        {formatPickupDate(shipment.llmCargoPickupDate)}
+                      </td>
+
+                      {/* Pickup Status */}
+
+                      <td className="px-5 py-3.5">
+                        {shipment.pickupDateStatus ? (() => {
+                          const pickupStyle = PICKUP_STATUS_STYLES[shipment.pickupDateStatus] ?? {
+                            bg: 'bg-gray-50', text: 'text-gray-600',
+                          }
+                          return (
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${pickupStyle.bg} ${pickupStyle.text}`}>
+                              {shipment.pickupDateStatus}
+                            </span>
+                          )
+                        })() : <span className="text-xs text-gray-400">—</span>}
+                      </td>
+
+                      {/* Action */}
+                      <td className="px-5 py-3.5">
+                        {renderAction(shipment)}
+                      </td>
+
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="p-5">
+            {paginated.length === 0 ? (
+              <p className="text-center text-sm text-gray-400 py-10">No shipments found</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {paginated.map((shipment) => (
+                  <ShipmentCard
+                    key={shipment.id}
+                    shipment={shipment}
+                    onClick={() => setSelectedShipment(shipment)}
+                    actionSlot={renderAction(shipment)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/*  PAGE_SIZE constant used instead of magic number 10 */}
         <ShipmentPagination
@@ -404,6 +431,12 @@ export default function SalesUserShipmentsPage() {
           onPageChange={setCurrentPage}
         />
       </div>
+
+      <ShipmentDetailModal
+        isOpen={!!selectedShipment}
+        onClose={() => setSelectedShipment(null)}
+        shipment={selectedShipment}
+      />
     </div>
   )
 }

@@ -11,6 +11,9 @@ import { Shipment, DelayedStats } from '@/types'
 import { ShipmentFilter } from '@/components/shipments/ShipmentFilter'
 import { exportDelayedShipmentsPDF } from '@/lib/Utils/exportPDF'
 import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
+import ShipmentDetailModal from '@/components/shipments/ShipmentDetailModal'
+import { ShipmentCard } from '@/components/shipments/ShipmentCard'
+import { ShipmentViewToggle, ShipmentView } from '@/components/shipments/ShipmentViewToggle'
 import {
   TRANSPORT_MODE_OPTIONS,
   TRANSPORT_MODE_STYLES,
@@ -58,8 +61,10 @@ export default function DelayedShipmentsPage() {
   const [error, setError] = useState<string | null>(null)
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>(DEFAULT_FILTERS)
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null)
+  const [view, setView] = useState<ShipmentView>('table')
 
-  // To fetching data 
+  // To fetching data
   useEffect(() => {
     async function fetchData() {
       try {
@@ -111,6 +116,23 @@ export default function DelayedShipmentsPage() {
       <p className="text-red-500 text-sm">{error}</p>
     </div>
   )
+
+  // Shared "Take Action" button — used by both the table row and the card
+  // footer. stopPropagation keeps it from also triggering the row/card click
+  // (which opens the detail modal).
+  function renderAction(shipment: Shipment) {
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          router.push(`/admin/shipments/${shipment.id}/action`)
+        }}
+        className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        Take Action
+      </button>
+    )
+  }
 
   // To render the component
   return (
@@ -177,112 +199,120 @@ export default function DelayedShipmentsPage() {
             </svg>
             Export PDF
           </button>
+          <ShipmentViewToggle view={view} onChange={setView} />
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-y border-gray-100 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                <th className="text-left px-5 py-3">Shipment ID</th>
-                <th className="text-left px-5 py-3">Consignee</th>
-                <th className="text-left px-5 py-3">Status</th>
-                <th className="text-left px-5 py-3">Transport Mode</th>
-                <th className="text-left px-5 py-3">AI Note</th>
-                <th className="text-left px-5 py-3">Action</th>
-                <th className="text-left px-5 py-3">Details</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filteredShipments.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-sm text-gray-400">
-                    No delayed shipments found
-                  </td>
+        {view === 'table' ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-y border-gray-100 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  <th className="text-left px-5 py-3">Shipment ID</th>
+                  <th className="text-left px-5 py-3">Consignee</th>
+                  <th className="text-left px-5 py-3">Status</th>
+                  <th className="text-left px-5 py-3">Transport Mode</th>
+                  <th className="text-left px-5 py-3">AI Note</th>
+                  <th className="text-left px-5 py-3">Action</th>
                 </tr>
-              ) : paginated.map((shipment) => (
-                <tr key={shipment.id} className="hover:bg-gray-50 transition-colors">
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filteredShipments.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-10 text-center text-sm text-gray-400">
+                      No delayed shipments found
+                    </td>
+                  </tr>
+                ) : paginated.map((shipment) => (
+                  <tr
+                    key={shipment.id}
+                    onClick={() => setSelectedShipment(shipment)}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
 
-                  {/* Shipment ID */}
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2">
-                      {shipment.isPriority && (
-                        <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                      )}
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">#{shipment.cargowiseId}</p>
-                        {shipment.branch && (
-                          <p className="text-xs text-gray-400 mt-0.5">Branch: {shipment.branch}</p>
+                    {/* Shipment ID */}
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-2">
+                        {shipment.isPriority && (
+                          <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
                         )}
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">#{shipment.cargowiseId}</p>
+                          {shipment.branch && (
+                            <p className="text-xs text-gray-400 mt-0.5">Branch: {shipment.branch}</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </td>
+                    </td>
 
-                  {/* Consignee */}
-                  <td className="px-5 py-3.5">
-                    <p className="text-sm font-medium text-gray-900">
-                      {shipment.consigneeName ?? '—'}
-                    </p>
-                    {shipment.gcCode && (
-                      <p className="text-xs text-gray-400 mt-0.5">{shipment.gcCode}</p>
-                    )}
-                  </td>
-
-                  {/* Status */}
-                  <td className="px-5 py-3.5">
-                    <ShipmentStatusBadge status={shipment.llmIdentifiedType ?? shipment.currentStage} />
-                    {shipment.stNoteText && (
-                      <p className="text-xs text-gray-400 mt-1 max-w-xs truncate">
-                        {shipment.stNoteText}
+                    {/* Consignee */}
+                    <td className="px-5 py-3.5">
+                      <p className="text-sm font-medium text-gray-900">
+                        {shipment.consigneeName ?? '—'}
                       </p>
-                    )}
-                  </td>
+                      {shipment.gcCode && (
+                        <p className="text-xs text-gray-400 mt-0.5">{shipment.gcCode}</p>
+                      )}
+                    </td>
 
-                  {/* Transport Mode */}
-                  <td className="px-5 py-3.5">
-                    {shipment.transportMode ? (() => {
-                      const modeStyle = TRANSPORT_MODE_STYLES[shipment.transportMode] ?? {
-                        bg: 'bg-gray-100', text: 'text-gray-600',
-                      }
-                      return (
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${modeStyle.bg} ${modeStyle.text}`}>
-                          {shipment.transportMode}
-                        </span>
-                      )
-                    })() : <span className="text-xs text-gray-400">—</span>}
-                  </td>
+                    {/* Status */}
+                    <td className="px-5 py-3.5">
+                      <ShipmentStatusBadge status={shipment.llmIdentifiedType ?? shipment.currentStage} />
+                      {shipment.stNoteText && (
+                        <p className="text-xs text-gray-400 mt-1 max-w-xs truncate">
+                          {shipment.stNoteText}
+                        </p>
+                      )}
+                    </td>
 
-                  {/* AI Note */}
-                  <td className="px-5 py-3.5">
-                    <p className="text-xs text-gray-600 max-w-xs truncate">
-                      {shipment.llmNote ?? '—'}
-                    </p>
-                  </td>
+                    {/* Transport Mode */}
+                    <td className="px-5 py-3.5">
+                      {shipment.transportMode ? (() => {
+                        const modeStyle = TRANSPORT_MODE_STYLES[shipment.transportMode] ?? {
+                          bg: 'bg-gray-100', text: 'text-gray-600',
+                        }
+                        return (
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${modeStyle.bg} ${modeStyle.text}`}>
+                            {shipment.transportMode}
+                          </span>
+                        )
+                      })() : <span className="text-xs text-gray-400">—</span>}
+                    </td>
 
-                  {/* Action */}
-                  <td className="px-5 py-3.5">
-                    <button
-                      onClick={() => router.push(`/admin/shipments/${shipment.id}/action`)}
-                      className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      Take Action
-                    </button>
-                  </td>
+                    {/* AI Note */}
+                    <td className="px-5 py-3.5">
+                      <p className="text-xs text-gray-600 max-w-xs truncate">
+                        {shipment.llmNote ?? '—'}
+                      </p>
+                    </td>
 
-                  {/* Details */}
-                  <td className="px-5 py-3.5">
-                    <button
-                      onClick={() => router.push(`/admin/shipments/${shipment.id}?from=/admin/shipments/delayed`)}
-                      className="text-xs font-medium text-blue-600 hover:underline"
-                    >
-                      View Details
-                    </button>
-                  </td>
+                    {/* Action */}
+                    <td className="px-5 py-3.5">
+                      {renderAction(shipment)}
+                    </td>
 
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="p-5">
+            {paginated.length === 0 ? (
+              <p className="text-center text-sm text-gray-400 py-10">No delayed shipments found</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {paginated.map((shipment) => (
+                  <ShipmentCard
+                    key={shipment.id}
+                    shipment={shipment}
+                    onClick={() => setSelectedShipment(shipment)}
+                    actionSlot={renderAction(shipment)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <ShipmentPagination
           currentPage={currentPage}
@@ -292,6 +322,12 @@ export default function DelayedShipmentsPage() {
           onPageChange={setCurrentPage}
         />
       </div>
+
+      <ShipmentDetailModal
+        isOpen={!!selectedShipment}
+        onClose={() => setSelectedShipment(null)}
+        shipment={selectedShipment}
+      />
     </div>
   )
 }
