@@ -47,7 +47,7 @@ export default function FilterDropdown({ filters, setFilters, rows = [], label =
   };
 
   return (
-    <div className="relative z-[9999]" ref={ref}>
+    <div className="relative z-50" ref={ref}>
       {/* Trigger button */}
       <button
         onClick={() => setOpen((v) => !v)}
@@ -68,7 +68,7 @@ export default function FilterDropdown({ filters, setFilters, rows = [], label =
 
       {/* Main dropdown */}
       {open && (
-        <div className="absolute right-0 mt-2 z-[9999] w-52 rounded-xl border border-gray-200 bg-white shadow-xl overflow-visible">
+        <div className="absolute right-0 mt-2 z-50 w-52 rounded-xl border border-gray-200 bg-white shadow-xl overflow-visible">
           {rows.map((row, idx) => {
             const isActive = filters[row.key] !== row.default;
             const shortLabel = row.shortLabel
@@ -97,7 +97,7 @@ export default function FilterDropdown({ filters, setFilters, rows = [], label =
 
                   {/* Side submenu */}
                   {hoveredKey === row.key && (
-                    <div className="absolute right-full top-0 mr-1 w-52 rounded-xl border border-gray-200 bg-white shadow-xl z-[9999] overflow-hidden">
+                    <div className="absolute right-full top-0 mr-1 w-52 rounded-xl border border-gray-200 bg-white shadow-xl z-50 overflow-hidden">
                       {row.options.map((opt) => (
                         <button
                           key={opt.value}

@@ -10,7 +10,14 @@ import {
 } from "@/components/milestones/templateComponents";
 import AssignTemplateModal from "@/components/milestones/AssignTemplateModal";
 import MilestoneSequenceView from "@/components/milestones/Milestonesequenceview";
-import MilestoneSequenceEdit from "@/components/milestones/Milestonesequenceedit";
+import TemplateMilestoneBuilder, {
+  TemplateMilestoneView, slotsToPayload, tmlRowsToSlots,
+} from "@/components/milestones/TemplateMilestoneBuilder";
+
+function authHeaders() {
+  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : "";
+  return { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+}
 
 // ── Stat Card ──────────────────────────────────────────────────────────────────
 function StatCard({ icon, label, value, prevValue, animating, clickable, onClick }) {
@@ -72,6 +79,8 @@ export default function MilestoneTemplatePage() {
   const [loading, setLoading] = useState(hasTemplateId);
   const [error,   setError]   = useState(hasTemplateId ? null : "No template ID provided in the URL.");
   const [saving,  setSaving]  = useState(false);
+  const [slots,        setSlots]        = useState([]);   // new library/local milestones
+  const [promotingKey, setPromotingKey] = useState(null);
 
   // ── UI state ────────────────────────────────────────────────
   const [editMode,    setEditMode]    = useState(openInEdit);
@@ -88,55 +97,75 @@ export default function MilestoneTemplatePage() {
   const onBlur  = (e) => { e.target.style.borderColor = T.gray200; e.target.style.boxShadow = "none"; };
 
   // ── Fetch ───────────────────────────────────────────────────
+  const loadTemplate = async () => {
+    try {
+      setError(null);
+      const res    = await fetch(`http://localhost:5000/api/templates/${templateId}`, { headers: authHeaders() });
+      const result = await res.json();
+      if (res.ok) {
+        setTmpl(result.data);
+        setSlots(tmlRowsToSlots(result.data.template_milestone_library ?? []));
+      } else {
+        setError(result.error || "Failed to load template");
+      }
+    } catch {
+      setError("Could not connect to server. Is Flask running?");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!templateId) return;
-    (async () => {
-      try {
-        setError(null);
-        const res    = await fetch(`http://localhost:5000/api/templates/${templateId}`);
-        const result = await res.json();
-        if (res.ok) setTmpl(result.data);
-        else        setError(result.error || "Failed to load template");
-      } catch {
-        setError("Could not connect to server. Is Flask running?");
-      } finally {
-        setLoading(false);
-      }
-    })();
+    loadTemplate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId]);
 
   // ── Safe values ─────────────────────────────────────────────
   const tmplName       = tmpl?.name              ?? "Loading...";
   const tmplId         = tmpl?.id                ?? "—";
-  const milestones     = [...(tmpl?.template_milestones ?? [])].sort((a, b) => a.sequence_order - b.sequence_order);
+  const legacyMs       = [...(tmpl?.template_milestones ?? [])].sort((a, b) => a.sequence_order - b.sequence_order);
+  const usingLibrary   = (tmpl?.template_milestone_library?.length ?? 0) > 0;
+  const milestoneCount = usingLibrary ? slots.length : legacyMs.length;
   const shipmentsUsing = tmpl?.shipmentsUsing    ?? 0;
   const derivedCount   = tmpl?.derivedTemplates  ?? 0;
 
   // ── Handlers ────────────────────────────────────────────────
-  const handleMilestonesChange = (updated) =>
-    setTmpl(t => ({ ...t, template_milestones: updated }));
-
   const handleSave = async () => {
     if (!tmpl) return;
+    if (slots.length === 0) { alert("Add at least one milestone."); return; }
     setSaving(true);
     try {
       const res = await fetch(`http://localhost:5000/api/templates/${tmpl.id}`, {
         method:  "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify({
           name:          tmpl.name,
           shipment_type: tmpl.shipment_type,
           description:   tmpl.description,
-          milestones:    milestones.map((m, i) => ({ name: m.name, sequence_order: i })),
+          milestones:    slotsToPayload(slots),
         }),
       });
-      if (res.ok) setEditMode(false);
+      if (res.ok) { await loadTemplate(); setEditMode(false); }
       else { const d = await res.json(); alert(d.error || "Failed to save"); }
     } catch {
       alert("Could not connect to server. Is Flask running?");
     } finally {
       setSaving(false);
     }
+  };
+
+  const handlePromote = async (slot) => {
+    if (!slot.tml_id) return;
+    setPromotingKey(slot.key);
+    try {
+      const res = await fetch(`http://localhost:5000/api/milestone-library/promote`, {
+        method: "POST", headers: authHeaders(), body: JSON.stringify({ tml_id: slot.tml_id }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || "Failed to promote");
+      await loadTemplate();
+    } catch (e) { alert(e.message); } finally { setPromotingKey(null); }
   };
 
   const handleSaveAsCopy = async (name) => {
@@ -231,7 +260,7 @@ export default function MilestoneTemplatePage() {
 
               <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "20px" }}>
                 <StatCard icon={<IcoTruck />}     label="Shipments Using Template" value={shipmentsUsing} />
-                <StatCard icon={<IcoCheckList />} label="Milestones in Template"   value={milestones.length} />
+                <StatCard icon={<IcoCheckList />} label="Milestones in Template"   value={milestoneCount} />
                 <StatCard icon={<IcoBranch />} label="Derived Templates" value={derivedCount}
                   prevValue={prevDerived} animating={countAnim} clickable
                   onClick={() => router.push(`/admin/milestone_templates_list?parent=${tmplId}`)}
@@ -266,29 +295,34 @@ export default function MilestoneTemplatePage() {
               <div style={{ marginBottom: "18px" }}>
                 <SectionHead
                   title="Milestone Sequence"
-                  pill={loading ? "Loading..." : `${milestones.length} milestones`}
+                  pill={loading ? "Loading..." : `${milestoneCount} milestones`}
                 />
               </div>
 
-              {/* VIEW MODE — read-only component */}
+              {/* VIEW MODE */}
               {!editMode && (
-                <MilestoneSequenceView
-                  milestones={milestones}
-                  loading={loading}
-                  error={error}
-                />
+                loading ? (
+                  <p style={{ fontSize: "13px", color: T.gray500 }}>Loading…</p>
+                ) : error ? (
+                  <p style={{ fontSize: "13px", color: T.red }}>{error}</p>
+                ) : usingLibrary ? (
+                  <TemplateMilestoneView slots={slots} onPromote={handlePromote} promotingKey={promotingKey} />
+                ) : (
+                  // Legacy name-only templates keep the old read-only view
+                  <MilestoneSequenceView milestones={legacyMs} loading={loading} error={error} />
+                )
               )}
 
-              {/* EDIT MODE — editable component with save/copy built in */}
+              {/* EDIT MODE — new library/local builder */}
               {editMode && (
-                <MilestoneSequenceEdit
-                  milestones={milestones}
-                  onChange={handleMilestonesChange}
-                  onSave={handleSave}
-                  onSaveAsCopy={handleSaveAsCopy}
-                  saving={saving}
-                  templateName={tmplName}
-                />
+                <>
+                  {!usingLibrary && legacyMs.length > 0 && (
+                    <div style={{ fontSize: "12px", color: T.amber, background: T.amberBg, border: `1px solid ${T.amberBorder}`, borderRadius: "8px", padding: "10px 14px", marginBottom: "14px" }}>
+                      This template uses the old name-only milestones. Saving here replaces them with the milestones you configure below.
+                    </div>
+                  )}
+                  <TemplateMilestoneBuilder slots={slots} onChange={setSlots} />
+                </>
               )}
             </div>
 
@@ -341,6 +375,24 @@ export default function MilestoneTemplatePage() {
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {/* Save changes */}
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    style={{ ...solidBtn(T.blue, "#fff"), width: "100%", padding: "10px", borderRadius: "9px", justifyContent: "center", opacity: saving ? 0.7 : 1, cursor: saving ? "not-allowed" : "pointer" }}
+                  >
+                    {saving ? "Saving…" : "Save Changes"}
+                  </button>
+
+                  {/* Save as Copy */}
+                  <button
+                    onClick={() => { setCopyName(`${tmplName} (Copy)`); setShowCopy(true); }}
+                    disabled={saving}
+                    style={{ ...outlineBtn(T.blue, T.blueBorder, T.blueBg), width: "100%", justifyContent: "center" }}
+                  >
+                    Save as Copy
+                  </button>
+
                   {/* Assign */}
                   <button
                     onClick={() => setShowAssign(true)}

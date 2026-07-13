@@ -241,12 +241,18 @@ export default function TemplatesTable({
                   </td>
 
                   <td className="px-5 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-20 h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                        <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min(((t.template_milestones?.length ?? 0) / 20) * 100, 100)}%` }} />
-                      </div>
-                      <span className="text-gray-700 font-medium tabular-nums">{(t.template_milestones?.length ?? 0)}</span>
-                    </div>
+                    {(() => {
+                      const count = t.milestone_count
+                        ?? (t.template_milestone_library?.length ?? t.template_milestones?.length ?? 0);
+                      return (
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                            <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min((count / 20) * 100, 100)}%` }} />
+                          </div>
+                          <span className="text-gray-700 font-medium tabular-nums">{count}</span>
+                        </div>
+                      );
+                    })()}
                   </td>
 
                   <td className="px-5 py-4">

@@ -7,7 +7,12 @@ import {
   SectionHead, Modal, PAGE_KEYFRAMES,
 } from "@/components/milestones/templateComponents";
 import AssignTemplateModal from "@/components/milestones/AssignTemplateModal";
-import MilestoneSequenceEdit from "@/components/milestones/Milestonesequenceedit";
+import TemplateMilestoneBuilder, { slotsToPayload } from "@/components/milestones/TemplateMilestoneBuilder";
+
+function authHeaders() {
+  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : "";
+  return { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+}
 
 const SHIPMENT_TYPES = [
   "Air Freight - Standard",
@@ -56,12 +61,12 @@ export default function CreateTemplatePage() {
     try {
       const res = await fetch("http://localhost:5000/api/templates", {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify({
           name:          tmplName,
           shipment_type: shipmentType,
           description,
-          milestones: milestones.map((m, i) => ({ name: m.name, sequence_order: i })),
+          milestones: slotsToPayload(milestones),
         }),
       });
       const result = await res.json();
@@ -86,12 +91,12 @@ export default function CreateTemplatePage() {
     try {
       const res = await fetch("http://localhost:5000/api/templates", {
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify({
           name,
           shipment_type: shipmentType,
           description,
-          milestones: milestones.map((m, i) => ({ name: m.name, sequence_order: i })),
+          milestones: slotsToPayload(milestones),
         }),
       });
       const result = await res.json();
@@ -149,15 +154,22 @@ export default function CreateTemplatePage() {
                 </div>
               )}
 
-              {/* MilestoneSequenceEdit handles the full edit experience */}
-              <MilestoneSequenceEdit
-                milestones={milestones}
+              {/* New builder: pick from library or build new milestones */}
+              <TemplateMilestoneBuilder
+                slots={milestones}
                 onChange={setMilestones}
-                onSave={handleSave}
-                onSaveAsCopy={handleSaveAsCopy}
-                saving={saving}
-                templateName={tmplName || "New Template"}
               />
+
+              {/* Save actions */}
+              <div style={{ display: "flex", gap: "10px", marginTop: "18px", paddingTop: "18px", borderTop: `1px solid ${T.gray100}` }}>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  style={{ ...solidBtn(T.blue, "#fff"), padding: "10px 20px", opacity: saving ? 0.7 : 1, cursor: saving ? "not-allowed" : "pointer" }}
+                >
+                  {saving ? "Saving…" : "Save Template"}
+                </button>
+              </div>
             </div>
           </div>
 

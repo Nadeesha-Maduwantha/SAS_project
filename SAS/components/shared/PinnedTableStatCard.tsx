@@ -136,8 +136,18 @@ function PinnedStatCard({ table }: { table: PinnedTable }) {
 
   return (
     <div
-      onClick={() => router.push(`/admin/custom_tables?tab=${table.id}`)}
-      style={{
+    onClick={() => {
+      const role = localStorage.getItem('user_role') || '';
+      const r = role.toLowerCase();
+      const base =
+        r.includes('admin')     ? '/admin' :
+        r.includes('operation') ? '/operation_user' :
+        r.includes('sales')     ? '/sales_user' :
+        r.includes('super')     ? '/Super_user' :
+        '/admin';
+      router.push(`${base}/custom_tables?tab=${table.id}`);
+    }} 
+     style={{
         background:   '#fff',
         border:       '1px solid #E5E7EB',
         borderRadius: 12,

@@ -264,6 +264,11 @@ export default function AdminLeftNavBar({ topOffset = 57 }: { topOffset?: number
         showLabel={fullyExpanded}
       >
         <NavItem
+          label="Milestone Library"
+          isActive={active('/admin/milestone_library')}
+          onClick={() => go('/admin/milestone_library')}
+        />
+        <NavItem
           label="Templates List"
           isActive={active('/admin/milestone_templates_list')}
           onClick={() => go('/admin/milestone_templates_list')}

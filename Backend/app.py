@@ -167,6 +167,8 @@ app.register_blueprint(sync_bp)
 
 app.register_blueprint(alerts_bp)
 
+app.register_blueprint(milestone_library_bp)
+
 def health_check():
     return {'status': 'Backend is running'}, 200
 

@@ -504,44 +504,13 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
             </div>
           </div>
 
-          {/* Conflict strategy — only shown if there are conflicts */}
+          {/* Conflicts are resolved in a dedicated next step so they can't be missed */}
           {conflictCount > 0 && (
-            <div style={{ background: T.amberBg, border: `1px solid ${T.amberBorder}`, borderRadius: "10px", padding: "14px 16px", marginBottom: "16px" }}>
-              <div style={{ display: "flex", gap: "10px", alignItems: "flex-start", marginBottom: "12px" }}>
-                <span style={{ color: T.amber, flexShrink: 0, paddingTop: "1px" }}><IcoWarn /></span>
-                <div>
-                  <div style={{ fontSize: "13px", fontWeight: "700", color: "#92400E" }}>
-                    {conflictCount} shipment{conflictCount !== 1 ? "s" : ""} already have milestones
-                  </div>
-                  <div style={{ fontSize: "12px", color: "#B45309", marginTop: "2px" }}>
-                    How should these be handled?
-                  </div>
-                </div>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", paddingLeft: "26px" }}>
-                {[
-                  { val: "skip",    label: "Skip — keep existing milestones unchanged"     },
-                  { val: "replace", label: "Replace — delete existing and assign new ones" },
-                ].map(opt => (
-                  <div
-                    key={opt.val}
-                    onClick={() => setConflictStrategy(opt.val)}
-                    style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}
-                  >
-                    <div style={{
-                      width: "14px", height: "14px", borderRadius: "50%",
-                      border: `2px solid ${conflictStrategy === opt.val ? T.amber : T.gray300}`,
-                      background: conflictStrategy === opt.val ? T.amber : "transparent",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      flexShrink: 0,
-                    }}>
-                      {conflictStrategy === opt.val && <div style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#fff" }} />}
-                    </div>
-                    <span style={{ fontSize: "12px", color: "#92400E", fontWeight: conflictStrategy === opt.val ? "600" : "400" }}>
-                      {opt.label}
-                    </span>
-                  </div>
-                ))}
+            <div style={{ background: T.amberBg, border: `1px solid ${T.amberBorder}`, borderRadius: "10px", padding: "12px 16px", marginBottom: "16px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
+              <span style={{ color: T.amber, flexShrink: 0, paddingTop: "1px" }}><IcoWarn /></span>
+              <div style={{ fontSize: "12px", color: "#B45309", lineHeight: "1.5" }}>
+                <strong style={{ color: "#92400E" }}>{conflictCount} shipment{conflictCount !== 1 ? "s" : ""} already have milestones.</strong>{" "}
+                On the next step you'll choose whether to keep or replace them — nothing is assigned until you confirm.
               </div>
             </div>
           )}
@@ -574,11 +543,9 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
                   {s.has_milestones && (
                     <span style={{
                       fontSize: "10px", fontWeight: "600", padding: "2px 7px", borderRadius: "4px", flexShrink: 0,
-                      color:      conflictStrategy === "replace" ? T.red   : T.amber,
-                      background: conflictStrategy === "replace" ? T.redBg : T.amberBg,
-                      border:     `1px solid ${conflictStrategy === "replace" ? T.redBorder : T.amberBorder}`,
+                      color: T.amber, background: T.amberBg, border: `1px solid ${T.amberBorder}`,
                     }}>
-                      {conflictStrategy === "replace" ? "Will replace" : "Will skip"}
+                      Has milestones
                     </span>
                   )}
                 </div>
@@ -586,12 +553,14 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
             )}
           </div>
 
-          {error && (
-            <div style={{ fontSize: "12px", color: T.red, marginTop: "12px", padding: "10px 14px", background: T.redBg, border: `1px solid ${T.redBorder}`, borderRadius: "8px" }}>
-              {error}
-            </div>
-          )}
         </div>
+
+        {/* Error strip — sits above the footer so it's always visible */}
+        {error && (
+          <div style={{ flexShrink: 0, fontSize: "12px", color: T.red, margin: "0 24px 12px", padding: "10px 14px", background: T.redBg, border: `1px solid ${T.redBorder}`, borderRadius: "8px" }}>
+            {error}
+          </div>
+        )}
 
         <ModalFooter>
           <button
@@ -601,7 +570,7 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
             ← Back
           </button>
           <button
-            onClick={handleAssign}
+            onClick={() => { conflictCount > 0 ? setStep("conflict") : handleAssign(); }}
             disabled={assigning || previewShipments.length === 0}
             style={{
               ...solidBtn(previewShipments.length > 0 ? T.blue : T.gray300, "#fff"),
@@ -612,12 +581,108 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
           >
             {assigning
               ? "Assigning..."
+              : conflictCount > 0
+              ? `Next: Handle ${conflictCount} Conflict${conflictCount !== 1 ? "s" : ""} →`
               : `Assign to ${previewShipments.length} Shipment${previewShipments.length !== 1 ? "s" : ""}`}
           </button>
         </ModalFooter>
       </div>
     </div>
   );
+
+  // ══════════════════════════════════════════════════════════════
+  //  STEP 3b — Resolve Conflicts (dedicated, unmissable step)
+  // ══════════════════════════════════════════════════════════════
+  if (step === "conflict") {
+    const replacing = conflictStrategy === "replace";
+    return (
+      <div style={OVERLAY}>
+        <div style={{ ...baseCard, width: "520px" }}>
+          <ModalHeader
+            title="Handle Existing Milestones"
+            subtitle={`${conflictCount} of ${previewShipments.length} selected shipment${previewShipments.length !== 1 ? "s" : ""} already have milestones`}
+            onClose={onClose}
+          />
+
+          <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+            <div style={{ fontSize: "13px", color: T.gray600, marginBottom: "16px", lineHeight: "1.6" }}>
+              Choose what happens to the shipments that already have milestones. This must be set before assigning.
+            </div>
+
+            {/* Big radio cards */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {[
+                { val: "skip",    label: "Skip these shipments",   desc: "Keep their existing milestones unchanged. Only shipments without milestones get the new template." },
+                { val: "replace", label: "Replace their milestones", desc: "Delete the existing milestones on these shipments and assign the new template. This cannot be undone." },
+              ].map(opt => {
+                const sel = conflictStrategy === opt.val;
+                const danger = opt.val === "replace";
+                const accent = danger ? T.red : T.blue;
+                return (
+                  <div key={opt.val} onClick={() => { setConflictStrategy(opt.val); setError(null); }}
+                    style={{
+                      display: "flex", gap: "12px", padding: "14px",
+                      border: `1.5px solid ${sel ? accent : T.gray200}`,
+                      borderRadius: "10px",
+                      background: sel ? (danger ? T.redBg : T.blueBg) : T.cardBg,
+                      cursor: "pointer", transition: "all 0.13s",
+                    }}
+                  >
+                    <div style={{
+                      width: "18px", height: "18px", borderRadius: "50%", marginTop: "1px",
+                      border: `2px solid ${sel ? accent : T.gray300}`,
+                      background: sel ? accent : "transparent",
+                      display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                    }}>
+                      {sel && <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#fff" }} />}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "13px", fontWeight: "700", color: sel ? accent : T.gray900 }}>{opt.label}</div>
+                      <div style={{ fontSize: "12px", color: T.gray500, marginTop: "3px", lineHeight: "1.5" }}>{opt.desc}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Outcome summary */}
+            <div style={{ marginTop: "16px", padding: "12px 14px", background: T.gray50, border: `1px solid ${T.gray200}`, borderRadius: "8px", fontSize: "12px", color: T.gray600, lineHeight: "1.6" }}>
+              <strong style={{ color: T.gray900 }}>Result: </strong>
+              {replacing
+                ? `${previewShipments.length} shipment(s) will get the template — ${conflictCount} replaced, ${previewShipments.length - conflictCount} new.`
+                : `${previewShipments.length - conflictCount} shipment(s) will get the template, ${conflictCount} skipped.`}
+            </div>
+          </div>
+
+          {error && (
+            <div style={{ flexShrink: 0, fontSize: "12px", color: T.red, margin: "0 24px 12px", padding: "10px 14px", background: T.redBg, border: `1px solid ${T.redBorder}`, borderRadius: "8px" }}>
+              {error}
+            </div>
+          )}
+
+          <ModalFooter>
+            <button onClick={() => { setError(null); setStep("preview"); }} style={{ ...outlineBtn(T.gray500, T.gray200, T.gray50) }}>← Back</button>
+            <button
+              onClick={handleAssign}
+              disabled={assigning}
+              style={{
+                ...solidBtn(replacing ? T.red : T.blue, "#fff"),
+                padding: "9px 20px",
+                opacity: assigning ? 0.7 : 1,
+                cursor: assigning ? "not-allowed" : "pointer",
+              }}
+            >
+              {assigning
+                ? "Assigning..."
+                : replacing
+                ? `Replace & Assign (${previewShipments.length})`
+                : `Skip Conflicts & Assign (${previewShipments.length - conflictCount})`}
+            </button>
+          </ModalFooter>
+        </div>
+      </div>
+    );
+  }
 
   // ══════════════════════════════════════════════════════════════
   //  STEP 4 — Success
