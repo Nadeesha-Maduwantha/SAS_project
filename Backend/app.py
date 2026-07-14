@@ -23,6 +23,7 @@ from routes.change_password import bp as change_password_bp
 from routes.templates import templates_bp
 from routes.milestones import milestones_bp
 from routes.shipments import shipments_bp
+from routes.alerts import alerts_bp
 
 # Dashboard & Sync routes
 from routes.dashboard import dashboard_bp
@@ -163,6 +164,7 @@ app.register_blueprint(access_logs_bp, url_prefix="/api/access-logs")
 app.register_blueprint(templates_bp)
 app.register_blueprint(milestones_bp)
 app.register_blueprint(shipments_bp)
+app.register_blueprint(alerts_bp)
 app.register_blueprint(change_password_bp, name="change_password_routes")
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(cargowise_sync_bp, name="cargowise_sync_routes")

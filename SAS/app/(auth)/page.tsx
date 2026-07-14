@@ -43,6 +43,8 @@ export default function LoginPage() {
         // Store tokens
         localStorage.setItem('access_token', data.access_token);
         localStorage.setItem('user_role', role);
+        localStorage.setItem('user_email', data.user.email || '');
+        localStorage.setItem('user_department', data.user.department || '');
         document.cookie = `access_token=${data.access_token}; path=/; max-age=86400`;
         document.cookie = `user_role=${role}; path=/; max-age=86400`;
 
