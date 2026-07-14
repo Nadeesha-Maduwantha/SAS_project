@@ -67,7 +67,7 @@ def login():
     
     # 1. SAFELY CHECK IF USER IS ALREADY LOCKED / BLOCKED
     try:
-        profile_response = supabase.table('profiles').select('id, role, is_locked, is_blocked, failed_attempts').eq('email', email).execute()
+        profile_response = supabase.table('profiles').select('id, role, department, is_locked, is_blocked, failed_attempts').eq('email', email).execute()
         if profile_response.data:
             profile_data = profile_response.data[0]
     except Exception as e:
@@ -123,7 +123,8 @@ def login():
             'user': {
                 'id': user_id,
                 'email': str(response.user.email),
-                'role': actual_role
+                'role': actual_role,
+                'department': profile_data.get('department') if profile_data else None
             }
         }), 200
 
