@@ -51,12 +51,12 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     fetchDashboardData(
-      "http://127.0.0.1:5001/api/dashboard/admin/shipment-feed",
+      `${API_BASE_URL}/api/dashboard/admin/shipment-feed`,
       []
     ).then(setShipments);
 
     fetchDashboardData(
-      "http://127.0.0.1:5001/api/dashboard/admin/metrics",
+      `${API_BASE_URL}/api/dashboard/admin/metrics`,
       {
       total_users: 0,
       active_alerts: 0,

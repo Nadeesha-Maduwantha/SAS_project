@@ -6,9 +6,11 @@ import {
     MoreHorizontal, Anchor, Truck, Warehouse, Plane, Navigation,
     LayoutList, LayoutGrid, ChevronLeft, ChevronRight,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/hooks/useAuth';
 import AlertDetailsModal, { AlertData } from '@/components/AlertDetailsModal';
 import EmailComposeModal from '@/components/EmailComposeModal';
+
+const FLASK_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Alert = {
@@ -29,15 +31,10 @@ type Alert = {
 
 type SupabaseRow = {
     shipment_id: string;
-    name: string;
-    status: string;
-    notes: string;
+    title: string;
+    message: string;
     is_critical: boolean;
-    due_date: string | null;
-    completed_date: string | null;
-    assigned_to: string;
-    assigned_email: string;
-    alert_sent: boolean;
+    status: string;
     created_at?: string;
 }
 
@@ -55,7 +52,6 @@ function getMilestoneIcon(name: string = ''): 'anchor' | 'truck' | 'warehouse' |
 
 function mapRow(row: SupabaseRow, idx: number): Alert {
     const initial = String(row.shipment_id || '?')[0].toUpperCase();
-    const isOverdue = row.due_date && !row.completed_date && new Date(row.due_date) < new Date();
     return {
         id: `${row.shipment_id}-${idx}`,
         shipment_id: row.shipment_id,
@@ -63,11 +59,11 @@ function mapRow(row: SupabaseRow, idx: number): Alert {
         clientInitial: initial,
         clientColor: CLIENT_COLORS[idx % CLIENT_COLORS.length],
         priority: row.is_critical ? 'Critical' : 'Medium',
-        milestone: row.name || '—',
-        milestoneIcon: getMilestoneIcon(row.name),
-        issue: row.notes || '—',
-        delay: isOverdue ? `Overdue since ${new Date(row.due_date!).toLocaleDateString()}` : '—',
-        delayColor: isOverdue ? '#ef4444' : '#6b7280',
+        milestone: row.title || '—',
+        milestoneIcon: getMilestoneIcon(row.title),
+        issue: row.message || '—',
+        delay: row.is_critical ? 'Critical' : '—',
+        delayColor: row.is_critical ? '#ef4444' : '#6b7280',
         status: 'Get Action',
         createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     };
@@ -177,6 +173,7 @@ export default function AlertDashboardPage() {
     const [alerts, setAlerts] = useState<Alert[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const { email } = useAuth();
 
     // ── Modal state ──────────────────────────────────────────────
     const [detailsOpen, setDetailsOpen]   = useState(false);
@@ -197,18 +194,21 @@ export default function AlertDashboardPage() {
     const fetchAlerts = async () => {
         setLoading(true);
         setError(null);
-        const { data, error: err } = await supabase
-            .from('shipment_milestones')
-            .select('shipment_id, name, status, notes, is_critical, due_date, completed_date, assigned_to, assigned_email, alert_sent, created_at');
-        if (err) {
-            setError(err.message);
-        } else {
-            setAlerts((data as SupabaseRow[] || []).map(mapRow));
+        try {
+            const res = await fetch(`${FLASK_API}/api/alerts?email=${encodeURIComponent(email)}`);
+            const json = await res.json();
+            if (!res.ok) {
+                setError(json.error || 'Failed to load alerts');
+            } else {
+                setAlerts((json.data as SupabaseRow[] || []).map(mapRow));
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load alerts');
         }
         setLoading(false);
     };
 
-    useEffect(() => { fetchAlerts(); }, []);
+    useEffect(() => { fetchAlerts(); }, [email]);
 
     const filtered = alerts.filter((a) => {
         const matchPriority = priorityFilter === 'All Priorities' || a.priority === priorityFilter;

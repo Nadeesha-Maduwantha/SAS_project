@@ -16,7 +16,7 @@ export default function OperationPriorityShipments() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://localhost:5001/api/dashboard/operation/shipment")
+    fetch("http://localhost:5000/api/dashboard/operation/shipment")
       .then((res) => res.json())
       .then((data) => {
         setRows(data.data);
