@@ -6,15 +6,25 @@ shipments_bp = Blueprint('shipments', __name__)
 
 # Shared Helper Functions
 
+def get_milestone_value(shipment: dict, milestone: str, key: str):
+    """
+    Safely read one value out of the shipments.milestones jsonb, e.g.
+    get_milestone_value(s, 'cargo_pickup', 'status') -> 'Delayed' / None.
+    Any missing level (no milestones, unknown milestone name, no key)
+    returns None instead of raising.
+    """
+    return ((shipment.get('milestones') or {}).get(milestone) or {}).get(key)
+
+
 def is_delayed(shipment: dict) -> bool:
     """
     Single source of truth for delayed shipment logic.
     A shipment is delayed when:
-      - pickup_date_status is 'Delayed', AND
+      - the cargo_pickup milestone status is 'Delayed', AND
       - it has not already been delivered
     """
     return (
-        shipment.get('pickup_date_status') == 'Delayed' and
+        get_milestone_value(shipment, 'cargo_pickup', 'status') == 'Delayed' and
         'delivered' not in (shipment.get('llm_identified_type') or '').lower()
     )
 
@@ -53,14 +63,14 @@ def get_all_shipments():
 @shipments_bp.route('/api/shipments/delayed', methods=['GET'])
 def get_delayed_shipments():
     """
-    Returns shipments where pickup_date_status is Delayed and not yet delivered.
+    Returns shipments whose cargo_pickup milestone is Delayed and not yet delivered.
     FIXED: uses is_delayed() helper instead of inline duplicate logic.
     """
     try:
         response = (
             supabase.table('shipments')
             .select('*')
-            .eq('pickup_date_status', 'Delayed')
+            .eq('milestones->cargo_pickup->>status', 'Delayed')
             .order('created_at', desc=True)
             .execute()
         )
@@ -118,7 +128,7 @@ def get_shipment_stats():
     try:
         response = (
             supabase.table('shipments')
-            .select('id, pickup_date_status, llm_identified_type')
+            .select('id, milestones, llm_identified_type')
             .execute()
         )
         shipments = response.data or []
@@ -147,8 +157,8 @@ def get_delayed_stats():
 
         response = (
             supabase.table('shipments')
-            .select('pickup_date_status, llm_identified_type, llm_note, st_note_text, llm_cargo_pickup_date')
-            .eq('pickup_date_status', 'Delayed')
+            .select('milestones, llm_identified_type, llm_note, st_note_text, llm_cargo_pickup_date')
+            .eq('milestones->cargo_pickup->>status', 'Delayed')
             .execute()
         )
         shipments = [s for s in (response.data or []) if is_delayed(s)]
@@ -201,7 +211,7 @@ def get_department_stats(mode):
     try:
         response = (
             supabase.table('shipments')
-            .select('pickup_date_status, llm_identified_type, llm_note')
+            .select('milestones, llm_identified_type, llm_note')
             .eq('transport_mode', mode.upper())
             .execute()
         )
@@ -212,7 +222,7 @@ def get_department_stats(mode):
         stats = {
             'on_time': sum(
                 1 for s in shipments
-                if s.get('pickup_date_status') == 'Future' and not is_delivered(s)
+                if get_milestone_value(s, 'cargo_pickup', 'status') == 'Future' and not is_delivered(s)
             ),
             'delayed': sum(1 for s in shipments if is_delayed(s)),
             'at_risk': sum(

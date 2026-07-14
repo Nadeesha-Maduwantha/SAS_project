@@ -38,10 +38,10 @@ interface ShipmentRow {
   gc_code: string | null
   st_description: string | null
   st_note_text: string | null
-  cargo_ready_date: string | null
   cargo_received_date: string | null
-  cargo_pickup_date: string | null
-  pickup_date_status: string | null
+  // All milestone data lives in one jsonb column, keyed by milestone name.
+  // New milestones from CargoWise appear as new keys — no schema change.
+  milestones: Record<string, { date: string | null; status: string | null }> | null
   job_last_edit_time: string | null
   llm_identified_type: string | null
   llm_note: string | null
@@ -65,6 +65,7 @@ interface ShipmentRow {
 // Mapper 
 
 function mapRow(row: ShipmentRow): Shipment {
+  const milestones = row.milestones ?? {}
   return {
     id: row.id,
     cargowiseId: row.cargowise_id,
@@ -89,10 +90,10 @@ function mapRow(row: ShipmentRow): Shipment {
     gcCode: row.gc_code ?? undefined,
     stDescription: row.st_description ?? undefined,
     stNoteText: row.st_note_text ?? undefined,
-    cargoReadyDate: row.cargo_ready_date ? new Date(row.cargo_ready_date) : undefined,
+    cargoReadyDate: milestones.cargo_ready?.date ? new Date(milestones.cargo_ready.date) : undefined,
     cargoReceivedDate: row.cargo_received_date ? new Date(row.cargo_received_date) : undefined,
-    cargoPickupDate: row.cargo_pickup_date ? new Date(row.cargo_pickup_date) : undefined,
-    pickupDateStatus: row.pickup_date_status ?? undefined,
+    cargoPickupDate: milestones.cargo_pickup?.date ? new Date(milestones.cargo_pickup.date) : undefined,
+    pickupDateStatus: milestones.cargo_pickup?.status ?? undefined,
     jobLastEditTime: row.job_last_edit_time ? new Date(row.job_last_edit_time) : undefined,
     llmIdentifiedType: row.llm_identified_type ?? undefined,
     llmNote: row.llm_note ?? undefined,

@@ -29,7 +29,7 @@ load_dotenv()
 
 def run_sync_job():
     try:
-        from services.cargowise_service import fetch_shipments_from_api
+        from services.cargowise_service import fetch_shipments_from_api, build_milestones
         from services.supabase_service import upsert_shipment, save_sync_log, save_sync_error
         import time
 
@@ -88,6 +88,7 @@ def run_sync_job():
                     'house_bill_number': item.get('house_bill_number'),
                     'cargo_ready_date': item.get('cargo_ready_date'),
                     'cargo_pickup_date': item.get('cargo_pickup_date'),
+                    'milestones': build_milestones(item),
                     'js_pk': item.get('js_pk'),
                     'note_number': item.get('note_number'),
                     'running_date_time': item.get('running_date_time'),
