@@ -390,7 +390,7 @@ function MilestonesDefaultTab() {
 }
 
 // ── Custom table view ─────────────────────────────────────────────────────────
-function CustomTableView({ tableConfig, onSendAlert, onDelete }) {
+export function CustomTableView({ tableConfig, onSendAlert, onDelete }) {
   const [rows,     setRows]     = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState(null);

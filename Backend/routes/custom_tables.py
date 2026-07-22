@@ -146,7 +146,13 @@ def get_custom_table_data(table_id):
         if data_source == 'shipments':
             query = supabase.table('shipments').select(
                 'id, job_number, consignee_name, transport_mode, '
-                'branch, pickup_date_status, llm_identified_type, '
+                'branch, '
+                # Read the flat column, which the sync still populates. The
+                # milestones jsonb is not fully backfilled yet, so reading only
+                # from it returned null/empty. Switch to the jsonb path at Phase 3
+                # once the flat columns are dropped.
+                'pickup_date_status, '
+                'llm_identified_type, '
                 'current_stage, created_at'
             )
 
@@ -161,7 +167,14 @@ def get_custom_table_data(table_id):
                 query = query.ilike('branch', f"%{filters['branch']}%")
 
             if filters.get('pickup_status'):
-                query = query.eq('pickup_date_status', filters['pickup_status'])
+                v = filters['pickup_status']
+                # Match either the flat column (populated now) or the milestones
+                # jsonb (populated after migration), so the filter keeps working
+                # across the transition.
+                query = query.or_(
+                    f"pickup_date_status.eq.{v},"
+                    f"milestones->cargo_pickup->>pickup_date_status.eq.{v}"
+                )
 
             rows = query.order('created_at', desc=True).execute()
             return jsonify({'data': rows.data or [], 'source': 'shipments'}), 200

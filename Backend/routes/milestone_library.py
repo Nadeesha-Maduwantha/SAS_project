@@ -1,6 +1,10 @@
 from flask import Blueprint, request, jsonify
 from services.supabase_client import supabase
 from utils.auth_helper import require_auth, get_current_user
+from services.field_registry import (
+    make_milestone_key, register_milestone_fields,
+    sync_registered_fields, deactivate_milestone_fields,
+)
 
 milestone_library_bp = Blueprint('milestone_library', __name__)
 
@@ -157,6 +161,8 @@ def create_library_milestone():
             'is_system_default':    False,  # user-created milestones are never system defaults
             'is_active':            True,
             'created_by':           user_id,
+            # Stable registry key — generated once, never changed on rename.
+            'milestone_key':        make_milestone_key(data['name']),
 
             # Date / missing type fields
             'primary_field':        data.get('primary_field'),
@@ -209,6 +215,10 @@ def create_library_milestone():
             }))
 
         supabase.table('milestone_alert_rules').insert(rule_rows).execute()
+
+        # Door 2 — register this milestone's CargoWise fields so the sync
+        # starts collecting them into shipments.milestones automatically.
+        register_milestone_fields(new_milestone.get('milestone_key'), data)
 
         # Return the full milestone with rules
         full = _fetch_library_milestone(new_id)
@@ -297,6 +307,19 @@ def update_library_milestone(milestone_id):
                 }))
             supabase.table('milestone_alert_rules').insert(rule_rows).execute()
 
+        # Door 2 — keep the field registry in sync with the edited fields.
+        # milestone_key is preserved (renames never change it).
+        try:
+            key_row = (
+                supabase.table('milestone_library')
+                .select('milestone_key')
+                .eq('id', milestone_id).single().execute()
+            ).data or {}
+            if key_row.get('milestone_key'):
+                sync_registered_fields(key_row['milestone_key'], data)
+        except Exception as _e:
+            print(f"[milestone_library] registry sync skipped: {_e}")
+
         full = _fetch_library_milestone(milestone_id)
         return jsonify({
             'message': 'Milestone updated successfully',
@@ -339,6 +362,18 @@ def delete_library_milestone(milestone_id):
             .update({'is_active': False}) \
             .eq('id', milestone_id) \
             .execute()
+
+        # Stop the sync collecting this milestone's fields.
+        try:
+            key_row = (
+                supabase.table('milestone_library')
+                .select('milestone_key')
+                .eq('id', milestone_id).single().execute()
+            ).data or {}
+            if key_row.get('milestone_key'):
+                deactivate_milestone_fields(key_row['milestone_key'])
+        except Exception as _e:
+            print(f"[milestone_library] registry deactivate skipped: {_e}")
 
         return jsonify({'message': 'Milestone deleted'}), 200
 
@@ -447,6 +482,7 @@ def _milestone_row_from_config(cfg: dict, user_id: str) -> dict:
         'is_system_default':    False,
         'is_active':            True,
         'created_by':           user_id,
+        'milestone_key':        make_milestone_key(cfg.get('name') or 'milestone'),
         'primary_field':        cfg.get('primary_field'),
         'expected_date_source': cfg.get('expected_date_source'),
         'expected_date_field':  cfg.get('expected_date_field'),
@@ -525,6 +561,9 @@ def promote_local_milestone():
             supabase.table('milestone_alert_rules').insert(
                 [_rule_row_from_config(r, new_id) for r in rules]
             ).execute()
+
+        # Door 2 — register the promoted milestone's fields.
+        register_milestone_fields(new_milestone.get('milestone_key'), cfg)
 
         # Rewire the template link to the new library milestone
         supabase.table('template_milestone_library').update({

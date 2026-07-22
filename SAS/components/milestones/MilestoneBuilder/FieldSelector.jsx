@@ -126,6 +126,29 @@ FIELD_CATEGORIES.forEach(cat => {
   });
 });
 
+// ── Admin field definitions ───────────────────────────────────────────────────
+// Meanings set in System Settings -> Milestone settings -> Field definitions.
+// Cached at module level so we fetch once no matter how many selectors mount.
+let _defsCache = null;
+let _defsPromise = null;
+function loadFieldDefinitions() {
+  if (_defsCache) return Promise.resolve(_defsCache);
+  if (_defsPromise) return _defsPromise;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
+  _defsPromise = fetch('http://localhost:5000/api/field-definitions', {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+    .then(r => (r.ok ? r.json() : { data: [] }))
+    .then(j => {
+      const map = {};
+      (j.data || []).forEach(row => { if (row.definition) map[row.api_field] = row.definition; });
+      _defsCache = map;
+      return map;
+    })
+    .catch(() => { _defsCache = {}; return _defsCache; });
+  return _defsPromise;
+}
+
 // ── Helper: get label for a field key ─────────────────────────────────────────
 export function getFieldLabel(key) {
   return FIELD_MAP[key]?.label || key;
@@ -153,7 +176,15 @@ export default function FieldSelector({
 }) {
   const [open,   setOpen]   = useState(false);
   const [search, setSearch] = useState('');
+  const [defs,   setDefs]   = useState(_defsCache || {});
   const ref                 = useRef(null);
+
+  // Load admin-defined field meanings once (cached at module level)
+  useEffect(() => {
+    let alive = true;
+    loadFieldDefinitions().then(map => { if (alive) setDefs(map); });
+    return () => { alive = false; };
+  }, []);
 
   // Close on outside click
   useEffect(() => {
@@ -183,7 +214,18 @@ export default function FieldSelector({
     })
     .filter(Boolean);
 
-  const selectedMeta = value ? FIELD_MAP[value] : null;
+  // Custom / future field: let the user type an API field name that isn't in the
+  // known list yet (e.g. first_transit_date). Door 2 registers it on save so the
+  // sync starts collecting it once the API returns it.
+  const trimmed     = search.trim();
+  const exactExists = !!trimmed && Object.keys(FIELD_MAP).some(k => k === trimmed);
+  const showCustom  = !!trimmed && !exactExists;
+  const customType  = (filter && filter !== 'all') ? filter : 'text';
+
+  // A selected value that isn't in the known map is a custom/future field.
+  const selectedMeta = value
+    ? (FIELD_MAP[value] || { key: value, label: value, type: customType, custom: true })
+    : null;
 
   const handleSelect = (field, catType) => {
     onChange?.(field.key, { ...field, type: catType });
@@ -316,7 +358,7 @@ export default function FieldSelector({
 
           {/* Field list */}
           <div style={{ overflowY: 'auto', flex: 1 }}>
-            {visibleCategories.length === 0 ? (
+            {visibleCategories.length === 0 && !showCustom ? (
               <div style={{ padding: '24px 16px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>
                 No fields match "{search}"
               </div>
@@ -393,13 +435,40 @@ export default function FieldSelector({
                           </span>
                         </span>
                         <span style={{ fontSize: '11px', color: '#9CA3AF' }}>
-                          {field.hint}
+                          {defs[field.key] || field.hint}
                         </span>
                       </button>
                     );
                   })}
                 </div>
               ))
+            )}
+
+            {/* Custom / future field option */}
+            {showCustom && (
+              <button
+                type="button"
+                onClick={() => handleSelect({ key: trimmed, label: trimmed }, customType)}
+                style={{
+                  width: '100%', textAlign: 'left', padding: '10px 12px',
+                  background: '#EFF6FF', border: 'none', borderTop: '1px solid #DBEAFE',
+                  cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '3px',
+                  fontFamily: 'inherit',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#DBEAFE'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#EFF6FF'; }}
+              >
+                <span style={{ fontSize: '13px', fontWeight: '600', color: '#1D4ED8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  Use custom field
+                  <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#2563EB', background: '#fff', border: '1px solid #BFDBFE', borderRadius: '4px', padding: '1px 6px' }}>
+                    {trimmed}
+                  </span>
+                  <TypePill type={customType} />
+                </span>
+                <span style={{ fontSize: '11px', color: '#3B82F6' }}>
+                  Register this API field so the sync collects it (safe even if it doesn't exist yet).
+                </span>
+              </button>
             )}
           </div>
         </div>

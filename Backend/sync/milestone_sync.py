@@ -11,9 +11,15 @@ from services.supabase_client import supabase
 
 
 def _derive_milestone_data(shipment: dict) -> dict:
-    cargo_ready   = shipment.get('cargo_ready_date')
-    cargo_pickup  = shipment.get('cargo_pickup_date')
-    pickup_status = (shipment.get('pickup_date_status') or '').strip()
+    # Read from the new consolidated milestones jsonb first, then fall back to the
+    # (dual-written) flat columns. Works during dual-write AND after the Phase-3
+    # column drop — when the columns are gone, .get() just returns None and the
+    # json values are used.
+    ms = shipment.get('milestones') or {}
+    cargo_ready   = (ms.get('cargo_ready')  or {}).get('cargo_ready_date')  or shipment.get('cargo_ready_date')
+    cargo_pickup  = (ms.get('cargo_pickup') or {}).get('cargo_pickup_date') or shipment.get('cargo_pickup_date')
+    pickup_status = (((ms.get('cargo_pickup') or {}).get('pickup_date_status'))
+                     or shipment.get('pickup_date_status') or '').strip()
     llm_date      = shipment.get('llm_cargo_pickup_date')
     notes         = shipment.get('llm_note') or shipment.get('st_note_text') or None
 
@@ -99,8 +105,10 @@ def run_milestone_sync() -> dict:
             supabase.table('shipments')
             .select(
                 'id, job_number,'
-                'cargo_ready_date, cargo_pickup_date,'
-                'pickup_date_status, llm_cargo_pickup_date,'
+                'milestones,'                              # new consolidated shape (Isiri migration)
+                'cargo_ready_date, cargo_pickup_date,'     # TRANSITION: remove these two lines
+                'pickup_date_status,'                      # at the Phase-3 column drop
+                'llm_cargo_pickup_date,'
                 'llm_note, st_note_text'
             )
             .execute()

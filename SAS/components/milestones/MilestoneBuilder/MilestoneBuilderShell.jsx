@@ -66,18 +66,18 @@ const STEPS = [
 // ── Styles ────────────────────────────────────────────────────────────────────
 const T = {
   font:        "'DM Sans', system-ui, sans-serif",
-  blue:        '#2563EB',
-  blueBg:      '#EFF6FF',
-  blueBorder:  '#BFDBFE',
-  gray900:     '#111827',
-  gray600:     '#4B5563',
-  gray400:     '#9CA3AF',
-  gray200:     '#E5E7EB',
-  gray100:     '#F3F4F6',
-  gray50:      '#F9FAFB',
-  green:       '#16A34A',
-  greenBg:     '#F0FDF4',
-  red:         '#DC2626',
+  blue:        'var(--blue)',
+  blueBg:      'var(--blue-bg)',
+  blueBorder:  'var(--blue-border)',
+  gray900:     'var(--gray-900)',
+  gray600:     'var(--gray-600)',
+  gray400:     'var(--gray-400)',
+  gray200:     'var(--gray-200)',
+  gray100:     'var(--gray-100)',
+  gray50:      'var(--gray-50)',
+  green:       'var(--green)',
+  greenBg:     'var(--green-bg)',
+  red:         'var(--red)',
 };
 
 // ── Main Component ─────────────────────────────────────────────────────────────

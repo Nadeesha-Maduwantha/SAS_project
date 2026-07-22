@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import {
   LayoutGrid, Users, Building2, Truck, Bell,
   ShieldCheck, ChevronDown, RefreshCw,
-  MapPin, TableProperties, Menu,
+  MapPin, TableProperties, Menu, Settings,
 } from 'lucide-react';
 import { useNav } from '@/contexts/NavContext';
 import '@/styles/ComponentStyles/AdminLeftNavBar.css';
@@ -147,6 +147,7 @@ export default function AdminLeftNavBar({ topOffset = 57 }: { topOffset?: number
         <IconBtn icon={<TableProperties {...ip} />} tooltip="Custom Tables"    onClick={expand} />
         <IconBtn icon={<MapPin          {...ip} />} tooltip="Milestones"       onClick={expand} />
         <IconBtn icon={<RefreshCw       {...ip} />} tooltip="Sync"             onClick={expand} />
+        <IconBtn icon={<Settings        {...ip} />} tooltip="System Settings" onClick={expand} />
         <IconBtn icon={<ShieldCheck     {...ip} />} tooltip="Security & Audit" onClick={expand} />
       </div>
     );
@@ -283,6 +284,11 @@ export default function AdminLeftNavBar({ topOffset = 57 }: { topOffset?: number
           isActive={active('/admin/current_milestones')}
           onClick={() => go('/admin/current_milestones')}
         />
+        <NavItem
+          label="Field Registry"
+          isActive={active('/admin/field_registry')}
+          onClick={() => go('/admin/field_registry')}
+        />
       </Section>
 
       {/* Sync — single link, no dropdown */}
@@ -293,6 +299,17 @@ export default function AdminLeftNavBar({ topOffset = 57 }: { topOffset?: number
         >
           <RefreshCw className="nav-icon" />
           {fullyExpanded && <span>Sync</span>}
+        </button>
+      </div>
+
+      {/* System Settings — single link, no dropdown */}
+      <div className="nav-section">
+        <button
+          className={`nav-section-header ${active('/admin/system_settings', true) ? 'active' : ''}`}
+          onClick={() => go('/admin/system_settings')}
+        >
+          <Settings className="nav-icon" />
+          {fullyExpanded && <span>System Settings</span>}
         </button>
       </div>
 

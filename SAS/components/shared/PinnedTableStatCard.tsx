@@ -11,8 +11,8 @@
 // =============================================================
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { ExternalLink, RefreshCw, Loader2 } from 'lucide-react';
+import { Maximize2, RefreshCw, Loader2 } from 'lucide-react';
+import PinnedTableModal from '@/components/shared/PinnedTableModal';
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
@@ -94,8 +94,7 @@ function TickerStrip({ items }: { items: TickerItem[] }) {
 }
 
 // ── Single stat card ──────────────────────────────────────────────────────────
-function PinnedStatCard({ table }: { table: PinnedTable }) {
-  const router = useRouter();
+function PinnedStatCard({ table, onOpen }: { table: PinnedTable; onOpen: (t: PinnedTable) => void }) {
   const [items,    setItems]    = useState<TickerItem[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [counts,   setCounts]   = useState({ total: 0, active: 0, issues: 0 });
@@ -136,17 +135,7 @@ function PinnedStatCard({ table }: { table: PinnedTable }) {
 
   return (
     <div
-    onClick={() => {
-      const role = localStorage.getItem('user_role') || '';
-      const r = role.toLowerCase();
-      const base =
-        r.includes('admin')     ? '/admin' :
-        r.includes('operation') ? '/operation_user' :
-        r.includes('sales')     ? '/sales_user' :
-        r.includes('super')     ? '/Super_user' :
-        '/admin';
-      router.push(`${base}/custom_tables?tab=${table.id}`);
-    }} 
+    onClick={() => onOpen(table)}
      style={{
         background:   '#fff',
         border:       '1px solid #E5E7EB',
@@ -183,7 +172,7 @@ function PinnedStatCard({ table }: { table: PinnedTable }) {
             {title}
           </div>
         </div>
-        <ExternalLink size={13} color="#D1D5DB" style={{ flexShrink: 0, marginTop: 2 }} />
+        <Maximize2 size={13} color="#D1D5DB" style={{ flexShrink: 0, marginTop: 2 }} />
       </div>
 
       {/* Count row */}
@@ -235,14 +224,17 @@ function PinnedStatCard({ table }: { table: PinnedTable }) {
 export default function PinnedTableStatCards() {
   const [tables,  setTables]  = useState<PinnedTable[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openTable, setOpenTable] = useState<PinnedTable | null>(null);
 
-  useEffect(() => {
+  const load = () => {
     fetch(`${API}/api/custom-tables`, { headers: authHeaders() })
       .then(r => r.json())
       .then(d => setTables((d.data || []).filter((t: any) => t.pinned_to_dashboard)))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { load(); }, []);
 
   if (loading || tables.length === 0) return null;
 
@@ -262,9 +254,16 @@ export default function PinnedTableStatCards() {
           gridTemplateColumns: `repeat(${Math.min(tables.length, 4)}, 1fr)`,
           gap: 12,
         }}>
-          {tables.map(t => <PinnedStatCard key={t.id} table={t} />)}
+          {tables.map(t => <PinnedStatCard key={t.id} table={t} onOpen={setOpenTable} />)}
         </div>
       </div>
+
+      {openTable && (
+        <PinnedTableModal
+          table={openTable}
+          onClose={() => { setOpenTable(null); load(); }}
+        />
+      )}
     </>
   );
 }

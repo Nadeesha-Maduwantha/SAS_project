@@ -24,6 +24,9 @@ from routes.shipments import shipments_bp
 from routes.sync import sync_bp
 from routes.alerts import alerts_bp
 from routes.milestone_library import milestone_library_bp
+from routes.field_map import field_map_bp
+from routes.system_settings import system_settings_bp
+from routes.field_definitions import field_definitions_bp
 
 load_dotenv()
 
@@ -173,6 +176,12 @@ app.register_blueprint(alerts_bp)
 
 app.register_blueprint(milestone_library_bp)
 
+app.register_blueprint(field_map_bp)
+
+app.register_blueprint(system_settings_bp)
+
+app.register_blueprint(field_definitions_bp)
+
 def health_check():
     return {'status': 'Backend is running'}, 200
 
@@ -210,6 +219,25 @@ except Exception as e:
 
 scheduler.start()
 print('Scheduler started — fixed sync at 6AM, 12PM, 6PM, 12AM Sri Lanka time')
+
+
+# Automatic milestone field-naming mismatch detection. Runs hourly; emails the
+# designated admin (sync_settings.mismatch_alert_email) only about NEW mismatches.
+def run_field_mismatch_check():
+    try:
+        from services.field_registry import detect_and_notify
+        result = detect_and_notify()
+        print(f"[field_mismatch] current={len(result.get('current', []))} "
+              f"new={len(result.get('new', []))} notified={result.get('notified')}")
+    except Exception as e:
+        print(f"[field_mismatch] ERROR: {e}")
+
+scheduler.add_job(
+    run_field_mismatch_check,
+    CronTrigger(minute=15, timezone='Asia/Colombo'),
+    id='field_mismatch_detect',
+    replace_existing=True,
+)
 app.config['SCHEDULER'] = scheduler
 app.config['RUN_SYNC_JOB'] = run_sync_job
 

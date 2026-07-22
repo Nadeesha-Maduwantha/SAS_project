@@ -12,6 +12,8 @@ _CONFIG_KEYS = (
     'expected_date_source', 'expected_date_field', 'expected_date_offset',
     'document_name', 'tracking_field', 'field_a', 'operator', 'field_b',
     'fixed_value', 'threshold_value',
+    # Registry key so the alert engine can resolve values from shipments.milestones
+    'milestone_key',
 )
 
 

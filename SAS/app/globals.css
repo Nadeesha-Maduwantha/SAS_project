@@ -1,76 +1,100 @@
 @import "tailwindcss";
 
-/* ── Scrollbar ───────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────
+   Theme tokens as CSS variables.
+   styles/tokens.js references these via var(), so every inline
+   style built from the token system flips automatically when the
+   <html> element gets the .dark class (set by ThemeContext).
+   ───────────────────────────────────────────────────────────── */
+:root {
+  --page-bg:           #F1F5F9;
+  --card-bg:           #FFFFFF;
+  --card-border-color: #E2E8F0;
+  --card-shadow:       0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
+  --card-shadow-hover: 0 4px 6px rgba(15,23,42,0.04), 0 2px 4px rgba(15,23,42,0.04), 0 0 0 1px rgba(15,23,42,0.03);
+
+  --blue:        #2563EB;
+  --blue-mid:    #3B82F6;
+  --blue-bg:     #EFF6FF;
+  --blue-border: #BFDBFE;
+  --blue-dark:   #1D4ED8;
+
+  --red:    #DC2626;  --red-bg:    #FFF1F2;  --red-border:    #FECDD3;
+  --amber:  #D97706;  --amber-bg:  #FFFBEB;  --amber-border:  #FDE68A;
+  --green:  #16A34A;  --green-bg:  #F0FDF4;  --green-border:  #BBF7D0;
+
+  --gray-900: #0F172A;
+  --gray-800: #1E293B;
+  --gray-700: #334155;
+  --gray-600: #475569;
+  --gray-500: #64748B;
+  --gray-400: #94A3B8;
+  --gray-300: #CBD5E1;
+  --gray-200: #E2E8F0;
+  --gray-100: #F1F5F9;
+  --gray-50:  #F8FAFC;
+}
+
+html.dark {
+  --page-bg:           #0F172A;
+  --card-bg:           #1E293B;
+  --card-border-color: #334155;
+  --card-shadow:       0 1px 3px rgba(0,0,0,0.40), 0 1px 2px rgba(0,0,0,0.30);
+  --card-shadow-hover: 0 6px 16px rgba(0,0,0,0.50), 0 0 0 1px rgba(255,255,255,0.03);
+
+  --blue:        #3B82F6;
+  --blue-mid:    #60A5FA;
+  --blue-bg:     #1E2A45;
+  --blue-border: #2E4372;
+  --blue-dark:   #60A5FA;
+
+  --red:    #F87171;  --red-bg:    #3A1E1E;  --red-border:    #5C2B2B;
+  --amber:  #FBBF24;  --amber-bg:  #3A2F16;  --amber-border:  #5C4A1F;
+  --green:  #34D399;  --green-bg:  #123023;  --green-border:  #1E4A38;
+
+  /* Reversed scale: 900 becomes lightest (primary text), 50 becomes darkest (bg). */
+  --gray-900: #F8FAFC;
+  --gray-800: #F1F5F9;
+  --gray-700: #E2E8F0;
+  --gray-600: #CBD5E1;
+  --gray-500: #94A3B8;
+  --gray-400: #64748B;
+  --gray-300: #475569;
+  --gray-200: #334155;
+  --gray-100: #1E293B;
+  --gray-50:  #0F172A;
+}
+
+/* ── Base ─────────────────────────────────────────────────── */
+body { background-color: var(--page-bg); color: var(--gray-900); }
+html.dark main { background-color: var(--page-bg) !important; }
+
+/* ── Scrollbar ────────────────────────────────────────────── */
 ::-webkit-scrollbar       { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: #f1f1f1; }
-::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+::-webkit-scrollbar-track { background: var(--gray-100); }
+::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 4px; }
 
-html.dark ::-webkit-scrollbar-track { background: #1E293B; }
-html.dark ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+/* ─────────────────────────────────────────────────────────────
+   Tailwind-class components (parts of the app not on the token
+   system). Kept so those pages also darken.
+   ───────────────────────────────────────────────────────────── */
+html.dark .bg-white                              { background-color: #1E293B !important; }
+html.dark .bg-gray-50,  html.dark .bg-slate-50   { background-color: #0F172A !important; }
+html.dark .bg-gray-100, html.dark .bg-slate-100  { background-color: #1E293B !important; }
+html.dark .bg-gray-200, html.dark .bg-slate-200  { background-color: #243447 !important; }
 
-/* ── Dark mode page background ───────────────────────────── */
-html.dark body {
-  background-color: #0F172A;
-  color: #F1F5F9;
-}
+html.dark .text-gray-900, html.dark .text-slate-900 { color: #F8FAFC !important; }
+html.dark .text-gray-800, html.dark .text-slate-800 { color: #F1F5F9 !important; }
+html.dark .text-gray-700, html.dark .text-slate-700 { color: #E2E8F0 !important; }
+html.dark .text-gray-600, html.dark .text-slate-600 { color: #CBD5E1 !important; }
+html.dark .text-gray-500, html.dark .text-slate-500 { color: #94A3B8 !important; }
+html.dark .text-gray-400, html.dark .text-slate-400 { color: #64748B !important; }
 
-/* The inner <main> in your admin layout uses inline style
-   background: '#f9fafb'. !important overrides that. */
-html.dark main {
-  background-color: #0F172A !important;
-}
+html.dark .border-gray-200, html.dark .border-slate-200 { border-color: #334155 !important; }
+html.dark .border-gray-100, html.dark .border-slate-100 { border-color: #1E293B !important; }
+html.dark .border-gray-300, html.dark .border-slate-300 { border-color: #475569 !important; }
 
-/* ── Dark mode for white card-style divs ─────────────────── */
-/* This covers divs that have inline style background:#fff or #ffffff.
-   We can't override those with CSS alone — use the hook below instead.
-   These rules cover elements that use Tailwind bg-white class. */
-html.dark .bg-white {
-  background-color: #1E293B !important;
-}
-
-html.dark .bg-gray-50,
-html.dark .bg-slate-50 {
-  background-color: #0F172A !important;
-}
-
-html.dark .bg-gray-100,
-html.dark .bg-slate-100 {
-  background-color: #1E293B !important;
-}
-
-/* Text color overrides for dark mode on Tailwind classes */
-html.dark .text-gray-900,
-html.dark .text-slate-900 {
-  color: #F1F5F9 !important;
-}
-
-html.dark .text-gray-700,
-html.dark .text-slate-700 {
-  color: #CBD5E1 !important;
-}
-
-html.dark .text-gray-600,
-html.dark .text-slate-600 {
-  color: #94A3B8 !important;
-}
-
-html.dark .text-gray-500,
-html.dark .text-slate-500 {
-  color: #64748B !important;
-}
-
-/* Border overrides */
-html.dark .border-gray-200,
-html.dark .border-slate-200 {
-  border-color: #334155 !important;
-}
-
-html.dark .border-gray-100,
-html.dark .border-slate-100 {
-  border-color: #1E293B !important;
-}
-
-/* Input fields that use Tailwind classes */
+/* Native / Tailwind inputs (no !important, so token-based inputs using var() win). */
 html.dark input,
 html.dark textarea,
 html.dark select {
@@ -78,79 +102,12 @@ html.dark select {
   border-color:     #334155;
   color:            #F1F5F9;
 }
-
 html.dark input::placeholder,
-html.dark textarea::placeholder {
-  color: #475569;
-}
+html.dark textarea::placeholder { color: #64748B; }
 
-/* Table rows using Tailwind */
-html.dark .divide-y > * {
-  border-color: #1E293B !important;
-}
-
-html.dark thead tr {
-  background-color: #1E293B !important;
-}
-
-html.dark thead th {
-  color:            #94A3B8 !important;
-  border-bottom-color: #334155 !important;
-}
-
-html.dark tbody tr {
-  border-bottom-color: #1E293B !important;
-}
-
-html.dark tbody tr:hover {
-  background-color: #243447 !important;
-}
-
-/* ── Hover fix — prevent dark hover on light mode ────────── */
-/* Your components apply onMouseEnter background changes via JS.
-   These don't interact with CSS dark mode.
-   The useDarkMode hook (below) handles JS-driven inline styles. */
-
-
-/* these are added temporarly without accessing inline elemets*/
-/* Add to globals.css */
-
-/* Force dark backgrounds on any element using
-   inline style background:#fff or background:white */
-html.dark [style*="background: #fff"],
-html.dark [style*="background:#fff"],
-html.dark [style*="background: white"],
-html.dark [style*="background-color: white"],
-html.dark [style*="background-color: #fff"] {
-  background: #1E293B !important;
-}
-
-html.dark [style*="background: rgb(255, 255, 255)"] {
-  background: #1E293B !important;
-}
-
-/* White backgrounds using inline style */
-html.dark [style*="background: #F9FAFB"],
-html.dark [style*="background:#F9FAFB"],
-html.dark [style*="background: #f9fafb"] {
-  background: #0F172A !important;
-}
-
-/* Text colors in inline styles */
-html.dark [style*="color: #111827"],
-html.dark [style*="color: #1F2937"],
-html.dark [style*="color: #374151"] {
-  color: #F1F5F9 !important;
-}
-
-html.dark [style*="color: #6B7280"],
-html.dark [style*="color: #9CA3AF"] {
-  color: #64748B !important;
-}
-
-/* Border colors in inline styles */
-html.dark [style*="border: 1px solid #E5E7EB"],
-html.dark [style*="border: 1px solid #F0F0F0"],
-html.dark [style*="border-color: #E5E7EB"] {
-  border-color: #334155 !important;
-}
+/* Tailwind tables */
+html.dark thead tr        { background-color: #1E293B !important; }
+html.dark thead th        { color: #94A3B8 !important; border-bottom-color: #334155 !important; }
+html.dark tbody tr        { border-bottom-color: #1E293B !important; }
+html.dark tbody tr:hover  { background-color: #243447 !important; }
+html.dark .divide-y > *   { border-color: #1E293B !important; }
