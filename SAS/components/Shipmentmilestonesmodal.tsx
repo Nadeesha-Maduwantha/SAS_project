@@ -17,7 +17,7 @@ interface Shipment {
   branch: string | null; house_bill_number: string | null; origin_city: string | null;
   origin_country_code: string | null; destination_city: string | null;
   destination_country_code: string | null;
-  milestones: Record<string, { date: string | null; status: string | null }> | null;
+  milestones: Record<string, Record<string, string | null>> | null;
   created_by_name: string | null; created_by_email: string | null;
   consignee_email: string | null; st_note_text: string | null; carrier: string | null;
 }
@@ -174,9 +174,9 @@ export default function ShipmentMilestonesModal({ isOpen, onClose, shipmentId, a
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
                 <span style={{ fontFamily:'monospace', fontSize:16, fontWeight:800, color:'#1D4ED8' }}>#{shipment?.job_number || '…'}</span>
                 {shipment?.transport_mode && <span style={{ fontSize:11, fontWeight:700, padding:'2px 9px', borderRadius:99, background:'#DBEAFE', color:'#1D4ED8', border:'1px solid #BFDBFE' }}>{shipment.transport_mode}</span>}
-                {shipment?.milestones?.cargo_pickup?.status && (
-                  <span style={{ fontSize:11, fontWeight:700, padding:'2px 9px', borderRadius:99, background: shipment.milestones.cargo_pickup.status==='Delayed'?'#FEE2E2':'#D1FAE5', color: shipment.milestones.cargo_pickup.status==='Delayed'?'#B91C1C':'#065F46', border: shipment.milestones.cargo_pickup.status==='Delayed'?'1px solid #FECACA':'1px solid #A7F3D0' }}>
-                    {shipment.milestones.cargo_pickup.status}
+                {shipment?.milestones?.cargo_pickup?.pickup_date_status && (
+                  <span style={{ fontSize:11, fontWeight:700, padding:'2px 9px', borderRadius:99, background: shipment.milestones.cargo_pickup.pickup_date_status==='Delayed'?'#FEE2E2':'#D1FAE5', color: shipment.milestones.cargo_pickup.pickup_date_status==='Delayed'?'#B91C1C':'#065F46', border: shipment.milestones.cargo_pickup.pickup_date_status==='Delayed'?'1px solid #FECACA':'1px solid #A7F3D0' }}>
+                    {shipment.milestones.cargo_pickup.pickup_date_status}
                   </span>
                 )}
               </div>

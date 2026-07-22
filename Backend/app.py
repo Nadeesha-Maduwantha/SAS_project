@@ -29,7 +29,7 @@ load_dotenv()
 
 def run_sync_job():
     try:
-        from services.cargowise_service import fetch_shipments_from_api, build_milestones
+        from services.cargowise_service import fetch_shipments_from_api, build_milestones, load_field_map
         from services.supabase_service import upsert_shipment, save_sync_log, save_sync_error
         import time
 
@@ -45,6 +45,7 @@ def run_sync_job():
         updated = 0
         errors = 0
         error_list = []
+        field_map = load_field_map()
 
         for item in raw_data:
             job_number = item.get('job_number')
@@ -88,7 +89,8 @@ def run_sync_job():
                     'house_bill_number': item.get('house_bill_number'),
                     'cargo_ready_date': item.get('cargo_ready_date'),
                     'cargo_pickup_date': item.get('cargo_pickup_date'),
-                    'milestones': build_milestones(item),
+                    'milestones': build_milestones(item, field_map),
+                    'raw_json': item,
                     'js_pk': item.get('js_pk'),
                     'note_number': item.get('note_number'),
                     'running_date_time': item.get('running_date_time'),

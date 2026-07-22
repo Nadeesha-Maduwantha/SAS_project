@@ -9,7 +9,8 @@ shipments_bp = Blueprint('shipments', __name__)
 def get_milestone_value(shipment: dict, milestone: str, key: str):
     """
     Safely read one value out of the shipments.milestones jsonb, e.g.
-    get_milestone_value(s, 'cargo_pickup', 'status') -> 'Delayed' / None.
+    get_milestone_value(s, 'cargo_pickup', 'pickup_date_status') -> 'Delayed' / None.
+    Sub-keys are the real API field names (matches milestone builder configs).
     Any missing level (no milestones, unknown milestone name, no key)
     returns None instead of raising.
     """
@@ -24,7 +25,7 @@ def is_delayed(shipment: dict) -> bool:
       - it has not already been delivered
     """
     return (
-        get_milestone_value(shipment, 'cargo_pickup', 'status') == 'Delayed' and
+        get_milestone_value(shipment, 'cargo_pickup', 'pickup_date_status') == 'Delayed' and
         'delivered' not in (shipment.get('llm_identified_type') or '').lower()
     )
 
@@ -70,7 +71,7 @@ def get_delayed_shipments():
         response = (
             supabase.table('shipments')
             .select('*')
-            .eq('milestones->cargo_pickup->>status', 'Delayed')
+            .eq('milestones->cargo_pickup->>pickup_date_status', 'Delayed')
             .order('created_at', desc=True)
             .execute()
         )
@@ -158,7 +159,7 @@ def get_delayed_stats():
         response = (
             supabase.table('shipments')
             .select('milestones, llm_identified_type, llm_note, st_note_text, llm_cargo_pickup_date')
-            .eq('milestones->cargo_pickup->>status', 'Delayed')
+            .eq('milestones->cargo_pickup->>pickup_date_status', 'Delayed')
             .execute()
         )
         shipments = [s for s in (response.data or []) if is_delayed(s)]
@@ -222,7 +223,7 @@ def get_department_stats(mode):
         stats = {
             'on_time': sum(
                 1 for s in shipments
-                if get_milestone_value(s, 'cargo_pickup', 'status') == 'Future' and not is_delivered(s)
+                if get_milestone_value(s, 'cargo_pickup', 'pickup_date_status') == 'Future' and not is_delivered(s)
             ),
             'delayed': sum(1 for s in shipments if is_delayed(s)),
             'at_risk': sum(
