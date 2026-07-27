@@ -44,14 +44,24 @@ interface SyncResult {
   errors: number
 }
 
-interface SyncSchedule {
-  schedule_hours: string
-  schedule_minute: number
+interface CustomSchedule {
+  id: string
+  schedule_time: string   // 'HH:MM' 24-hour, as stored
 }
 
 // TODO (Alert Settings — implement after interim):
 
-//Helpers 
+//Helpers
+
+// Schedules are stored as 24-hour 'HH:MM' but shown in 12-hour form so the
+// label matches the time input's own display (which follows the OS locale).
+function formatScheduleTime(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number)
+  if (Number.isNaN(h) || Number.isNaN(m)) return hhmm
+  const suffix = h >= 12 ? 'PM' : 'AM'
+  const hour12 = h % 12 === 0 ? 12 : h % 12
+  return `${hour12}:${String(m).padStart(2, '0')} ${suffix}`
+}
 
 function formatDateTime(dt: string): string {
   return new Date(dt).toLocaleString('en-US', {
@@ -99,7 +109,9 @@ export default function SyncManagementPage() {
   const [errorsPage, setErrorsPage]           = useState(1)
   const [expandedRow, setExpandedRow]         = useState<string | null>(null)
   const [scheduleTime, setScheduleTime]       = useState('08:00')
-  const [customScheduleTime, setCustomScheduleTime] = useState<string | null>(null)
+  // Several custom times can be active at once — one row per schedule.
+  const [customSchedules, setCustomSchedules] = useState<CustomSchedule[]>([])
+  const [scheduleError, setScheduleError]     = useState<string | null>(null)
   const [settingsSaved, setSettingsSaved]     = useState(false)
   const [scheduleSaved, setScheduleSaved]     = useState(false)
   const [syncError, setSyncError]             = useState<string | null>(null)
@@ -150,25 +162,21 @@ export default function SyncManagementPage() {
 
   const fetchSchedule = useCallback(async () => {
     try {
-      const response = await fetch(`${FLASK_API}/api/sync/schedule`)
+      const response = await fetch(`${FLASK_API}/api/sync/schedules`)
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const result = await response.json()
-      if (result.data) {
-        const { schedule_hours, schedule_minute } = result.data as SyncSchedule
-        // Only show custom time if it differs from the default fixed schedule
-        if (schedule_hours !== '0,6,12,18') {
-          const formattedTime = `${String(schedule_hours).padStart(2, '0')}:${String(schedule_minute).padStart(2, '0')}`
-          setScheduleTime(formattedTime)
-          setCustomScheduleTime(formattedTime)
-        }
+      // Times come back as 'HH:MM' or 'HH:MM:SS' — normalize to HH:MM
+      setCustomSchedules(
+        (result.data ?? []).map((s: CustomSchedule) => ({
+          ...s,
+          schedule_time: s.schedule_time.slice(0, 5),
+        }))
+      )
 
-        // TODO (after interim): also read alert settings from result.data:
-        //   setAlertOnFailure(result.data.alert_on_failure ?? true)
-        //   setAlertOnValidation(result.data.alert_on_validation ?? true)
-        //   setMinErrors(result.data.min_errors_threshold ?? 1)
-      }
+      // TODO (after interim): read alert settings from /api/sync/settings:
+      //   alert_on_failure / alert_on_validation / min_errors_threshold
     } catch (err) {
-      console.error('Failed to fetch schedule:', err)
+      console.error('Failed to fetch schedules:', err)
     }
   }, [])
 
@@ -222,22 +230,46 @@ export default function SyncManagementPage() {
     setTimeout(() => setSettingsSaved(false), 2000)
   }
 
-  async function handleSaveSchedule() {
+  // Adds one more custom sync time (existing ones are kept).
+  async function handleAddSchedule() {
+    setScheduleError(null)
     try {
-      const response = await fetch(`${FLASK_API}/api/sync/schedule`, {
-        method: 'POST', //to sending the new schedule time to Flask when the user clicks Save Schedule in the Sync Schedule section.
-        headers: { 'Content-Type': 'application/json' }, // to tell Flask that we're sending JSON data in the request body
+      const response = await fetch(`${FLASK_API}/api/sync/schedules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ schedule_time: scheduleTime }),
       })
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const result = await response.json()
-      if (result.success) {
-        setCustomScheduleTime(scheduleTime) 
-        setScheduleSaved(true)
-        setTimeout(() => setScheduleSaved(false), 2000)
+      if (!response.ok || result.error) {
+        // Surface the reason (duplicate time, bad format, server error)
+        // instead of failing silently as the previous version did.
+        setScheduleError(result.error ?? `Request failed (HTTP ${response.status})`)
+        return
       }
+      await fetchSchedule()
+      setScheduleSaved(true)
+      setTimeout(() => setScheduleSaved(false), 2000)
     } catch (err) {
       console.error('Failed to save schedule:', err)
+      setScheduleError('Could not reach the server. Is the backend running?')
+    }
+  }
+
+  async function handleDeleteSchedule(id: string) {
+    setScheduleError(null)
+    try {
+      const response = await fetch(`${FLASK_API}/api/sync/schedules/${id}`, {
+        method: 'DELETE',
+      })
+      const result = await response.json()
+      if (!response.ok || result.error) {
+        setScheduleError(result.error ?? `Request failed (HTTP ${response.status})`)
+        return
+      }
+      await fetchSchedule()
+    } catch (err) {
+      console.error('Failed to delete schedule:', err)
+      setScheduleError('Could not reach the server. Is the backend running?')
     }
   }
 
@@ -647,10 +679,37 @@ export default function SyncManagementPage() {
               <p style={{ fontSize: '13px', fontWeight: 600, color: '#111827', margin: 0 }}>Auto sync at 6AM, 12PM, 6PM, 12AM</p>
             </div>
 
-            {customScheduleTime && (
+            {customSchedules.length > 0 && (
               <div style={{ background: '#eff6ff', borderRadius: '8px', padding: '12px 14px', marginBottom: '14px' }}>
-                <p style={{ fontSize: '12px', color: '#3b82f6', margin: '0 0 2px' }}>Custom Schedule</p>
-                <p style={{ fontSize: '13px', fontWeight: 600, color: '#1d4ed8', margin: 0 }}>Also syncs at {customScheduleTime} Sri Lanka time</p>
+                <p style={{ fontSize: '12px', color: '#3b82f6', margin: '0 0 6px' }}>
+                  Custom Schedule{customSchedules.length > 1 ? 's' : ''}
+                </p>
+                {customSchedules.map((s) => (
+                  <div
+                    key={s.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      gap: '8px', padding: '3px 0',
+                    }}
+                  >
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#1d4ed8' }}>
+                      Also syncs at {formatScheduleTime(s.schedule_time)} Sri Lanka time
+                    </span>
+                    <button
+                      onClick={() => handleDeleteSchedule(s.id)}
+                      title="Remove this sync time"
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: '20px', height: '20px', flexShrink: 0,
+                        border: 'none', borderRadius: '50%', cursor: 'pointer',
+                        background: 'rgba(37,99,235,0.12)', color: '#1d4ed8', padding: 0,
+                        fontSize: '14px', lineHeight: 1,
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -666,15 +725,25 @@ export default function SyncManagementPage() {
               />
             </div>
 
+            {scheduleError && (
+              <p style={{
+                fontSize: '12px', color: '#dc2626', background: '#fef2f2',
+                border: '1px solid #fecaca', borderRadius: '8px',
+                padding: '8px 10px', margin: '0 0 10px',
+              }}>
+                {scheduleError}
+              </p>
+            )}
+
             <button
-              onClick={handleSaveSchedule}
+              onClick={handleAddSchedule}
               style={{
                 width: '100%', padding: '8px', fontSize: '13px', fontWeight: 600,
                 color: 'white', background: scheduleSaved ? '#16a34a' : '#2563eb',
                 border: 'none', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s',
               }}
             >
-              {scheduleSaved ? '✓ Saved' : 'Save Schedule'}
+              {scheduleSaved ? '✓ Added' : 'Add Sync Time'}
             </button>
           </div>
 

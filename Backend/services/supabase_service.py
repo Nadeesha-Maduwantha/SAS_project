@@ -97,3 +97,37 @@ def save_sync_settings(schedule_hours, schedule_minute):
         'updated_at': 'now()'
     }).neq('id', '00000000-0000-0000-0000-000000000000').execute()
     return response.data
+
+
+# ── Custom sync schedules ──────────────────────────────────────────────
+# One row per custom time, so admins can add several. Previously a single
+# custom time was squeezed into sync_settings.schedule_hours, which also
+# holds the fixed multi-hour cron string ('0,6,12,18') — one column with
+# two meanings, and saving a second time silently replaced the first.
+
+def get_sync_schedules():
+    response = (
+        supabase.table('sync_schedules')
+        .select('*')
+        .eq('is_active', True)
+        .order('schedule_time')
+        .execute()
+    )
+    return response.data or []
+
+def add_sync_schedule(schedule_time):
+    """schedule_time is 'HH:MM' (24h). Returns the new row, or None if the
+    time already exists (unique constraint)."""
+    response = supabase.table('sync_schedules').insert({
+        'schedule_time': schedule_time,
+    }).execute()
+    return response.data[0] if response.data else None
+
+def delete_sync_schedule(schedule_id):
+    response = (
+        supabase.table('sync_schedules')
+        .delete()
+        .eq('id', schedule_id)
+        .execute()
+    )
+    return response.data
