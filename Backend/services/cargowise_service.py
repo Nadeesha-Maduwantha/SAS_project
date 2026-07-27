@@ -12,25 +12,32 @@ CARGOWISE_PASSWORD = os.getenv('CARGOWISE_PASSWORD')
 # The live source of truth is the milestone_field_map table (registry) in
 # Supabase — admins/builder add rows there, no code change needed.
 # This fallback only keeps the sync alive if that table is unreachable.
+# canonical_field: the name the milestone definition reads. Differs from
+# api_field only for admin-resolved mismatches (aliases).
 DEFAULT_FIELD_MAP = {
-    'cargo_ready':  ['cargo_ready_date'],
-    'cargo_pickup': ['cargo_pickup_date', 'pickup_date_status'],
+    'cargo_ready':  [{'api_field': 'cargo_ready_date',   'canonical_field': 'cargo_ready_date'}],
+    'cargo_pickup': [{'api_field': 'cargo_pickup_date',  'canonical_field': 'cargo_pickup_date'},
+                     {'api_field': 'pickup_date_status', 'canonical_field': 'pickup_date_status'}],
 }
 
 def load_field_map():
-    """Read the milestone field registry: milestone_key -> [api_field, ...].
+    """Read the milestone field registry:
+    milestone_key -> [{'api_field': ..., 'canonical_field': ...}, ...].
     Loaded once per sync run."""
     try:
         from services.supabase_client import supabase
         rows = (
             supabase.table('milestone_field_map')
-            .select('milestone_key, api_field')
+            .select('milestone_key, api_field, canonical_field')
             .eq('is_active', True)
             .execute()
         ).data or []
         field_map = {}
         for r in rows:
-            field_map.setdefault(r['milestone_key'], []).append(r['api_field'])
+            field_map.setdefault(r['milestone_key'], []).append({
+                'api_field': r['api_field'],
+                'canonical_field': r.get('canonical_field') or r['api_field'],
+            })
         return field_map or DEFAULT_FIELD_MAP
     except Exception as e:
         print(f'milestone_field_map load failed, using default map: {e}')
@@ -64,10 +71,14 @@ def _normalize_date(value):
 
 def build_milestones(item, field_map):
     """Build the shipments.milestones jsonb value from one API record.
-    Sub-keys are the real API field names, so milestone definitions
-    (primary_field / field_a / field_b) resolve against them directly."""
+    Values are read from the API under api_field but written under
+    canonical_field — the name the milestone definition reads — so
+    admin-resolved field-name mismatches (aliases) actually resolve."""
     return {
-        key: {f: _normalize_date(item.get(f)) for f in fields}
+        key: {
+            f['canonical_field']: _normalize_date(item.get(f['api_field']))
+            for f in fields
+        }
         for key, fields in field_map.items()
     }
 
