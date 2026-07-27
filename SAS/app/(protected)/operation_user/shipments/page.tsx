@@ -16,9 +16,9 @@ import { exportAllShipmentsPDF } from '@/lib/Utils/exportPDF'
 import { Shipment } from '@/types'
 import { useAuth } from '@/lib/hooks/useAuth'
 import {
-  TRANSPORT_MODE_OPTIONS,
+  buildModeOptions,
   TRANSPORT_MODE_STYLES,
-  CURRENT_STAGE_OPTIONS,
+  buildStageOptions,
   PICKUP_STATUS_STYLES,
   isDelayedShipment,
 } from '@/constants/shipment.constants'
@@ -34,18 +34,8 @@ const DEFAULT_FILTERS: Record<string, string> = {
   transportMode: '',
 }
 
-const filterGroups = [
-  {
-    label: 'By Department',
-    key: 'transportMode',
-    options: TRANSPORT_MODE_OPTIONS,
-  },
-  {
-    label: 'By Stage',
-    key: 'currentStage',
-    options: CURRENT_STAGE_OPTIONS,
-  },
-]
+// filterGroups moved inside the component (as a useMemo) because the stage
+// options are now derived from the loaded shipments — see buildStageOptions.
 
 // Helpers 
 
@@ -99,6 +89,15 @@ export default function OperationUserShipmentsPage() {
   // Stats
   // isDelayedShipment() imported from constants — single source of
   // truth for delay logic. Stats are memoized to avoid unnecessary recalculations on every render.
+  // Filter groups — stage options derived from the data so the dropdown
+  // always matches what actually exists in the DB. Memoized so the array
+  // is only rebuilt when the shipments change (keeps the original
+  // "don't recreate on every render" intent).
+  const filterGroups = useMemo(() => [
+    { label: 'By Department', key: 'transportMode', options: buildModeOptions(shipments) },
+    { label: 'By Stage',      key: 'currentStage',  options: buildStageOptions(shipments) },
+  ], [shipments])
+
   const stats = useMemo(() => ({
     total:     shipments.length,
     active:    shipments.filter((s) =>
@@ -194,11 +193,11 @@ export default function OperationUserShipmentsPage() {
 
   // Render
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-[1400px]">
 
-      {/* Header */}
+      {/* Header — title matches the dashboard's admin-header style */}
       <div className="mb-5">
-        <h1 className="text-xl font-semibold text-gray-900">My Assigned Shipments</h1>
+        <h1 className="text-[18px] font-black text-slate-900">My Assigned Shipments</h1>
         {/*name comes from useAuth()  */}
         <p className="text-sm text-gray-500 mt-0.5">
           Manage and track your active logistics operations - {name}
@@ -282,7 +281,7 @@ export default function OperationUserShipmentsPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-y border-gray-100 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <tr className="border-y border-gray-200 bg-gray-50 text-[11px] font-semibold [&>th]:font-semibold text-gray-500 uppercase tracking-[0.06em]">
                   <th className="text-left px-5 py-3">Shipment ID</th>
                   <th className="text-left px-5 py-3">Consignee</th>
                   <th className="text-left px-5 py-3">Status</th>
@@ -292,7 +291,7 @@ export default function OperationUserShipmentsPage() {
                   <th className="text-left px-5 py-3">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-100">
                 {paginated.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-5 py-10 text-center text-sm text-gray-400">
@@ -321,7 +320,7 @@ export default function OperationUserShipmentsPage() {
                             <Truck className={`w-4 h-4 ${modeStyle.text}`} />
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-gray-900">#{shipment.cargowiseId}</p>
+                            <p className="text-sm font-mono font-bold text-gray-900">{shipment.cargowiseId}</p>
                             {shipment.branch && (
                               <p className="text-xs text-gray-400 mt-0.5">Branch: {shipment.branch}</p>
                             )}

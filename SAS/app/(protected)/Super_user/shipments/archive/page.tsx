@@ -147,7 +147,7 @@ export default function SuperUserArchiveShipmentsPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <tr className="border-b border-gray-200 bg-gray-50 text-[11px] font-semibold [&>th]:font-semibold text-gray-500 uppercase tracking-[0.06em]">
                   <th className="text-left px-5 py-3">Shipment ID</th>
                   <th className="text-left px-5 py-3">Consignee</th>
                   <th className="text-left px-5 py-3">Final Status</th>
@@ -156,7 +156,7 @@ export default function SuperUserArchiveShipmentsPage() {
                   <th className="text-left px-5 py-3">AI Note</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-100">
                 {paginated.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-5 py-10 text-center text-sm text-gray-400">
@@ -175,7 +175,7 @@ export default function SuperUserArchiveShipmentsPage() {
                       <div className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
                         <div>
-                          <p className="text-sm font-semibold text-gray-900">#{shipment.cargowiseId}</p>
+                          <p className="text-sm font-mono font-bold text-gray-900">{shipment.cargowiseId}</p>
                           {shipment.branch && (
                             <p className="text-xs text-gray-400 mt-0.5">Branch: {shipment.branch}</p>
                           )}
