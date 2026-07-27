@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCircle, AlertTriangle, Clock, Package } from 'lucide-react'
 import { ShipmentStatusBadge } from '@/components/shipments/ShipmentStatusBadge'
@@ -16,7 +16,7 @@ import { ShipmentCard } from '@/components/shipments/ShipmentCard'
 import { ShipmentViewToggle, ShipmentView } from '@/components/shipments/ShipmentViewToggle'
 import { useAuth } from '@/lib/hooks/useAuth'
 import {
-  CURRENT_STAGE_OPTIONS,
+  buildStageOptions,
   PICKUP_STATUS_STYLES,
   isDelayedShipment,
 } from '@/constants/shipment.constants'
@@ -40,15 +40,10 @@ const DEPARTMENT_LABELS: Record<string, string> = {
 }
 
 // To filters Super user only by stage (department is fixed to their own)
-//  reuses CURRENT_STAGE_OPTIONS from constants instead of
+//  reuses buildStageOptions from constants instead of
 // re-declaring the same strings here.
-const filterGroups = [
-  {
-    label: 'By Stage',
-    key: 'currentStage',
-    options: CURRENT_STAGE_OPTIONS,
-  },
-]
+// filterGroups moved inside the component (as a useMemo) because the stage
+// options are now derived from the loaded shipments — see buildStageOptions.
 
 const DEFAULT_STATS: DepartmentStats = {
   onTime: 0,
@@ -79,6 +74,12 @@ export default function SuperUserActiveShipmentsPage() {
   const [currentPage, setCurrentPage]   = useState(1)
   const [activeTab, setActiveTab]        = useState<'all' | 'expedited' | 'standard'>('all')
   const [shipments, setShipments]        = useState<Shipment[]>([])
+
+  // Stage options derived from the loaded data — dropdown always matches
+  // what actually exists in the DB. Memoized: rebuilt only when data changes.
+  const filterGroups = useMemo(() => [
+    { label: 'By Stage', key: 'currentStage', options: buildStageOptions(shipments) },
+  ], [shipments])
   const [stats, setStats]                = useState<DepartmentStats>(DEFAULT_STATS)
   const [loading, setLoading]            = useState(true)
   const [error, setError]                = useState<string | null>(null)
@@ -171,13 +172,13 @@ export default function SuperUserActiveShipmentsPage() {
 
   // To render the component
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-[1400px]">
 
-      {/* Header */}
+      {/* Header — title matches the dashboard's admin-header style */}
       <div className="flex items-center justify-between mb-5">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold text-gray-900">Active Shipments</h1>
+            <h1 className="text-[18px] font-black text-slate-900">Active Shipments</h1>
             <span className="px-2.5 py-0.5 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
               {filteredShipments.length} TOTAL
             </span>
@@ -276,7 +277,7 @@ export default function SuperUserActiveShipmentsPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <tr className="border-b border-gray-200 bg-gray-50 text-[11px] font-semibold [&>th]:font-semibold text-gray-500 uppercase tracking-[0.06em]">
                   <th className="text-left px-5 py-3">Shipment ID</th>
                   <th className="text-left px-5 py-3">Consignee</th>
                   <th className="text-left px-5 py-3">Status</th>
@@ -286,7 +287,7 @@ export default function SuperUserActiveShipmentsPage() {
                   <th className="text-left px-5 py-3">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-100">
                 {paginated.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-5 py-10 text-center text-sm text-gray-400">
@@ -302,7 +303,7 @@ export default function SuperUserActiveShipmentsPage() {
 
                     {/* Shipment ID */}
                     <td className="px-5 py-3.5">
-                      <p className="text-sm font-semibold text-gray-900">#{shipment.cargowiseId}</p>
+                      <p className="text-sm font-mono font-bold text-gray-900">{shipment.cargowiseId}</p>
                       {shipment.branch && (
                         <p className="text-xs text-gray-400 mt-0.5">Branch: {shipment.branch}</p>
                       )}

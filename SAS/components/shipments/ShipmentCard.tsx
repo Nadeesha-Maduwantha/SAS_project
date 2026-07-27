@@ -39,7 +39,7 @@ export function ShipmentCard({ shipment, onClick, actionSlot }: ShipmentCardProp
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             {shipment.isPriority && <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />}
-            <p className="text-sm font-semibold text-gray-900 truncate">#{shipment.cargowiseId}</p>
+            <p className="text-sm font-mono font-bold text-gray-900 truncate">{shipment.cargowiseId}</p>
           </div>
           {shipment.isPriority !== undefined && (
             <span className={`flex-shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full ${
