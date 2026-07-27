@@ -147,52 +147,88 @@ def get_errors():
 
 
 
-@sync_bp.route('/api/sync/schedule', methods=['GET'])
-def get_schedule():
+# ── Custom sync schedules ──────────────────────────────────────────────
+# Admins can register several custom times; each becomes its own scheduler
+# job (id 'custom_sync_<uuid>') alongside the fixed 0/6/12/18 cron.
+
+def _parse_hhmm(value):
+    """Validate 'HH:MM' and return (hour, minute) as ints, or None."""
     try:
-        from services.supabase_service import get_sync_settings
-        settings = get_sync_settings()
-        return jsonify({'data': settings}), 200
+        parts = str(value).split(':')
+        hour, minute = int(parts[0]), int(parts[1])
+    except (ValueError, IndexError, AttributeError):
+        return None
+    if 0 <= hour <= 23 and 0 <= minute <= 59:
+        return hour, minute
+    return None
+
+
+@sync_bp.route('/api/sync/schedules', methods=['GET'])
+def list_schedules():
+    try:
+        from services.supabase_service import get_sync_schedules
+        return jsonify({'data': get_sync_schedules()}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 
-@sync_bp.route('/api/sync/schedule', methods=['POST'])
-def save_schedule():
+@sync_bp.route('/api/sync/schedules', methods=['POST'])
+def add_schedule():
     try:
         from flask import request, current_app
-        from services.supabase_service import save_sync_settings
+        from services.supabase_service import add_sync_schedule, get_sync_schedules
         from apscheduler.triggers.cron import CronTrigger
 
-        data = request.get_json()
-        schedule_time = data.get('schedule_time')
+        schedule_time = (request.get_json() or {}).get('schedule_time')
+        parsed = _parse_hhmm(schedule_time)
+        if not parsed:
+            return jsonify({'error': 'schedule_time must be in HH:MM 24-hour format'}), 400
+        hour, minute = parsed
+        normalized = f'{hour:02d}:{minute:02d}'
 
-        if not schedule_time:
-            return jsonify({'error': 'schedule_time is required'}), 400
+        # Reject duplicates up front so the user gets a clear message
+        if any(s['schedule_time'][:5] == normalized for s in get_sync_schedules()):
+            return jsonify({'error': f'{normalized} is already scheduled'}), 409
 
-        hour, minute = schedule_time.split(':')
+        row = add_sync_schedule(normalized)
+        if not row:
+            return jsonify({'error': 'Could not save schedule'}), 500
 
-        save_sync_settings(
-            schedule_hours=hour,
-            schedule_minute=int(minute)
-        )
-
-        # Get scheduler from app config instead of importing from app
         scheduler = current_app.config.get('SCHEDULER')
         run_sync_job = current_app.config.get('RUN_SYNC_JOB')
-
         if scheduler and run_sync_job:
             scheduler.add_job(
                 run_sync_job,
-                CronTrigger(hour=hour, minute=int(minute), timezone='Asia/Colombo'),
-                id='custom_sync',
+                CronTrigger(hour=hour, minute=minute, timezone='Asia/Colombo'),
+                id=f"custom_sync_{row['id']}",
                 replace_existing=True
             )
 
         return jsonify({
             'success': True,
-            'message': f'Schedule saved — sync will run at {schedule_time} Sri Lanka time'
-        }), 200
+            'data': row,
+            'message': f'Sync scheduled at {normalized} Sri Lanka time'
+        }), 201
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@sync_bp.route('/api/sync/schedules/<schedule_id>', methods=['DELETE'])
+def remove_schedule(schedule_id):
+    try:
+        from flask import current_app
+        from services.supabase_service import delete_sync_schedule
+
+        delete_sync_schedule(schedule_id)
+
+        scheduler = current_app.config.get('SCHEDULER')
+        if scheduler:
+            job = scheduler.get_job(f'custom_sync_{schedule_id}')
+            if job:
+                job.remove()
+
+        return jsonify({'success': True, 'message': 'Schedule removed'}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500

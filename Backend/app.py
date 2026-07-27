@@ -206,24 +206,21 @@ scheduler.add_job(
     id='fixed_sync'
 )
 
-# Load custom schedule from database if exists
+# Load all custom schedules from the database — one job per row, so several
+# custom times can coexist alongside the fixed cron above.
 try:
-    from services.supabase_service import get_sync_settings
-    settings = get_sync_settings()
-    if settings:
+    from services.supabase_service import get_sync_schedules
+    for row in get_sync_schedules():
+        hh, mm = str(row['schedule_time']).split(':')[:2]
         scheduler.add_job(
             run_sync_job,
-            CronTrigger(
-                hour=settings['schedule_hours'],
-                minute=settings['schedule_minute'],
-                timezone='Asia/Colombo'
-            ),
-            id='custom_sync',
+            CronTrigger(hour=int(hh), minute=int(mm), timezone='Asia/Colombo'),
+            id=f"custom_sync_{row['id']}",
             replace_existing=True
         )
-        print(f"Custom sync loaded: {settings['schedule_hours']}:{settings['schedule_minute']}")
+        print(f"Custom sync loaded: {hh}:{mm}")
 except Exception as e:
-    print(f'Could not load custom schedule: {e}')
+    print(f'Could not load custom schedules: {e}')
 
 scheduler.start()
 print('Scheduler started — fixed sync at 6AM, 12PM, 6PM, 12AM Sri Lanka time')
