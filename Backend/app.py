@@ -244,6 +244,14 @@ def run_sync_job():
                 )
             print(f'Saved {len(error_list)} errors')
 
+        # Field-name mismatch check right after fresh data lands (Ronaka's
+        # detector — idempotent, dedup-safe). Never allowed to fail the sync.
+        try:
+            from services.field_registry import detect_and_notify
+            detect_and_notify()
+        except Exception as e:
+            print(f'field mismatch detection failed (non-fatal): {e}')
+
         print(f'Sync done — updated: {updated}, errors: {len(error_list)}')
 
     except Exception as e:

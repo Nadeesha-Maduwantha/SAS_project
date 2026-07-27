@@ -103,6 +103,14 @@ def run_sync():
                     severity=err['severity']
                 )
 
+        # Field-name mismatch check right after fresh data lands (Ronaka's
+        # detector — idempotent, dedup-safe). Never allowed to fail the sync.
+        try:
+            from services.field_registry import detect_and_notify
+            detect_and_notify()
+        except Exception as e:
+            print(f'field mismatch detection failed (non-fatal): {e}')
+
         return jsonify({
             'success': True,
             'inserted': inserted,
