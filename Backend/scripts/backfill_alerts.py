@@ -1,15 +1,4 @@
-"""
-One-off backfill: populates assigned_to/assigned_email on existing
-shipment_milestones rows and creates the matching alerts rows, for
-milestones that predate the alerts feature (or were created while
-run_milestone_sync() was broken).
 
-Safe to re-run — _sync_alerts_for_milestone checks for an existing
-alert per (milestone, recipient) before inserting.
-
-Usage (from Backend/, with venv active):
-    python -m scripts.backfill_alerts
-"""
 from services.supabase_client import supabase
 from services.user_matching import resolve_relevant_profiles
 from sync.milestone_sync import _sync_alerts_for_milestone
