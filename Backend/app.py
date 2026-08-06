@@ -18,6 +18,7 @@ from routes.audit_trail import bp as audit_trail_bp
 from routes.access_logs import access_logs_bp
 from routes.profile import bp as profile_bp
 from routes.change_password import bp as change_password_bp
+from routes.security_settings import security_settings_bp
 
 # Shipment routes
 from routes.templates import templates_bp
@@ -166,6 +167,7 @@ app.register_blueprint(milestones_bp)
 app.register_blueprint(shipments_bp)
 app.register_blueprint(alerts_bp)
 app.register_blueprint(change_password_bp, name="change_password_routes")
+app.register_blueprint(security_settings_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(cargowise_sync_bp, name="cargowise_sync_routes")
 
