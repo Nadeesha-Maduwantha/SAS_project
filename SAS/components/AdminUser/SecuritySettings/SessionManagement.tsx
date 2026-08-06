@@ -35,6 +35,7 @@ const SessionManagementSection: React.FC<SessionManagementProps> = ({ data, onCh
             value={data.timeoutMinutes}
             onChange={(e) => handleChange("timeoutMinutes", Number(e.target.value))}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            data-testid="input-timeoutMinutes"
           />
         </div>
         <div>
@@ -44,6 +45,7 @@ const SessionManagementSection: React.FC<SessionManagementProps> = ({ data, onCh
             value={data.maxConcurrentSessions}
             onChange={(e) => handleChange("maxConcurrentSessions", Number(e.target.value))}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            data-testid="input-maxConcurrentSessions"
           />
         </div>
       </div>
@@ -61,6 +63,7 @@ const SessionManagementSection: React.FC<SessionManagementProps> = ({ data, onCh
               checked={data[item.key as keyof SessionManagement] as boolean}
               onChange={(e) => handleChange(item.key as keyof SessionManagement, e.target.checked)}
               className="w-4 h-4 accent-blue-500"
+              data-testid={`checkbox-${item.key}`}
             />
             {item.label}
           </label>
