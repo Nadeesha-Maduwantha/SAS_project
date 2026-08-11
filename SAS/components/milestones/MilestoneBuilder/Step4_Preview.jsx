@@ -39,6 +39,8 @@ const TYPE_LABELS = {
   missing:    { label: 'Missing Info',       icon: '', color: T.amber, bg: T.amberBg },
   comparison: { label: 'Field Comparison',   icon: '', color: T.gray700, bg: T.gray100 },
   document:   { label: 'Document Check',     icon: '', color: T.green,  bg: T.greenBg },
+  status:     { label: 'Status Check',       icon: '', color: T.blue,   bg: T.blueBg  },
+  custom:     { label: 'Custom',             icon: '', color: T.gray700, bg: T.gray100 },
 };
 
 // ── Section wrapper ────────────────────────────────────────────────────────────
@@ -154,6 +156,17 @@ function RuleSummary({ rule, index }) {
   );
 }
 
+// ── Describe an extra logic block in plain language ─────────────────────────────
+function describeLogicBlock(b) {
+  if (!b || !b.type) return '—';
+  if (b.type === 'date')       return `${getFieldLabel(b.primary_field)} has a value`;
+  if (b.type === 'missing')    return `${getFieldLabel(b.primary_field)} is empty`;
+  if (b.type === 'status')     return `${getFieldLabel(b.field_a)} ${b.operator === 'not_equals' ? 'is not' : 'is'} "${b.fixed_value || ''}"`;
+  if (b.type === 'comparison') return `${getFieldLabel(b.field_a)} ${b.operator || ''} ${b.field_b ? getFieldLabel(b.field_b) : `"${b.fixed_value || ''}"`}`;
+  if (b.type === 'document')   return `${b.document_name || 'document'} confirmed by ${getFieldLabel(b.tracking_field)}`;
+  return b.type;
+}
+
 // ── Main export ────────────────────────────────────────────────────────────────
 export default function Step4_Preview({ milestone }) {
   const typeMeta = TYPE_LABELS[milestone.milestone_type] || TYPE_LABELS.date;
@@ -214,18 +227,6 @@ export default function Step4_Preview({ milestone }) {
         {(milestone.milestone_type === 'date' || milestone.milestone_type === 'missing') && (
           <>
             <Row label="Watching field"   value={getFieldLabel(milestone.primary_field)} mono />
-            {milestone.milestone_type === 'date' && (
-              <>
-                <Row label="Due date from"
-                  value={
-                    milestone.expected_date_source === 'self'                ? 'Field\'s own value'
-                    : milestone.expected_date_source === 'another_field'     ? `${getFieldLabel(milestone.expected_date_field)} + ${milestone.expected_date_offset} day(s)`
-                    : milestone.expected_date_source === 'days_after_creation' ? `${milestone.expected_date_offset} day(s) after shipment creation`
-                    : 'Set manually at assignment'
-                  }
-                />
-              </>
-            )}
           </>
         )}
         {milestone.milestone_type === 'comparison' && (
@@ -242,7 +243,34 @@ export default function Step4_Preview({ milestone }) {
             <Row label="Confirmed when"   value={getFieldLabel(milestone.tracking_field)} mono   />
           </>
         )}
+        {milestone.milestone_type === 'status' && (
+          <>
+            <Row label="Status field"  value={getFieldLabel(milestone.field_a)} mono />
+            <Row label="Alert while"   value={`${milestone.operator === 'not_equals' ? 'is not' : 'is'} "${milestone.fixed_value || ''}"`} />
+          </>
+        )}
+
+        <Row label="Due date"
+          value={
+            milestone.expected_date_source === 'self'                       ? "Watched field's own date"
+            : milestone.expected_date_source === 'another_field'            ? `${getFieldLabel(milestone.expected_date_field) || 'field'} ${(milestone.expected_date_offset || 0) >= 0 ? '+' : ''}${milestone.expected_date_offset || 0} day(s)`
+            : milestone.expected_date_source === 'days_after_creation'      ? `${milestone.expected_date_offset || 0} day(s) after shipment creation`
+            : milestone.expected_date_source === 'after_previous_milestone' ? `${milestone.expected_date_offset || 0} day(s) after previous milestone`
+            : milestone.expected_date_source === 'manual'                   ? 'Set manually at assignment'
+            : '—'
+          }
+        />
       </Section>
+
+      {/* Additional checks */}
+      {(milestone.extra_logics || []).length > 0 && (
+        <Section title={`${milestone.milestone_type === 'custom' ? 'Checks' : 'Additional Checks'} — met when ${(milestone.logic_combine || 'and') === 'or' ? 'ANY' : 'ALL'} pass`}>
+          {milestone.milestone_type !== 'custom' && <Row label="Check 1 (primary)" value={typeMeta.label} />}
+          {(milestone.extra_logics || []).map((b, i) => (
+            <Row key={i} label={`Check ${i + (milestone.milestone_type === 'custom' ? 1 : 2)}`} value={describeLogicBlock(b)} />
+          ))}
+        </Section>
+      )}
 
       {/* Section 3 — Alert rules */}
       <Section title={`Alert Rules (${rules.length})`}>
