@@ -9,7 +9,7 @@ export interface PasswordPolicy {
 }
 
 export interface TwoFactorAuth {
-  mode: "optional" | "admin_only" | "all_users";
+  requireForAdmins: boolean;
 }
 
 export interface SessionManagement {
