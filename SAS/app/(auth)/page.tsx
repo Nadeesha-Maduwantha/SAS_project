@@ -2,6 +2,7 @@
 
 import { useState, FormEvent, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -42,6 +43,8 @@ export default function LoginPage() {
         // Store tokens
         localStorage.setItem('access_token', data.access_token);
         localStorage.setItem('user_role', role);
+        localStorage.setItem('user_email', data.user.email || '');
+        localStorage.setItem('user_department', data.user.department || '');
         document.cookie = `access_token=${data.access_token}; path=/; max-age=86400`;
         document.cookie = `user_role=${role}; path=/; max-age=86400`;
 
@@ -156,9 +159,9 @@ export default function LoginPage() {
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                   Password
                 </label>
-                <a href="#" className="text-sm text-blue-600 hover:text-blue-700">
+                <Link href="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700">
                   Forgot password?
-                </a>
+                </Link>
               </div>
               <input
                 type="password"

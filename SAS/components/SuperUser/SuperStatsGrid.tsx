@@ -17,7 +17,7 @@ export default function SuperStatsGrid() {
 
   // ✅ ALSO INSIDE COMPONENT
   useEffect(() => {
-    fetch("http://127.0.0.1:5001/api/dashboard/super/metrics")
+    fetch("http://127.0.0.1:5000/api/dashboard/super/metrics")
       .then(res => res.json())
       .then(res => setData(res.data))
       .catch(err => console.error(err));

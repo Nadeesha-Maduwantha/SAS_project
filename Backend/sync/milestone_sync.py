@@ -1,6 +1,7 @@
 import time
 from services.supabase_client import supabase
 from sync.database_sync_log import start_sync_log, finish_sync_log
+from services.user_matching import resolve_relevant_profiles
 
 DEFAULT_TEMPLATE_ID = "7a39137e-295c-4654-8823-077263091b8b"
 SYNC_TYPE = "database_sync"
@@ -73,13 +74,71 @@ def _derive_milestone_data(shipment: dict) -> dict:
 
 
 def _insert_one(row: dict):
-    """Insert a single row — avoids PGRST102 batch key mismatch error."""
-    supabase.table('shipment_milestones').insert(row).execute()
+    """Insert a single row — avoids PGRST102 batch key mismatch error. Returns new row id."""
+    resp = supabase.table('shipment_milestones').insert(row).execute()
+    return resp.data[0]['id'] if resp.data else None
 
 
 def _update_one(milestone_id: str, payload: dict):
     """Update a single milestone row by its UUID."""
     supabase.table('shipment_milestones').update(payload).eq('id', milestone_id).execute()
+
+
+def _upsert_alert(shipment_id, milestone_id, title, message, is_critical, assigned_profile=None):
+    """Insert or refresh the alert row for this (milestone, recipient) pair."""
+    payload = {
+        'shipment_id':  shipment_id,
+        'milestone_id': milestone_id,
+        'title':        title,
+        'message':      message,
+        'is_critical':  is_critical,
+        'status':       'active',
+    }
+
+    if assigned_profile:
+        payload['assigned_profile_id'] = assigned_profile['id']
+        payload['assigned_email']      = assigned_profile['email']
+        payload['is_admin_only']       = False
+        existing = (
+            supabase.table('alerts').select('id')
+            .eq('milestone_id', milestone_id)
+            .eq('assigned_profile_id', assigned_profile['id'])
+            .execute()
+        )
+    else:
+        payload['assigned_profile_id'] = None
+        payload['assigned_email']      = None
+        payload['is_admin_only']       = True
+        existing = (
+            supabase.table('alerts').select('id')
+            .eq('milestone_id', milestone_id)
+            .eq('is_admin_only', True)
+            .execute()
+        )
+
+    if existing.data:
+        supabase.table('alerts').update(payload).eq('id', existing.data[0]['id']).execute()
+    else:
+        supabase.table('alerts').insert(payload).execute()
+
+
+def _sync_alerts_for_milestone(shipment_id, milestone_id, name, notes, is_critical, status, relevant_profiles):
+    """Create/refresh alert rows for a milestone that needs attention.
+
+    Fans out one alert per matched profile; falls back to a single
+    admin-only alert when none of the shipment's staff emails matched
+    a profile.
+    """
+    if not milestone_id:
+        return
+    if not is_critical and status != 'overdue':
+        return
+
+    if relevant_profiles:
+        for profile in relevant_profiles:
+            _upsert_alert(shipment_id, milestone_id, name, notes, is_critical, profile)
+    else:
+        _upsert_alert(shipment_id, milestone_id, name, notes, is_critical, None)
 
 
 def run_milestone_sync() -> dict:
@@ -101,7 +160,8 @@ def run_milestone_sync() -> dict:
                 'id, job_number,'
                 'cargo_ready_date, cargo_pickup_date,'
                 'pickup_date_status, llm_cargo_pickup_date,'
-                'llm_note, st_note_text'
+                'llm_note, st_note_text,'
+                'created_by_email, updated_by_email, sales_user_email'
             )
             .execute()
         )
@@ -161,10 +221,16 @@ def run_milestone_sync() -> dict:
             try:
                 milestone_data = _derive_milestone_data(shipment)
 
+                relevant_profiles  = resolve_relevant_profiles(shipment)
+                primary_profile    = relevant_profiles[0] if relevant_profiles else None
+                assigned_to_val    = primary_profile['full_name'] if primary_profile else None
+                assigned_email_val = primary_profile['email'] if primary_profile else None
+
                 if sid in existing_map:
                     # UPDATE existing rows one by one
                     for seq, data in milestone_data.items():
                         milestone_id = existing_map[sid].get(seq)
+                        name = template_name_map.get(seq, f"Milestone {seq + 1}")
 
                         if milestone_id:
                            _update_one(milestone_id, {
@@ -174,19 +240,18 @@ def run_milestone_sync() -> dict:
                             'completed_date':   data.get('completed_date'),
                             'notes':            data.get('notes'),
                             'automated':        False,
-                            'assigned_to':      None,
-                            'assigned_email':   None,
+                            'assigned_to':      assigned_to_val,
+                            'assigned_email':   assigned_email_val,
                             'alert_sent':       False,
                             'location_label':   None,
                             'location_lat':     None,
                             'location_lng':     None,
                             'days_from_booking': seq,
                         })
-                           
+
                         else:
                             # Missing sequence — insert single row
-                            name = template_name_map.get(seq, f"Milestone {seq + 1}")
-                            _insert_one({
+                            milestone_id = _insert_one({
                                 'shipment_id':      sid,
                                 'template_id':      DEFAULT_TEMPLATE_ID,
                                 'name':             name,
@@ -198,8 +263,8 @@ def run_milestone_sync() -> dict:
                                 'notes':            data.get('notes'),
                                 # columns that exist in table but we don't use yet
                                 'automated':        False,
-                                'assigned_to':      None,
-                                'assigned_email':   None,
+                                'assigned_to':      assigned_to_val,
+                                'assigned_email':   assigned_email_val,
                                 'alert_sent':       False,
                                 'alert_sent_at':    None,
                                 'location_label':   None,
@@ -208,13 +273,18 @@ def run_milestone_sync() -> dict:
                                 'days_from_booking': seq,
                             })
 
+                        _sync_alerts_for_milestone(
+                            sid, milestone_id, name, data.get('notes'),
+                            data['is_critical'], data['status'], relevant_profiles,
+                        )
+
                     updated_count += 1
 
                 else:
                     # INSERT all 5 rows one at a time — avoids PGRST102
                     for seq, data in milestone_data.items():
                         name = template_name_map.get(seq, f"Milestone {seq + 1}")
-                        _insert_one({
+                        milestone_id = _insert_one({
                             'shipment_id':      sid,
                             'template_id':      DEFAULT_TEMPLATE_ID,
                             'name':             name,
@@ -226,8 +296,8 @@ def run_milestone_sync() -> dict:
                             'notes':            data.get('notes'),
                             # columns that exist in table but we don't use yet
                             'automated':        False,
-                            'assigned_to':      None,
-                            'assigned_email':   None,
+                            'assigned_to':      assigned_to_val,
+                            'assigned_email':   assigned_email_val,
                             'alert_sent':       False,
                             'alert_sent_at':    None,
                             'location_label':   None,
@@ -235,6 +305,11 @@ def run_milestone_sync() -> dict:
                             'location_lng':     None,
                             'days_from_booking': seq,
                         })
+
+                        _sync_alerts_for_milestone(
+                            sid, milestone_id, name, data.get('notes'),
+                            data['is_critical'], data['status'], relevant_profiles,
+                        )
 
                     created_count += 1
 
@@ -277,6 +352,3 @@ def run_milestone_sync() -> dict:
             'created': created_count,
             'errors':  [{'error': error_msg, 'fatal': True}],
         }
-
-
-#added to temp_dev

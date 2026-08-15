@@ -20,7 +20,7 @@ export default function SuperRecentActivityTable() {
   const fetchData = () => {
     setLoading(true);
 
-    fetch("http://127.0.0.1:5001/api/dashboard/super/recent-activity")
+    fetch("http://127.0.0.1:5000/api/dashboard/super/recent-activity")
       .then(res => res.json())
       .then(res => {
         setRows(res.data || []);

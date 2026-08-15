@@ -17,7 +17,7 @@ export default function SuperCriticalAlertsCard() {
 
   //  fetch function
   const fetchAlerts = () => {
-    fetch('http://127.0.0.1:5001/api/dashboard/super/critical-alerts')
+    fetch('http://127.0.0.1:5000/api/dashboard/super/critical-alerts')
       .then((res) => res.json())
       .then((res) => {
         setAlerts(res.data || []);

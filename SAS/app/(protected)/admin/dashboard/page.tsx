@@ -12,6 +12,7 @@ import '@/styles/AdminStyles/AdminLayout.css';
 import SyncSummaryCard from '@/components/AdminUser/SyncSummaryCard';
 
 // ─── Sync Status Data ───
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
 const MOCK_SYNC_STATUS = {
   lastSyncTime: '2026-02-22T08:00:00',
   status: 'partial' as 'success' | 'failed' | 'partial',
@@ -24,7 +25,7 @@ const MOCK_SYNC_STATUS = {
 
 async function fetchDashboardData<T>(url: string, fallback: T): Promise<T> {
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { cache: 'no-store' });
     const payload = await response.json();
 
     if (!response.ok) {
@@ -34,7 +35,7 @@ async function fetchDashboardData<T>(url: string, fallback: T): Promise<T> {
 
     return payload.data ?? fallback;
   } catch (error) {
-    console.error(error);
+    console.error('Dashboard fetch failed:', error);
     return fallback;
   }
 }
@@ -50,17 +51,17 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     fetchDashboardData(
-      "http://127.0.0.1:5001/api/dashboard/admin/shipment-feed",
+      `${API_BASE_URL}/api/dashboard/admin/shipment-feed`,
       []
     ).then(setShipments);
 
     fetchDashboardData(
-      "http://127.0.0.1:5001/api/dashboard/admin/metrics",
+      `${API_BASE_URL}/api/dashboard/admin/metrics`,
       {
-        total_users: 0,
-        active_alerts: 0,
-        total_emails: 0,
-        success_rate: 0,
+      total_users: 0,
+      active_alerts: 0,
+      total_emails: 0,
+      success_rate: 0,
       }
     ).then(setMetrics);
   }, []);

@@ -3,8 +3,12 @@ from flask import Blueprint, request, jsonify
 from services.supabase_service import get_supabase
 from utils.auth_helper import require_auth, get_current_user
 from datetime import datetime
+import os
 
 bp = Blueprint('auth', __name__, url_prefix='/api/auth')
+
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+reset_redirect = f"{FRONTEND_URL.rstrip('/')}/reset-password"
 
 # --- HELPER FUNCTIONS FOR DEVICE AND LOCATION ---
 def get_location_from_ip(ip):
@@ -63,7 +67,7 @@ def login():
     
     # 1. SAFELY CHECK IF USER IS ALREADY LOCKED / BLOCKED
     try:
-        profile_response = supabase.table('profiles').select('id, role, is_locked, is_blocked, failed_attempts').eq('email', email).execute()
+        profile_response = supabase.table('profiles').select('id, role, department, is_locked, is_blocked, failed_attempts').eq('email', email).execute()
         if profile_response.data:
             profile_data = profile_response.data[0]
     except Exception as e:
@@ -119,7 +123,8 @@ def login():
             'user': {
                 'id': user_id,
                 'email': str(response.user.email),
-                'role': actual_role
+                'role': actual_role,
+                'department': profile_data.get('department') if profile_data else None
             }
         }), 200
 
@@ -204,3 +209,19 @@ def get_me():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.json
+    email = data.get('email')
+
+    if not email:
+        return jsonify({'error': 'Email is required'}), 400
+
+    supabase = get_supabase()
+    supabase.auth.reset_password_email(
+        email=email,
+        redirect_to=reset_redirect,
+    )
+
+    return jsonify({'message': 'Password reset email sent'}), 200
