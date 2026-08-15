@@ -12,6 +12,8 @@ _CONFIG_KEYS = (
     'expected_date_source', 'expected_date_field', 'expected_date_offset',
     'document_name', 'tracking_field', 'field_a', 'operator', 'field_b',
     'fixed_value', 'threshold_value',
+    # Additional logic blocks (multi-check milestones) + how they combine.
+    'extra_logics', 'logic_combine',
     # Registry key so the alert engine can resolve values from shipments.milestones
     'milestone_key',
 )
@@ -50,6 +52,11 @@ def _compute_due_date(cfg, shipment):
     elif src == 'days_after_creation':
         d = _parse_date(shipment.get('created_at'))
         d = d + timedelta(days=offset) if d else None
+    elif src == 'after_previous_milestone':
+        # Deadline is (previous milestone's completed_date + offset). That date
+        # isn't known until the prior milestone completes, so the alert engine
+        # resolves it at runtime using sequence_order + expected_date_offset.
+        d = None
     else:  # 'manual' or unknown → no computed due date yet
         d = None
     return d.isoformat() if d else None

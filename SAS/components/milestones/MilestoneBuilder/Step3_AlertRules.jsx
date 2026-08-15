@@ -84,6 +84,7 @@ function SegmentGroup({ value, onChange, options }) {
         const sel = value === opt.value;
         return (
           <button key={opt.value} type="button" onClick={() => onChange(opt.value)}
+            title={opt.hint || undefined}
             style={{
               padding:      '7px 14px',
               fontSize:     '12px',
@@ -180,9 +181,9 @@ function AlertRuleCard({ rule, index, onChange, onDelete, milestoneType }) {
                 value={rule.timing}
                 onChange={v => set('timing', v)}
                 options={[
-                  { value: 'before',  label: 'Before' },
-                  { value: 'on_date', label: 'On date' },
-                  { value: 'after',   label: 'After'   },
+                  { value: 'before',  label: 'Before',  hint: 'Fire a set number of days before the due date.' },
+                  { value: 'on_date', label: 'On date',  hint: 'Fire exactly on the due date.' },
+                  { value: 'after',   label: 'After',    hint: 'Fire a set number of days after the due date.' },
                 ]}
               />
 
@@ -223,10 +224,10 @@ function AlertRuleCard({ rule, index, onChange, onDelete, milestoneType }) {
               value={rule.condition}
               onChange={v => set('condition', v)}
               options={[
-                { value: 'always',             label: 'Always'         },
-                { value: 'if_not_recorded',    label: 'If not recorded'},
-                { value: 'if_comparison_true', label: 'If condition'   },
-                { value: 'if_missing',         label: 'If missing'     },
+                { value: 'always',             label: 'Always',          hint: 'Fires at the scheduled time no matter what — a pure reminder.' },
+                { value: 'if_not_recorded',    label: 'If not recorded', hint: 'Fires only if the watched field is still empty (e.g. document not uploaded).' },
+                { value: 'if_comparison_true', label: 'If condition',    hint: 'Fires only if the comparison is still true.' },
+                { value: 'if_missing',         label: 'If missing',      hint: 'Fires only if the required field is still empty.' },
               ]}
             />
             <p style={{ fontSize: '11px', color: T.gray400, marginTop: '6px' }}>
@@ -244,10 +245,10 @@ function AlertRuleCard({ rule, index, onChange, onDelete, milestoneType }) {
               value={rule.recurrence_type}
               onChange={v => set('recurrence_type', v)}
               options={[
-                { value: 'once',            label: 'Once'     },
-                { value: 'daily',           label: 'Daily'    },
-                { value: 'weekly',          label: 'Weekly'   },
-                { value: 'custom_interval', label: 'Custom'   },
+                { value: 'once',            label: 'Once',   hint: 'Fires a single time, then stops.' },
+                { value: 'daily',           label: 'Daily',  hint: 'Repeats every day until the stop condition.' },
+                { value: 'weekly',          label: 'Weekly', hint: 'Repeats every week until the stop condition.' },
+                { value: 'custom_interval', label: 'Custom', hint: 'Repeats every N days that you set.' },
               ]}
             />
 
@@ -373,10 +374,10 @@ function AlertRuleCard({ rule, index, onChange, onDelete, milestoneType }) {
               value={rule.recipient_type}
               onChange={v => set('recipient_type', v)}
               options={[
-                { value: 'operations', label: 'Operations' },
-                { value: 'sales',      label: 'Sales'      },
-                { value: 'consignee',  label: 'Consignee'  },
-                { value: 'custom',     label: 'Custom'     },
+                { value: 'operations', label: 'Operations', hint: 'The operations user assigned to this shipment.' },
+                { value: 'sales',      label: 'Sales',      hint: 'The sales rep assigned to this shipment.' },
+                { value: 'consignee',  label: 'Consignee',  hint: 'The consignee email on the shipment record.' },
+                { value: 'custom',     label: 'Custom',     hint: 'A specific email address you enter.' },
               ]}
             />
             {rule.recipient_type === 'custom' && (

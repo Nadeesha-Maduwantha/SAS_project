@@ -147,7 +147,7 @@ def create_library_milestone():
             return jsonify({'error': 'Milestone name is required'}), 400
         if not data.get('milestone_type'):
             return jsonify({'error': 'Milestone type is required'}), 400
-        if data['milestone_type'] not in ('date', 'document', 'comparison', 'missing'):
+        if data['milestone_type'] not in ('date', 'document', 'comparison', 'missing', 'status', 'custom'):
             return jsonify({'error': 'Invalid milestone type'}), 400
         if not data.get('alert_rules') or len(data['alert_rules']) == 0:
             return jsonify({'error': 'At least one alert rule is required'}), 400
@@ -181,6 +181,12 @@ def create_library_milestone():
             'fixed_value':          data.get('fixed_value'),
             'threshold_value':      data.get('threshold_value'),
         }
+
+        # Additional logic blocks (multi-check milestones). Only sent when used,
+        # so single-check milestones keep working before the columns migration.
+        if data.get('extra_logics'):
+            milestone_row['extra_logics']  = data['extra_logics']
+            milestone_row['logic_combine'] = data.get('logic_combine') or 'and'
 
         # Insert the milestone
         milestone_resp = (
@@ -272,6 +278,12 @@ def update_library_milestone(milestone_id):
             'fixed_value':          data.get('fixed_value'),
             'threshold_value':      data.get('threshold_value'),
         }
+
+        # Only touch the multi-logic columns when extra checks are present, so
+        # editing a plain milestone works before the columns migration is run.
+        if data.get('extra_logics'):
+            update_row['extra_logics']  = data['extra_logics']
+            update_row['logic_combine'] = data.get('logic_combine') or 'and'
 
         supabase.table('milestone_library') \
             .update(_clean_row(update_row)) \

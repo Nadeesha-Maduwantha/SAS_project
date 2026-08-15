@@ -8,7 +8,7 @@
 //  User picks: name, milestone type, critical flag, description.
 // =============================================================
 
-import { Calendar, AlertTriangle, ArrowRightLeft, FileText } from 'lucide-react';
+import { Calendar, AlertTriangle, ArrowRightLeft, FileText, Tag, SlidersHorizontal } from 'lucide-react';
 
 const MILESTONE_TYPES = [
   {
@@ -34,6 +34,18 @@ const MILESTONE_TYPES = [
     label:       'Document Check',
     Icon:        FileText,
     description: 'Alert when a specific document has not been updated in CargoWise.',
+  },
+  {
+    value:       'status',
+    label:       'Status Check',
+    Icon:        Tag,
+    description: 'Alert while a status field is (or is not) a specific value — e.g. Pickup Status = "Delayed".',
+  },
+  {
+    value:       'custom',
+    label:       'Custom',
+    Icon:        SlidersHorizontal,
+    description: 'Build it yourself from one or more checks — no preset behaviour. Full control.',
   },
 ];
 
@@ -134,10 +146,12 @@ export default function Step1_BasicInfo({ milestone, update, errors }) {
                   update('milestone_type', type.value);
                   // Reset field linking when type changes
                   update('primary_field', '');
-                  update('expected_date_source', 'self');
+                  update('expected_date_source', '');
+                  update('extra_logics', []);
                   update('field_a', '');
                   update('operator', '');
                   update('field_b', '');
+                  update('fixed_value', '');
                   update('document_name', '');
                   update('tracking_field', '');
                 }}

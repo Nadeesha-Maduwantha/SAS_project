@@ -36,7 +36,7 @@ export function emptyMilestone() {
 
     // Step 2 — date / missing
     primary_field:        '',
-    expected_date_source: 'self',
+    expected_date_source: '',
     expected_date_field:  '',
     expected_date_offset: 0,
 
@@ -44,12 +44,16 @@ export function emptyMilestone() {
     document_name:  '',
     tracking_field: '',
 
-    // Step 2 — comparison
+    // Step 2 — comparison / status
     field_a:         '',
     operator:        '',
     field_b:         '',
     fixed_value:     '',
     threshold_value: '',
+
+    // Step 2 — additional logic blocks (multi-check milestones)
+    extra_logics:  [],       // [{ type, ...checkFields }]
+    logic_combine: 'and',    // 'and' | 'or'
 
     // Step 3
     alert_rules: [],
@@ -114,22 +118,53 @@ export default function MilestoneBuilderShell({
     }
 
     if (s === 2) {
-      if (milestone.milestone_type === 'date' || milestone.milestone_type === 'missing') {
+      const type = milestone.milestone_type;
+
+      if (type === 'date') {
         if (!milestone.primary_field) e.primary_field = 'Select the field this milestone watches';
         if (!milestone.expected_date_source) e.expected_date_source = 'Select how the due date is determined';
-        if (milestone.expected_date_source === 'another_field' && !milestone.expected_date_field)
-          e.expected_date_field = 'Select the reference field for the due date';
       }
-      if (milestone.milestone_type === 'document') {
+      if (type === 'missing') {
+        if (!milestone.primary_field) e.primary_field = 'Select the field this milestone watches';
+      }
+      if (type === 'document') {
         if (!milestone.document_name.trim()) e.document_name = 'Enter the document name';
         if (!milestone.tracking_field)       e.tracking_field = 'Select the field that confirms this document';
       }
-      if (milestone.milestone_type === 'comparison') {
+      if (type === 'comparison') {
         if (!milestone.field_a)   e.field_a   = 'Select the first field';
         if (!milestone.operator)  e.operator  = 'Select a comparison operator';
         if (!milestone.field_b && !milestone.fixed_value)
           e.field_b = 'Select a comparison field or enter a fixed value';
       }
+      if (type === 'status') {
+        if (!milestone.field_a) e.field_a = 'Select the status field';
+        if (!milestone.fixed_value || !milestone.fixed_value.trim())
+          e.fixed_value = 'Enter the status value to match';
+      }
+      if (type === 'custom') {
+        if ((milestone.extra_logics || []).length === 0)
+          e.extra_logics = 'Add at least one check';
+      }
+
+      // Every type needs a due-date basis.
+      if (['missing', 'document', 'comparison', 'status', 'custom'].includes(type) &&
+          !milestone.expected_date_source) {
+        e.expected_date_source = 'Select when this milestone is due';
+      }
+      if (milestone.expected_date_source === 'another_field' && !milestone.expected_date_field) {
+        e.expected_date_field = 'Select the field to base the due date on';
+      }
+
+      // Each additional logic block must be complete.
+      const badBlock = (milestone.extra_logics || []).some(b => {
+        if (b.type === 'date' || b.type === 'missing') return !b.primary_field;
+        if (b.type === 'status')     return !b.field_a || !(b.fixed_value || '').trim();
+        if (b.type === 'comparison') return !b.field_a || !b.operator || (!b.field_b && !(b.fixed_value || '').trim());
+        if (b.type === 'document')   return !b.tracking_field || !(b.document_name || '').trim();
+        return true;
+      });
+      if (badBlock) e.extra_logics = 'Complete or remove the additional checks';
     }
 
     if (s === 3) {

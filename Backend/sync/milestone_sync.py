@@ -106,8 +106,6 @@ def run_milestone_sync() -> dict:
             .select(
                 'id, job_number,'
                 'milestones,'                              # new consolidated shape (Isiri migration)
-                'cargo_ready_date, cargo_pickup_date,'     # TRANSITION: remove these two lines
-                'pickup_date_status,'                      # at the Phase-3 column drop
                 'llm_cargo_pickup_date,'
                 'llm_note, st_note_text'
             )

@@ -147,11 +147,10 @@ def get_custom_table_data(table_id):
             query = supabase.table('shipments').select(
                 'id, job_number, consignee_name, transport_mode, '
                 'branch, '
-                # Read the flat column, which the sync still populates. The
-                # milestones jsonb is not fully backfilled yet, so reading only
-                # from it returned null/empty. Switch to the jsonb path at Phase 3
-                # once the flat columns are dropped.
-                'pickup_date_status, '
+                # Phase 3: read pickup status from the consolidated milestones
+                # jsonb. Response field name stays 'pickup_date_status', so the
+                # frontend needs no change. Flat column is being dropped.
+                'pickup_date_status:milestones->cargo_pickup->>pickup_date_status, '
                 'llm_identified_type, '
                 'current_stage, created_at'
             )
@@ -167,13 +166,10 @@ def get_custom_table_data(table_id):
                 query = query.ilike('branch', f"%{filters['branch']}%")
 
             if filters.get('pickup_status'):
-                v = filters['pickup_status']
-                # Match either the flat column (populated now) or the milestones
-                # jsonb (populated after migration), so the filter keeps working
-                # across the transition.
-                query = query.or_(
-                    f"pickup_date_status.eq.{v},"
-                    f"milestones->cargo_pickup->>pickup_date_status.eq.{v}"
+                # Phase 3: filter on the milestones jsonb only (flat column dropped).
+                query = query.eq(
+                    'milestones->cargo_pickup->>pickup_date_status',
+                    filters['pickup_status'],
                 )
 
             rows = query.order('created_at', desc=True).execute()
