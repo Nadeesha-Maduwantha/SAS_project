@@ -20,7 +20,7 @@ export default function OperationDashboardPage() {
       <div style={{ marginTop: 4 }}>
         <AlertFeedTable
           title="Department Alert Feed"
-          apiBase="http://localhost:5000"
+          apiBase="http://127.0.0.1:5000"
           maxRows={8}
         />
       </div>

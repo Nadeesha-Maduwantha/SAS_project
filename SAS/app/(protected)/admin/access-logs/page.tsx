@@ -23,7 +23,7 @@ export default function AccessLogsPage() {
     const fetchLogs = async () => {
       try {
         setIsLoading(true);
-        // Replace localhost:5000 with your actual backend URL/environment variable if different
+        // Replace 127.0.0.1:5000 with your actual backend URL/environment variable if different
         const response = await fetch("http://127.0.0.1:5000/api/access-logs");
         const json = await response.json();
         

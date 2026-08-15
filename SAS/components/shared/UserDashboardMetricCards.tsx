@@ -10,9 +10,10 @@
 // =============================================================
 
 import { useState, useEffect } from 'react';
-import { Package, AlertTriangle, CheckCircle2, TrendingUp } from 'lucide-react';
+import { Package, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import DonutChart, { DonutLegendRow } from '@/components/shared/DonutChart';
 
-const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
 
 function authHeaders() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
@@ -29,21 +30,6 @@ function SpinDot() {
   );
 }
 
-function StatRow({ icon, label, value, color = '#111827' }: {
-  icon: React.ReactNode; label: string; value: number | string; color?: string;
-}) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 0' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6B7280' }}>
-        {icon} {label}
-      </div>
-      <span style={{ fontSize: 13, fontWeight: 700, color, fontVariantNumeric: 'tabular-nums' }}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
 // ── My Shipments card ──────────────────────────────────────────────────────────
 function MyShipmentsCard() {
   const [stats,   setStats]   = useState<any>(null);
@@ -56,6 +42,18 @@ function MyShipmentsCard() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  const total     = stats?.total     ?? 0;
+  const completed = stats?.delivered ?? 0;
+  const delayed   = stats?.delayed   ?? 0;
+  // Whatever is neither finished nor flagged late is still moving.
+  const active    = Math.max(0, total - completed - delayed);
+
+  const slices = [
+    { label: 'Completed', value: completed, color: '#10B981' },
+    { label: 'Active',    value: active,    color: '#3B82F6' },
+    { label: 'Delayed',   value: delayed,   color: '#EF4444' },
+  ];
 
   return (
     <div style={card}>
@@ -73,17 +71,14 @@ function MyShipmentsCard() {
           <SpinDot /><span style={{ fontSize: 12, color: '#9CA3AF' }}>Loading…</span>
         </div>
       ) : (
-        <>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 6 }}>
-            <span style={{ fontSize: 26, fontWeight: 800, color: '#065F46', lineHeight: 1, letterSpacing: '-0.02em' }}>
-              {stats?.total ?? 0}
-            </span>
-            <span style={{ fontSize: 11, color: '#9CA3AF' }}>total</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <DonutChart slices={slices} centerValue={total} centerLabel="total" />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {slices.map(s => (
+              <DonutLegendRow key={s.label} color={s.color} label={s.label} value={s.value} />
+            ))}
           </div>
-          <StatRow icon={<TrendingUp    size={11} />} label="Active"    value={(stats?.total ?? 0) - (stats?.delivered ?? 0)} />
-          <StatRow icon={<AlertTriangle size={11} />} label="Delayed"   value={stats?.delayed    ?? 0} color="#B91C1C" />
-          <StatRow icon={<CheckCircle2  size={11} />} label="Completed" value={stats?.delivered  ?? 0} color="#065F46" />
-        </>
+        </div>
       )}
     </div>
   );

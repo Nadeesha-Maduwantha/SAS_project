@@ -14,7 +14,7 @@ import { useState, useEffect, useCallback } from "react";
 import { AlertTriangle, Check, RefreshCw, Plus, X } from "lucide-react";
 import { T, solidBtn, outlineBtn } from "@/styles/tokens";
 
-const API = "http://localhost:5000";
+const API = "http://127.0.0.1:5000";
 
 function authHeaders() {
   const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : "";

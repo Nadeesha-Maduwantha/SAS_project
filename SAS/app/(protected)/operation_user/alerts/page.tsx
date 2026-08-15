@@ -40,7 +40,7 @@ type SupabaseRow = {
     created_at?: string;
 }
 
-const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
 
 async function parseApiResponse(response: Response) {
     const contentType = response.headers.get('content-type') || '';
