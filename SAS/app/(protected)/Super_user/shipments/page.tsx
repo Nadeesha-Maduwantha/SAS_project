@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCircle, AlertTriangle, Clock, Package } from 'lucide-react'
 import { ShipmentStatusBadge } from '@/components/shipments/ShipmentStatusBadge'
@@ -8,83 +8,138 @@ import { ShipmentStatsCard } from '@/components/shipments/ShipmentStatsCard'
 import { ShipmentPagination } from '@/components/shipments/ShipmentPagination'
 import { ShipmentFilter } from '@/components/shipments/ShipmentFilter'
 import { exportAllShipmentsPDF } from '@/lib/Utils/exportPDF'
-import { Shipment } from '@/types'
+import { Shipment, DepartmentStats } from '@/types'
 import { getActiveShipmentsByDepartment, getDepartmentStats } from '@/lib/services/shipment.service'
 import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
+import ShipmentDetailModal from '@/components/shipments/ShipmentDetailModal'
+import { ShipmentCard } from '@/components/shipments/ShipmentCard'
+import { ShipmentViewToggle, ShipmentView } from '@/components/shipments/ShipmentViewToggle'
+import { useAuth } from '@/lib/hooks/useAuth'
+import {
+  buildStageOptions,
+  PICKUP_STATUS_STYLES,
+  isDelayedShipment,
+} from '@/constants/shipment.constants'
 
-// ─── Temporary: replace with session.user.department when auth is ready ───
-const USER_DEPARTMENT = 'SEA'
-// ─────────────────────────────────────────────────────────────────────────
+// Constants 
+//  all constants are in outside the component so they are not
+// recreated on every render.
 
-function formatPickupDate(date: string | undefined) {
+const PAGE_SIZE = 10
+
+const DEFAULT_FILTERS: Record<string, string> = {
+  currentStage: '',
+}
+
+//  department display name  comes from a map instead of an
+// inline ternary chain repeated in the JSX.
+const DEPARTMENT_LABELS: Record<string, string> = {
+  SEA:  'Sea Freight',
+  AIR:  'Air Freight',
+  ROAD: 'Road Freight',
+}
+
+// To filters Super user only by stage (department is fixed to their own)
+//  reuses buildStageOptions from constants instead of
+// re-declaring the same strings here.
+// filterGroups moved inside the component (as a useMemo) because the stage
+// options are now derived from the loaded shipments — see buildStageOptions.
+
+const DEFAULT_STATS: DepartmentStats = {
+  onTime: 0,
+  delayed: 0,
+  atRisk: 0,
+  deliveredToday: 0,
+}
+
+//  Helpers 
+
+function formatPickupDate(date: string | undefined): string {
   if (!date) return '—'
   return new Date(date).toLocaleDateString('en-US', {
-    month: 'short', day: '2-digit', year: 'numeric'
+    month: 'short', day: '2-digit', year: 'numeric',
   })
 }
 
+// Component 
+
 export default function SuperUserActiveShipmentsPage() {
   const router = useRouter()
-  const [currentPage, setCurrentPage] = useState(1)
-  const [activeTab, setActiveTab] = useState<'all' | 'expedited' | 'standard'>('all')
-  const [shipments, setShipments] = useState<Shipment[]>([])
-  const [stats, setStats] = useState({ onTime: 0, delayed: 0, atRisk: 0, deliveredToday: 0 })
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({
-    currentStage: '',
-  })
-  const [searchQuery, setSearchQuery] = useState('')
 
+  //  department  comes from useAuth() instead of a hardcoded
+  // module-level constant. When auth teammate connects real sessions,
+  // only useAuth.ts changes — this page stays the same.
+  const { department } = useAuth()
+
+  const [currentPage, setCurrentPage]   = useState(1)
+  const [activeTab, setActiveTab]        = useState<'all' | 'expedited' | 'standard'>('all')
+  const [shipments, setShipments]        = useState<Shipment[]>([])
+
+  // Stage options derived from the loaded data — dropdown always matches
+  // what actually exists in the DB. Memoized: rebuilt only when data changes.
+  const filterGroups = useMemo(() => [
+    { label: 'By Stage', key: 'currentStage', options: buildStageOptions(shipments) },
+  ], [shipments])
+  const [stats, setStats]                = useState<DepartmentStats>(DEFAULT_STATS)
+  const [loading, setLoading]            = useState(true)
+  const [error, setError]                = useState<string | null>(null)
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>(DEFAULT_FILTERS)
+  const [searchQuery, setSearchQuery]    = useState('')
+  const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null)
+  const [view, setView] = useState<ShipmentView>('table')
+
+  // To Fetching Data on component mount and when department changes.
   useEffect(() => {
     async function fetchData() {
       try {
         setLoading(true)
         const [shipmentsData, statsData] = await Promise.all([
-          getActiveShipmentsByDepartment(USER_DEPARTMENT),
-          getDepartmentStats(USER_DEPARTMENT),
+          getActiveShipmentsByDepartment(department),
+          getDepartmentStats(department),
         ])
         setShipments(shipmentsData)
         setStats(statsData)
-      } catch {
-        setError('Failed to load shipments')
+      } catch (err) {
+        console.error('Failed to load shipments:', err)
+        setError('Failed to load shipments. Please try again.')
       } finally {
         setLoading(false)
       }
     }
     fetchData()
-  }, [])
+  }, [department]) // to re-fetches if department changes
 
+  // Filtering & Pagination
+  //  applies tab filter first, then stage + search filters, and finally pagination.
+
+  // Tab filter — expedited = priority shipments, standard = non-priority
   const tabFiltered = shipments.filter((s) => {
     if (activeTab === 'expedited') return s.isPriority
-    if (activeTab === 'standard') return !s.isPriority
+    if (activeTab === 'standard')  return !s.isPriority
     return true
   })
 
+  // Stage + search filter
+  // isDelayedShipment() imported from constants — single source of truth
+  // for delay logic instead of duplicating the condition inline here.
   const filteredShipments = tabFiltered.filter((s) => {
-    if (activeFilters.currentStage &&
+    if (activeFilters.currentStage === 'Delayed') return isDelayedShipment(s)
+    if (
+      activeFilters.currentStage &&
       s.llmIdentifiedType !== activeFilters.currentStage &&
-      s.currentStage !== activeFilters.currentStage) return false
+      s.currentStage !== activeFilters.currentStage
+    ) return false
     if (searchQuery && !s.cargowiseId.toLowerCase().includes(searchQuery.toLowerCase())) return false
     return true
   })
 
-  const pageSize = 10
-  const paginated = filteredShipments.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  // PAGE_SIZE constant used instead of magic number 10
+  const paginated = filteredShipments.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  )
 
-  const filterGroups = [
-    {
-      label: 'By Stage',
-      key: 'currentStage',
-      options: [
-        { label: 'Booking Approval', value: 'Booking Approval' },
-        { label: 'Delivery Date', value: 'Delivery Date' },
-        { label: 'Delivered to CFS warehouse', value: 'Delivered to CFS warehouse' },
-        { label: 'Unknown', value: 'Unknown' },
-      ],
-    },
-  ]
-
+  // to show Loading / Error states.
   if (loading) return (
     <div className="p-6 flex items-center justify-center h-64">
       <p className="text-gray-500 text-sm">Loading shipments...</p>
@@ -97,21 +152,40 @@ export default function SuperUserActiveShipmentsPage() {
     </div>
   )
 
+  // Shared "Take Action" button — used by both the table row and the card
+  // footer. stopPropagation keeps it from also triggering the row/card click
+  // (which opens the detail modal).
+  function renderAction(shipment: Shipment) {
+    if (shipment.llmIdentifiedType?.toLowerCase().includes('delivered')) return null
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          router.push(`/Super_user/shipments/${shipment.id}/action`)
+        }}
+        className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+      >
+        Take Action
+      </button>
+    )
+  }
+
+  // To render the component
   return (
-    <div className="p-6">
-      {/* Header */}
+    <div className="p-6 max-w-[1400px]">
+
+      {/* Header — title matches the dashboard's admin-header style */}
       <div className="flex items-center justify-between mb-5">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold text-gray-900">Active Shipments</h1>
+            <h1 className="text-[18px] font-black text-slate-900">Active Shipments</h1>
             <span className="px-2.5 py-0.5 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
               {filteredShipments.length} TOTAL
             </span>
           </div>
+          {/* FIXED: department label uses DEPARTMENT_LABELS map instead of inline ternary */}
           <p className="text-sm text-gray-500 mt-0.5">
-            Department: {USER_DEPARTMENT === 'SEA' ? 'Sea Freight' :
-                         USER_DEPARTMENT === 'AIR' ? 'Air Freight' :
-                         'Road Freight'}
+            Department: {DEPARTMENT_LABELS[department] ?? department}
           </p>
         </div>
       </div>
@@ -148,7 +222,7 @@ export default function SuperUserActiveShipmentsPage() {
         />
       </div>
 
-      {/* Table */}
+      {/* Table Card */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
 
         {/* Tabs + Toolbar */}
@@ -180,141 +254,155 @@ export default function SuperUserActiveShipmentsPage() {
               onFilterChange={(key, value) =>
                 setActiveFilters((prev) => ({ ...prev, [key]: value }))
               }
-              onClearAll={() => setActiveFilters({ currentStage: '' })}
+              onClearAll={() => setActiveFilters(DEFAULT_FILTERS)}
             />
             <button
               onClick={() => exportAllShipmentsPDF(filteredShipments)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
               Export PDF
             </button>
+            <ShipmentViewToggle view={view} onChange={setView} />
           </div>
         </div>
 
         <div className="border-t border-gray-100" />
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                <th className="text-left px-5 py-3">Shipment ID</th>
-                <th className="text-left px-5 py-3">Consignee</th>
-                <th className="text-left px-5 py-3">Status</th>
-                <th className="text-left px-5 py-3">Pickup Date</th>
-                <th className="text-left px-5 py-3">Pickup Status</th>
-                <th className="text-left px-5 py-3">Priority</th>
-                <th className="text-left px-5 py-3">Action</th>
-                <th className="text-left px-5 py-3">Detail</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-5 py-10 text-center text-sm text-gray-400">
-                    No shipments found
-                  </td>
+        {view === 'table' ? (
+          /* Table */
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50 text-[11px] font-semibold [&>th]:font-semibold text-gray-500 uppercase tracking-[0.06em]">
+                  <th className="text-left px-5 py-3">Shipment ID</th>
+                  <th className="text-left px-5 py-3">Consignee</th>
+                  <th className="text-left px-5 py-3">Status</th>
+                  <th className="text-left px-5 py-3">Pickup Date</th>
+                  <th className="text-left px-5 py-3">Pickup Status</th>
+                  <th className="text-left px-5 py-3">Priority</th>
+                  <th className="text-left px-5 py-3">Action</th>
                 </tr>
-              ) : paginated.map((shipment) => (
-                <tr key={shipment.id} className="hover:bg-gray-50 transition-colors">
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {paginated.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-5 py-10 text-center text-sm text-gray-400">
+                      No shipments found
+                    </td>
+                  </tr>
+                ) : paginated.map((shipment) => (
+                  <tr
+                    key={shipment.id}
+                    onClick={() => setSelectedShipment(shipment)}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
 
-                  {/* Shipment ID */}
-                  <td className="px-5 py-3.5">
-                    <p className="text-sm font-semibold text-gray-900">#{shipment.cargowiseId}</p>
-                    {shipment.branch && (
-                      <p className="text-xs text-gray-400 mt-0.5">Branch: {shipment.branch}</p>
-                    )}
-                  </td>
+                    {/* Shipment ID */}
+                    <td className="px-5 py-3.5">
+                      <p className="text-sm font-mono font-bold text-gray-900">{shipment.cargowiseId}</p>
+                      {shipment.branch && (
+                        <p className="text-xs text-gray-400 mt-0.5">Branch: {shipment.branch}</p>
+                      )}
+                    </td>
 
-                  {/* Consignee */}
-                  <td className="px-5 py-3.5">
-                    <p className="text-sm text-gray-900">{shipment.consigneeName ?? '—'}</p>
-                    {shipment.gcCode && (
-                      <p className="text-xs text-gray-400 mt-0.5">{shipment.gcCode}</p>
-                    )}
-                  </td>
+                    {/* Consignee */}
+                    <td className="px-5 py-3.5">
+                      <p className="text-sm text-gray-900">{shipment.consigneeName ?? '—'}</p>
+                      {shipment.gcCode && (
+                        <p className="text-xs text-gray-400 mt-0.5">{shipment.gcCode}</p>
+                      )}
+                    </td>
 
-                  {/* Status */}
-                  <td className="px-5 py-3.5">
-                    <ShipmentStatusBadge status={shipment.llmIdentifiedType ?? shipment.currentStage} />
-                    {shipment.stNoteText && (
-                      <p className="text-xs text-gray-400 mt-1 max-w-xs truncate">
-                        {shipment.stNoteText}
-                      </p>
-                    )}
-                  </td>
+                    {/* Status */}
+                    <td className="px-5 py-3.5">
+                      <ShipmentStatusBadge status={shipment.llmIdentifiedType ?? shipment.currentStage} />
+                      {shipment.stNoteText && (
+                        <p className="text-xs text-gray-400 mt-1 max-w-xs truncate">
+                          {shipment.stNoteText}
+                        </p>
+                      )}
+                    </td>
 
-                  {/* Pickup Date */}
-                  <td className="px-5 py-3.5 text-sm text-gray-700">
-                    {formatPickupDate(shipment.llmCargoPickupDate)}
-                  </td>
+                    {/* Pickup Date */}
+                    <td className="px-5 py-3.5 text-sm text-gray-700">
+                      {formatPickupDate(shipment.llmCargoPickupDate)}
+                    </td>
 
-                  {/* Pickup Status */}
-                  <td className="px-5 py-3.5">
-                    {shipment.pickupDateStatus ? (
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center',
-                        padding: '3px 10px', borderRadius: '9999px',
-                        fontSize: '12px', fontWeight: 600,
-                        background: shipment.pickupDateStatus === 'Future' ? '#eff6ff' :
-                                    shipment.pickupDateStatus === 'Past' ? '#fef2f2' : '#f0fdf4',
-                        color: shipment.pickupDateStatus === 'Future' ? '#1d4ed8' :
-                               shipment.pickupDateStatus === 'Past' ? '#dc2626' : '#16a34a',
-                      }}>
-                        {shipment.pickupDateStatus}
+                    {/* Pickup Status */}
+
+                    <td className="px-5 py-3.5">
+                      {shipment.pickupDateStatus ? (() => {
+                        const pickupStyle = PICKUP_STATUS_STYLES[shipment.pickupDateStatus] ?? {
+                          bg: 'bg-gray-50', text: 'text-gray-600',
+                        }
+                        return (
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${pickupStyle.bg} ${pickupStyle.text}`}>
+                            {shipment.pickupDateStatus}
+                          </span>
+                        )
+                      })() : <span className="text-xs text-gray-400">—</span>}
+                    </td>
+
+                    {/* Priority */}
+                    <td className="px-5 py-3.5">
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        shipment.isPriority
+                          ? 'bg-red-100 text-red-600'
+                          : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {shipment.isPriority ? 'HIGH' : 'STANDARD'}
                       </span>
-                    ) : (
-                      <span className="text-xs text-gray-400">—</span>
-                    )}
-                  </td>
+                    </td>
 
-                  {/* Priority */}
-                  <td className="px-5 py-3.5">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                      shipment.isPriority
-                        ? 'bg-red-100 text-red-600'
-                        : 'bg-gray-100 text-gray-500'
-                    }`}>
-                      {shipment.isPriority ? 'HIGH' : 'STANDARD'}
-                    </span>
-                  </td>
+                    {/* Action */}
+                    <td className="px-5 py-3.5">
+                      {renderAction(shipment)}
+                    </td>
 
-                  {/* Action */}
-                  <td className="px-5 py-3.5">
-                    {shipment.currentStage !== 'delivered' && (
-                      <button className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                        Take Action
-                      </button>
-                    )}
-                  </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          /* Cards */
+          <div className="p-5">
+            {paginated.length === 0 ? (
+              <p className="text-center text-sm text-gray-400 py-10">No shipments found</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {paginated.map((shipment) => (
+                  <ShipmentCard
+                    key={shipment.id}
+                    shipment={shipment}
+                    onClick={() => setSelectedShipment(shipment)}
+                    actionSlot={renderAction(shipment)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-                  {/* Detail */}
-                  <td className="px-5 py-3.5">
-                    <button
-                      onClick={() => router.push(`/admin/shipments/${shipment.id}?from=/Super_user/shipments`)}
-                      className="text-xs font-medium text-blue-600 hover:underline"
-                    >
-                      View Details
-                    </button>
-                  </td>
-
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
+        {/*PAGE_SIZE constant used instead of magic number 10 */}
         <ShipmentPagination
           currentPage={currentPage}
-          totalPages={Math.ceil(filteredShipments.length / pageSize)}
+          totalPages={Math.ceil(filteredShipments.length / PAGE_SIZE)}
           totalResults={filteredShipments.length}
-          pageSize={pageSize}
+          pageSize={PAGE_SIZE}
           onPageChange={setCurrentPage}
         />
       </div>
+
+      <ShipmentDetailModal
+        isOpen={!!selectedShipment}
+        onClose={() => setSelectedShipment(null)}
+        shipment={selectedShipment}
+      />
     </div>
   )
 }

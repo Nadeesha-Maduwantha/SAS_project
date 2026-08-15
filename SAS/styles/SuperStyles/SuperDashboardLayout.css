@@ -1,24 +1,16 @@
 @reference "tailwindcss";
 
-/* ============================= */
-/* LAYOUT */
-/* ============================= */
-
 .super-layout {
   @apply flex min-h-screen bg-slate-50;
 }
 
 .super-content {
-  @apply flex-1 ml-[260px] min-h-screen;
+  @apply flex-1;
 }
 
 .super-inner {
   @apply max-w-[1200px] mx-auto px-6 py-6;
 }
-
-/* ============================= */
-/* GRID */
-/* ============================= */
 
 .super-grid-2 {
   @apply grid grid-cols-1 gap-6 mt-6;
@@ -26,11 +18,10 @@
 
 @media (min-width: 1024px) {
   .super-grid-2 {
-    @apply grid-cols-4;
+    @apply grid-cols-3;
   }
 }
 
-/* LEFT SIDE */
 .super-grid-2__left {
   @apply col-span-1;
 }
@@ -41,13 +32,7 @@
   }
 }
 
-/* RIGHT SIDE */
-.super-grid-2__right {
-  @apply col-span-1;
-}
 
-@media (min-width: 1024px) {
-  .super-grid-2__right {
-    @apply col-span-2;
-  }
+.super-content {
+  @apply ml-[260px] min-h-screen;
 }

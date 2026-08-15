@@ -13,7 +13,7 @@
 }
 
 .sales-section__title {
-  @apply text-sm font-black text-slate-900;
+  @apply text-xl font-black text-slate-900;
 }
 
 .sales-section__right {

@@ -126,7 +126,7 @@ export default function MilestonePage() {
   useEffect(() => {
     const shipmentId = searchParams.get("id") ?? "605ec73e-89d5-4d18-8721-5bd694bd9528";
 
-    fetch(`http://127.0.0.1:5001/api/shipments/${shipmentId}`)
+    fetch(`http://localhost:5000/api/shipments/${shipmentId}`)
       .then(r => r.json())
       .then(result => {
         setShipment(result.data.shipment);

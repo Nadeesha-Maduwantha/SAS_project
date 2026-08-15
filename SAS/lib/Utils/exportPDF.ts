@@ -9,6 +9,18 @@ function formatDate(date: Date | null | undefined): string {
   })
 }
 
+// Null-safe helpers — several shipment fields (current_stage, origin,
+// destination, carrier) are not populated by the CargoWise sync and can be
+// null at runtime even where the Shipment type says string.
+function formatStage(stage: string | null | undefined): string {
+  return stage ? stage.replace(/_/g, ' ') : '—'
+}
+
+function formatPlace(city?: string | null, code?: string | null): string {
+  if (!city) return '—'
+  return code ? `${city} (${code})` : city
+}
+
 // ─── All Shipments Export ─────────────────────────────────────
 export function exportAllShipmentsPDF(shipments: Shipment[]) {
   const doc = new jsPDF()
@@ -32,11 +44,11 @@ export function exportAllShipmentsPDF(shipments: Shipment[]) {
     startY: 44,
     head: [['Shipment ID', 'Origin', 'Destination', 'Stage', 'Carrier', 'ETA', 'Priority']],
     body: shipments.map((s) => [
-      `#${s.cargowiseId}`,
-      `${s.originCity} (${s.originCountryCode})`,
-      `${s.destinationCity} (${s.destinationCountryCode})`,
-      s.currentStage.replace(/_/g, ' '),
-      s.carrier,
+      s.cargowiseId,
+      formatPlace(s.originCity, s.originCountryCode),
+      formatPlace(s.destinationCity, s.destinationCountryCode),
+      formatStage(s.currentStage),
+      s.carrier ?? '—',
       formatDate(s.estimatedArrival),
       s.isPriority ? 'Yes' : 'No',
     ]),
@@ -82,10 +94,10 @@ export function exportDelayedShipmentsPDF(shipments: Shipment[]) {
     startY: 44,
     head: [['Shipment ID', 'Route', 'Status', 'Carrier', 'ETA', 'Delay Days', 'Reason']],
     body: shipments.map((s) => [
-      `#${s.cargowiseId}`,
-      `${s.originCity} → ${s.destinationCity}`,
-      s.currentStage.replace(/_/g, ' '),
-      s.carrier,
+      s.cargowiseId,
+      `${s.originCity ?? '—'} → ${s.destinationCity ?? '—'}`,
+      formatStage(s.currentStage),
+      s.carrier ?? '—',
       formatDate(s.estimatedArrival),
       s.delayDays ? `${s.delayDays} days` : '—',
       s.delayReason ?? '—',
@@ -132,9 +144,9 @@ export function exportArchivedShipmentsPDF(shipments: Shipment[]) {
     startY: 44,
     head: [['Shipment ID', 'Route', 'Carrier', 'Delivery Date', 'Archived Date', 'Transit Days']],
     body: shipments.map((s) => [
-      `#${s.cargowiseId}`,
-      `${s.originCity} → ${s.destinationCity}`,
-      s.carrier,
+      s.cargowiseId,
+      `${s.originCity ?? '—'} → ${s.destinationCity ?? '—'}`,
+      s.carrier ?? '—',
       formatDate(s.deliveryDate),
       formatDate(s.archivedDate),
       s.transitDays ? `${s.transitDays} days` : '—',
@@ -171,7 +183,7 @@ export function exportShipmentDetailPDF(shipment: Shipment) {
 
   doc.setFontSize(13)
   doc.setTextColor(30, 30, 30)
-  doc.text(`Shipment Report - #${shipment.cargowiseId}`, 14, 27)
+  doc.text(`Shipment Report - ${shipment.cargowiseId}`, 14, 27)
 
   doc.setFontSize(9)
   doc.setTextColor(120, 120, 120)
@@ -182,15 +194,15 @@ export function exportShipmentDetailPDF(shipment: Shipment) {
     startY: 40,
     head: [['Field', 'Value']],
     body: [
-      ['Shipment ID', `#${shipment.cargowiseId}`],
+      ['Shipment ID', shipment.cargowiseId],
       ['Job Number', shipment.jobNumber ?? '—'],
       ['House Bill Number', shipment.houseBillNumber ?? '—'],
-      ['Status', shipment.currentStage.replace(/_/g, ' ')],
-      ['Carrier', shipment.carrier],
+      ['Status', formatStage(shipment.currentStage)],
+      ['Carrier', shipment.carrier ?? '—'],
       ['Transport Mode', shipment.transportMode ?? '—'],
       ['Branch', shipment.branch ?? '—'],
-      ['Origin', `${shipment.originCity} (${shipment.originCountryCode})`],
-      ['Destination', `${shipment.destinationCity} (${shipment.destinationCountryCode})`],
+      ['Origin', formatPlace(shipment.originCity, shipment.originCountryCode)],
+      ['Destination', formatPlace(shipment.destinationCity, shipment.destinationCountryCode)],
       ['ETA', formatDate(shipment.estimatedArrival)],
       ['Priority', shipment.isPriority ? 'Yes' : 'No'],
       ['Delay Reason', shipment.delayReason ?? '—'],
@@ -263,8 +275,8 @@ export function exportShipmentDetailPDF(shipment: Shipment) {
   const createdY = ((doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 0) + 10
   doc.setFontSize(9)
   doc.setTextColor(120, 120, 120)
-  doc.text(`Created By: ${shipment.createdBy.name} (${shipment.createdBy.email})`, 14, createdY)
-  doc.text(`Last Updated By: ${shipment.lastUpdatedBy.name} (${shipment.lastUpdatedBy.email})`, 14, createdY + 6)
+  doc.text(`Created By: ${shipment.createdBy.name ?? '—'} (${shipment.createdBy.email ?? '—'})`, 14, createdY)
+  doc.text(`Last Updated By: ${shipment.lastUpdatedBy.name ?? '—'} (${shipment.lastUpdatedBy.email ?? '—'})`, 14, createdY + 6)
 
   doc.save(`shipment-${shipment.cargowiseId}-${Date.now()}.pdf`)
 }

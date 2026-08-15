@@ -45,7 +45,7 @@ export default function CreateUserPage() {
     setError(null)
 
     try {
-      const response = await fetch('http://127.0.0.1:5001/api/users/create', {
+      const response = await fetch('http://localhost:5000/api/users/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -56,7 +56,26 @@ export default function CreateUserPage() {
         throw new Error(errData.error || 'Failed to create user')
       }
 
+      // Show success message
+      alert("User created successfully!");
+
+      // Optional: Reset the form so they can create another user
+      setFormData({
+        fullName: '',
+        email: '',
+        password: '',
+        department: '',
+        role: 'user',
+        status: 'active',
+        phone: '',
+        joinDate: '',
+        employeeId: '',
+        address: '',
+      });
+
+      // Redirect to admin/users
       router.push('/admin/users')
+
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'An error occurred'
       console.log('Error details:', errorMsg)  // ← Add this

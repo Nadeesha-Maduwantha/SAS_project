@@ -1,0 +1,29 @@
+// app/(protected)/operation_user/dashboard/page.tsx
+import UserDashboardMetricCards from '@/components/shared/UserDashboardMetricCards';
+import AlertFeedTable from '@/components/shared/AlertFeedTable';
+import PinnedTableStatCards from '@/components/shared/PinnedTableStatCard';
+
+export default function OperationDashboardPage() {
+  return (
+    <div>
+      <h1 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 20, letterSpacing: '-0.02em' }}>
+        Operations Dashboard
+      </h1>
+
+      {/* My Shipments + My Alerts stat cards */}
+      <UserDashboardMetricCards />
+
+      {/* Pinned custom table stat cards */}
+      <PinnedTableStatCards />
+
+      {/* Alert feed — shows all active alerts (filtered by dept when auth wired) */}
+      <div style={{ marginTop: 4 }}>
+        <AlertFeedTable
+          title="Department Alert Feed"
+          apiBase="http://localhost:5000"
+          maxRows={8}
+        />
+      </div>
+    </div>
+  );
+}

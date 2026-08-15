@@ -1,30 +1,38 @@
+'use client';
+
 import React from 'react';
-<<<<<<< HEAD
 import SalesLeftNavBar from '@/components/SalesUser/SalesLeftNavBar';
-import AdminTopBar from '@/components/AdminUser/AdminTopBar';
+import RouterLoadingOverlay from '@/components/shared/RouterLoadingOverlay';
+import { NavProvider } from '@/contexts/NavContext';
+// ↓ Re-use your existing sales topbar — update it to match AdminTopBar:
+//   remove any hamburger button, add company logo image, set z-index: 102
+import SalesTopBar from '@/components/SalesUser/SalesTopBar';
+
+const TOPBAR_H = 57;
+
+function SalesLayoutInner({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <RouterLoadingOverlay />
+      {/* Nav is a fixed overlay — starts below topbar, never pushes content */}
+      <SalesLeftNavBar topOffset={TOPBAR_H} />
+      {/* Content is always full viewport width — centered with maxWidth */}
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <SalesTopBar />
+        <main style={{ flex: 1, background: '#f9fafb', padding: '24px' }}>
+          <div style={{ maxWidth: 1320, margin: '0 auto', width: '100%' }}>
+            {children}
+          </div>
+        </main>
+      </div>
+    </>
+  );
+}
 
 export default function SalesLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <SalesLeftNavBar />
-      <div style={{ marginLeft: '260px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <AdminTopBar/>
-        <main style={{ flex: 1, background: '#f9fafb' }}>
-=======
-import AdminTopBar from '@/components/AdminUser/AdminTopBar';
-import SalesLeftNavBar from '@/components/SalesUser/SalesLeftNavBar';
-
-export default function OperationLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <SalesLeftNavBar/>
-      <div style={{ marginLeft: '260px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <AdminTopBar/>
-        <main style={{ flex: 1, background: '#f9fafb', padding: '24px' }}>
->>>>>>> 00b1f12198237ee758264d19ff4a22469f101a48
-          {children}
-        </main>
-      </div>
-    </div>
+    <NavProvider>
+      <SalesLayoutInner>{children}</SalesLayoutInner>
+    </NavProvider>
   );
 }

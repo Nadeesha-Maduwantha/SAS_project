@@ -1,4 +1,7 @@
-// ─── Shipment Types ───────────────────────────────────────────
+// ─── Shipment Status ─────────────────────────────────────────────────────────
+// FIXED: values now match what CargoWise actually returns via the Flask API.
+// Previously used internal enum values (e.g. 'in_transit') that never
+// appeared in real data — every status badge was rendering as gray "Unknown".
 export type ShipmentStatus =
   | 'Booking Approval'
   | 'Shipment Approval'
@@ -22,7 +25,8 @@ export interface CargowiseUser {
   email: string
 }
 
-// ─── User Management ──────────────────────────────────────────────────────────
+
+
 export interface User {
   id: string;
   fullName: string;
@@ -68,7 +72,7 @@ export interface PasswordChange {
   confirmPassword: string;
 }
 
-// ─── Shipment ─────────────────────────────────────────────────────────────────
+
 export interface Shipment {
   id: string
   cargowiseId: string

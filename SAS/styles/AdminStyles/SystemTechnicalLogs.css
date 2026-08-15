@@ -1,0 +1,43 @@
+@reference "tailwindcss";
+
+.sys-card {
+  @apply bg-white border border-slate-100 rounded-[14px] shadow-[0_10px_24px_rgba(15,23,42,0.04)] p-4;
+}
+
+.sys-card__title {
+  @apply text-sm font-black text-slate-900;
+}
+
+.sys-card__sub {
+  @apply mt-1 text-xs text-slate-500;
+}
+
+.sys-terminal {
+  @apply mt-3 rounded-[14px] bg-slate-900 text-slate-200 p-[14px] text-xs leading-[1.7];
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+}
+
+.sys-line {
+  @apply opacity-90;
+}
+
+.sys-metrics {
+  @apply mt-3 grid grid-cols-2 gap-3;
+}
+
+.sys-metric {
+  @apply rounded-[14px] border border-slate-100 bg-slate-50 p-[14px];
+}
+
+.sys-metric__label {
+  @apply text-[11px] font-black tracking-[0.8px] text-slate-500 uppercase;
+}
+
+.sys-metric__value {
+  @apply mt-2 text-[22px] font-black text-slate-900;
+}
+
+.sys-metric__hint {
+  @apply mt-1 text-xs text-slate-500;
+}

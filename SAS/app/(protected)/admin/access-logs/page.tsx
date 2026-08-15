@@ -1,147 +1,58 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import AccessLogsStats from "@/components/AdminUser/AccessLogs/AccessLogsStats";
 import AccessLogsFilters from "@/components/AdminUser/AccessLogs/AccessLogsFilters";
 import AccessLogsTable from "@/components/AdminUser/AccessLogs/AccessLogsTable";
-import { AccessLog, AccessLogFilters, AccessLogStats } from "@/types/access-logs";
+import { AccessLog, AccessLogFilters } from "@/types/access-logs";
 
-// ─── Mock Data ───────────────────────────────────────────────────────────────
-const mockLogs: AccessLog[] = [
-  {
-    id: "1",
-    timestamp: "2026-02-16 14:32:15",
-    user: { 
-      name: "Amal Perera", 
-      email: "amal.perera@dartlogistic.com",
-      role: "admin"
-    },
-    action: "Login",
-    ipAddress: "192.168.1.185",
-    location: "Colombo, Sri Lanka",
-    device: "Chrome 120 on Windows",
-    status: "Success",
-  },
-  {
-    id: "2",
-    timestamp: "2026-02-16 14:28:42",
-    user: { 
-      name: "Sarah Johnson", 
-      email: "sarah.j@dartlogistic.com",
-      role: "sales"
-    },
-    action: "View Shipment Details",
-    ipAddress: "203.94.238.21",
-    location: "Singapore",
-    device: "Safari 17 on macOS",
-    status: "Success",
-  },
-  {
-    id: "3",
-    timestamp: "2026-02-16 14:15:33",
-    user: { 
-      name: "Michael Chen", 
-      email: "m.chen@dartlogistic.com",
-      role: "operation"
-    },
-    action: "Update Alert Status",
-    ipAddress: "118.200.145.87",
-    location: "Hong Kong",
-    device: "Firefox 122 on Linux",
-    status: "Success",
-  },
-  {
-    id: "4",
-    timestamp: "2026-02-16 13:58:20",
-    user: { 
-      name: "Unknown User", 
-      email: "attacker@malicious.com"
-    },
-    action: "Failed Login Attempt",
-    ipAddress: "45.142.212.61",
-    location: "Unknown",
-    device: "Python Requests",
-    status: "Failed",
-  },
-  {
-    id: "5",
-    timestamp: "2026-02-16 13:45:11",
-    user: { 
-      name: "Emma Williams", 
-      email: "emma.w@dartlogistic.com",
-      role: "admin"
-    },
-    action: "Export Report",
-    ipAddress: "172.16.254.12",
-    location: "London, UK",
-    device: "Chrome 120 on Windows",
-    status: "Success",
-  },
-  {
-    id: "6",
-    timestamp: "2026-02-16 13:22:05",
-    user: { 
-      name: "James Brown", 
-      email: "j.brown@dartlogistic.com",
-      role: "sales"
-    },
-    action: "Create Shipment",
-    ipAddress: "10.0.1.42",
-    location: "New York, USA",
-    device: "Edge 120 on Windows",
-    status: "Success",
-  },
-  {
-    id: "7",
-    timestamp: "2026-02-16 12:58:47",
-    user: { 
-      name: "Lisa Anderson", 
-      email: "l.anderson@dartlogistic.com",
-      role: "admin"
-    },
-    action: "Modify User Permissions",
-    ipAddress: "192.168.50.200",
-    location: "Dubai, UAE",
-    device: "Chrome 120 on Android",
-    status: "Success",
-  },
-  {
-    id: "8",
-    timestamp: "2026-02-16 12:30:19",
-    user: { 
-      name: "David Martinez", 
-      email: "d.martinez@dartlogistic.com",
-      role: "operation"
-    },
-    action: "Delete Document",
-    ipAddress: "198.51.100.45",
-    location: "Madrid, Spain",
-    device: "Firefox 122 on macOS",
-    status: "Success",
-  },
-];
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function AccessLogsPage() {
   const [currentPage, setCurrentPage] = useState(1);
+  const [logs, setLogs] = useState<AccessLog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [filters, setFilters] = useState<AccessLogFilters>({
     user: "all",
     action: "all",
     dateRange: "today",
   });
 
+  // 1. Fetch live data from your Flask Backend
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        setIsLoading(true);
+        // Replace localhost:5000 with your actual backend URL/environment variable if different
+        const response = await fetch("http://127.0.0.1:5000/api/access-logs");
+        const json = await response.json();
+        
+        if (json.success) {
+          setLogs(json.data);
+        } else {
+          setError(json.error || "Failed to fetch logs");
+        }
+      } catch (err) {
+        setError("Error connecting to the server");
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchLogs();
+  }, []);
+
   // Filter logs based on selected filters
   const filteredLogs = useMemo(() => {
-    let result = [...mockLogs];
+    let result = [...logs];
 
-    // Filter by user role
+    // Filter by user role/email
     if (filters.user !== "all") {
       result = result.filter((log) => {
         const role = log.user.role?.toLowerCase() || "";
         const email = log.user.email.toLowerCase();
-        
-        return role === filters.user || 
-               email.includes(filters.user);
+        return role === filters.user || email.includes(filters.user);
       });
     }
 
@@ -174,7 +85,7 @@ export default function AccessLogsPage() {
     }
 
     return result;
-  }, [filters]);
+  }, [filters, logs]);
 
   // Calculate stats based on filtered data
   const filteredStats = useMemo(() => {
@@ -191,12 +102,11 @@ export default function AccessLogsPage() {
   }, [filteredLogs]);
 
   // Reset to page 1 when filters change
-  React.useEffect(() => {
+  useEffect(() => {
     setCurrentPage(1);
   }, [filters]);
 
   const handleExport = () => {
-    // Convert filtered logs to CSV format
     const csvContent = [
       ["Timestamp", "User", "Email", "Action", "IP Address", "Location", "Device", "Status"],
       ...filteredLogs.map(log => [
@@ -243,20 +153,24 @@ export default function AccessLogsPage() {
           </button>
         </div>
 
+        {/* Loading and Error States */}
+        {isLoading && <p className="text-gray-500 mb-4">Loading access logs...</p>}
+        {error && <p className="text-red-500 mb-4">{error}</p>}
+
         {/* Stats */}
-        <AccessLogsStats stats={filteredStats} />
-
-        {/* Filters */}
-        <AccessLogsFilters filters={filters} onFilterChange={setFilters} />
-
-        {/* Table */}
-        <AccessLogsTable
-          logs={filteredLogs}
-          currentPage={currentPage}
-          totalResults={filteredLogs.length}
-          resultsPerPage={8}
-          onPageChange={setCurrentPage}
-        />
+        {!isLoading && !error && (
+            <>
+                <AccessLogsStats stats={filteredStats} />
+                <AccessLogsFilters filters={filters} onFilterChange={setFilters} />
+                <AccessLogsTable
+                  logs={filteredLogs}
+                  currentPage={currentPage}
+                  totalResults={filteredLogs.length}
+                  resultsPerPage={8}
+                  onPageChange={setCurrentPage}
+                />
+            </>
+        )}
       </div>
     </div>
   );

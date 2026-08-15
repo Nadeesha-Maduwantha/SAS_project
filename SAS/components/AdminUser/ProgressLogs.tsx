@@ -1,12 +1,12 @@
 import '@/styles/AdminStyles/ProgressLogs.css';
 
-type Row = { time: string; user: string; action: string; location: string };
+type Row = { time: string; user: string; action: string; resource: string };
 
 export default function ProgressLogs() {
   const rows: Row[] = [
-    { time: '14:22:15', user: 'sarah.j', action: 'MILESTONE UPDATE', location: 'Sri Lanka-Colombo' },
-    { time: '14:20:02', user: 'mike.c', action: 'DOC UPLOAD', location: 'Singapore' },
-    { time: '14:18:55', user: 'admin_root', action: 'CONFIG CHANGE', location: 'Hong Kong' },
+    { time: '14:22:15', user: 'sarah.j', action: 'MILESTONE UPDATE', resource: '#DGL-82910' },
+    { time: '14:20:02', user: 'mike.c', action: 'DOC UPLOAD', resource: 'INV-8902' },
+    { time: '14:18:55', user: 'admin_root', action: 'CONFIG CHANGE', resource: 'AUTH_SECRET' },
   ];
 
   return (
@@ -27,7 +27,7 @@ export default function ProgressLogs() {
               <th>Timestamp</th>
               <th>User</th>
               <th>Action Type</th>
-              <th>Location</th>
+              <th>Resource</th>
             </tr>
           </thead>
           <tbody>
@@ -38,7 +38,7 @@ export default function ProgressLogs() {
                 <td>
                   <span className="logs-pill">{r.action}</span>
                 </td>
-                <td className="logs-muted">{r.location}</td>
+                <td className="logs-muted">{r.resource}</td>
               </tr>
             ))}
           </tbody>

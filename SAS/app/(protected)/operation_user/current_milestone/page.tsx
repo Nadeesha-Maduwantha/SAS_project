@@ -91,7 +91,7 @@ export default function CurrentMilestonePage() {
   const [filter,  setFilter]  = useState("all");
 
   useEffect(() => {
-    fetch("http://127.0.0.1:5001/api/shipments/current-milestones")
+    fetch("http://localhost:5000/api/shipments/current-milestones")
       .then(r => {
         if (!r.ok) throw new Error(`Server error: ${r.status}`);
         return r.json();
