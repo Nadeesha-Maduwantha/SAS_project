@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
+  allowedDevOrigins: ['10.189.227.119'],
   outputFileTracingRoot: process.cwd(),
 }
 

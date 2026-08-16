@@ -1,11 +1,15 @@
 import requests
 from flask import Blueprint, request, jsonify
 from services.supabase_service import get_supabase
+from services.security_settings_service import get_login_security_settings
 from utils.auth_helper import require_auth, get_current_user
-from datetime import datetime
-import jwt
+from datetime import datetime, timedelta, timezone
+import os
 
 bp = Blueprint('auth', __name__, url_prefix='/api/auth')
+
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+reset_redirect = f"{FRONTEND_URL.rstrip('/')}/reset-password"
 
 # --- HELPER FUNCTIONS FOR DEVICE AND LOCATION ---
 def get_location_from_ip(ip):
@@ -93,10 +97,14 @@ def login():
     supabase = get_supabase()
 
     profile_data = None
-    
+    is_probation_attempt = False
+    now = datetime.now(timezone.utc)
+
     # 1. SAFELY CHECK IF USER IS ALREADY LOCKED / BLOCKED
     try:
-        profile_response = supabase.table('profiles').select('id, role, is_locked, is_blocked, failed_attempts').eq('email', email).execute()
+        profile_response = supabase.table('profiles').select(
+            'id, role, department, is_locked, is_blocked, failed_attempts, locked_until, permanently_locked'
+        ).eq('email', email).execute()
         if profile_response.data:
             profile_data = profile_response.data[0]
     except Exception as e:
@@ -106,9 +114,29 @@ def login():
     if profile_data and profile_data.get('is_blocked'):
         return jsonify({'error': 'Your access has been suspended by an administrator.'}), 403
 
-    # Reject if locked from failed attempts
+    # REJECT IF PERMANENTLY LOCKED (failed the probation attempt after a prior temporary lockout)
+    if profile_data and profile_data.get('permanently_locked'):
+        return jsonify({'error': 'Account permanently locked due to repeated failed login attempts. Contact an admin to unlock it.'}), 403
+
+    # Reject or allow-as-probation if temporarily locked from failed attempts
     if profile_data and profile_data.get('is_locked'):
-        return jsonify({'error': 'Account is locked due to 5 failed login attempts. Please contact an admin to unlock.'}), 403
+        locked_until = None
+        locked_until_raw = profile_data.get('locked_until')
+        if locked_until_raw:
+            try:
+                locked_until = datetime.fromisoformat(locked_until_raw.replace('Z', '+00:00'))
+            except Exception:
+                locked_until = None
+
+        if locked_until and now < locked_until:
+            return jsonify({'error': f'Account locked until {locked_until.isoformat()}. Please try again later.'}), 403
+        elif locked_until and now >= locked_until:
+            # Lockout period has expired — this login attempt is a one-shot probation:
+            # success clears the lock, failure locks the account permanently.
+            is_probation_attempt = True
+        else:
+            # is_locked with no expiry recorded — treat as still locked (safe default).
+            return jsonify({'error': 'Account is locked. Please contact an admin to unlock.'}), 403
 
     try:
         # 2. AUTHENTICATE USER
@@ -118,12 +146,18 @@ def login():
         })
         user_id = str(response.user.id)
 
-        # 3. SAFELY RESET FAILED ATTEMPTS ON SUCCESS
-        if profile_data and profile_data.get('failed_attempts', 0) > 0:
+        # 3. SAFELY RESET FAILED ATTEMPTS / LOCK STATE ON SUCCESS
+        if profile_data and (
+            profile_data.get('failed_attempts', 0) > 0
+            or profile_data.get('is_locked')
+            or profile_data.get('permanently_locked')
+        ):
             try:
                 supabase.table('profiles').update({
-                    'failed_attempts': 0, 
-                    'is_locked': False
+                    'failed_attempts': 0,
+                    'is_locked': False,
+                    'locked_until': None,
+                    'permanently_locked': False,
                 }).eq('id', user_id).execute()
             except Exception:
                 pass
@@ -152,26 +186,45 @@ def login():
             'user': {
                 'id': user_id,
                 'email': str(response.user.email),
-                'role': actual_role
+                'role': actual_role,
+                'department': profile_data.get('department') if profile_data else None
             }
         }), 200
 
     except Exception as e:
-        # 4. SAFELY INCREMENT FAILED ATTEMPTS ON ERROR
+        # 4. SAFELY HANDLE THE FAILED ATTEMPT
         if profile_data:
+            if is_probation_attempt:
+                # Failed the one-shot probation attempt after a temporary lockout expired
+                # -> lock permanently, requires an admin/superuser to unlock.
+                try:
+                    supabase.table('profiles').update({
+                        'permanently_locked': True,
+                        'is_locked': True,
+                        'locked_until': None,
+                    }).eq('email', email).execute()
+                except Exception:
+                    pass
+
+                return jsonify({'error': 'Account permanently locked due to a failed login after the temporary lockout period. Contact an admin to unlock it.'}), 403
+
             current_attempts = profile_data.get('failed_attempts', 0) + 1
-            is_locked = current_attempts >= 5
-            
+            login_security = get_login_security_settings()
+            max_attempts = login_security['max_failed_attempts']
+            lockout_minutes = login_security['lockout_duration_minutes']
+            is_locked = current_attempts >= max_attempts
+
+            update_payload = {'failed_attempts': current_attempts, 'is_locked': is_locked}
+            if is_locked:
+                update_payload['locked_until'] = (now + timedelta(minutes=lockout_minutes)).isoformat()
+
             try:
-                supabase.table('profiles').update({
-                    'failed_attempts': current_attempts,
-                    'is_locked': is_locked
-                }).eq('email', email).execute()
+                supabase.table('profiles').update(update_payload).eq('email', email).execute()
             except Exception:
                 pass
 
             if is_locked:
-                return jsonify({'error': 'Account locked due to 5 consecutive failed login attempts.'}), 403
+                return jsonify({'error': f'Account locked for {lockout_minutes} minutes due to {max_attempts} consecutive failed login attempts.'}), 403
 
         # LOG FAILED ACCESS
         try:
@@ -242,5 +295,20 @@ def get_me():
         }), 200
         
     except Exception as e:
-        print(f"[ME ENDPOINT] Exception: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.json
+    email = data.get('email')
+
+    if not email:
+        return jsonify({'error': 'Email is required'}), 400
+
+    supabase = get_supabase()
+    supabase.auth.reset_password_email(
+        email=email,
+        redirect_to=reset_redirect,
+    )
+
+    return jsonify({'message': 'Password reset email sent'}), 200

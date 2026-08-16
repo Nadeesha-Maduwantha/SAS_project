@@ -71,10 +71,15 @@ def update_user(user_id):
             elif data['userAction'] == 'unblock':
                 update_data['is_blocked'] = False
                 
-        # Handle 'unlockAccount' (from failed logins) Action if checked
+        # Handle 'unlockAccount' (from failed logins) Action if checked —
+        # only admin/superuser may unlock an account.
         if data.get('unlockAccount'):
+            if (requester_role or '').lower() not in ('admin', 'superuser'):
+                return jsonify({'error': 'Only admins or super users can unlock an account'}), 403
             update_data['is_locked'] = False
             update_data['failed_attempts'] = 0
+            update_data['locked_until'] = None
+            update_data['permanently_locked'] = False
 
         if update_data:
             update_data['updated_at'] = datetime.now().isoformat()
@@ -82,12 +87,12 @@ def update_user(user_id):
             
             # --- ADD THIS: LOG TO AUDIT TRAIL ---
             if requester_id:
-                # Assuming 2 is the ID for "Update" action in your action_types table
-                # Assuming 1 is the ID for "User Management" entity in your entity_types table
+                # action_type_id=2 -> UPDATE, entity_type_id=2 -> User Profile
+                # (matches public.action_types / public.entity_types)
                 log_audit_action(
-                    user_id=requester_id, 
-                    action_type_id=2, 
-                    entity_type_id=1, 
+                    user_id=requester_id,
+                    action_type_id=2,
+                    entity_type_id=2,
                     entity_id=user_id,
                     new_value=update_data, 
                     description=f"Updated user profile for ID: {user_id}"
@@ -155,11 +160,12 @@ def delete_user(user_id):
         
         # Log to audit trail
         try:
-            # Assuming 3 is "Delete" and 1 is "User Management"
+            # action_type_id=3 -> DELETE, entity_type_id=2 -> User Profile
+            # (matches public.action_types / public.entity_types)
             log_audit_action(
                 user_id=requester_id,
                 action_type_id=3,
-                entity_type_id=1,
+                entity_type_id=2,
                 entity_id=user_id,
                 description=f"Deleted user {target_email} ({target_role})"
             )

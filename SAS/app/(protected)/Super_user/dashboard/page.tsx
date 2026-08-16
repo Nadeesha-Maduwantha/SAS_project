@@ -25,6 +25,11 @@ export default function SuperDashboardPage() {
           maxRows={8}
         />
       </div>
+
+      <div className="super-section-gap">
+        <SuperRecentActivityTable />
+      </div>
+
     </div>
   );
 }

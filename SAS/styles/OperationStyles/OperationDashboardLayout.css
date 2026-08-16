@@ -5,10 +5,9 @@
 }
 
 .op-content {
-  @apply flex-1;
+  @apply flex-1 min-h-screen;
 }
 
 .op-inner {
-  @apply max-w-[1200px] mx-auto px-8 py-8;
+  @apply w-full px-4 py-6;
 }
-.op-content { @apply ml-[260px] min-h-screen; }

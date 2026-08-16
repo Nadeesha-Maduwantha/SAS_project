@@ -61,15 +61,13 @@ export default function CreateUserPage() {
       
       // Optional: Reset the form so they can create another user
       setFormData({
-        fullName: '',
         email: '',
         password: '',
+        fullName: '',
+        age: 0,
+        ethnicity: '',
+        role: '',
         department: '',
-        role: 'user',
-        status: 'active',
-        phone: '',
-        joinDate: '',
-        employeeId: '',
         address: '',
       });
 
@@ -88,7 +86,7 @@ export default function CreateUserPage() {
   const isSuperUser = formData.role === 'superuser'
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div className="p-6 max-w-2xl mx-auto">
       <div className="flex items-center gap-2 mb-6">
         <button onClick={handleCancel} className="p-1 hover:bg-gray-100 rounded">
           <ArrowLeft className="w-5 h-5 text-gray-600" />

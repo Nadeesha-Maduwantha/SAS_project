@@ -1,53 +1,76 @@
-import { AlertCircle, TriangleAlert, Info } from 'lucide-react';
+"use client";
+
+import { useEffect, useState } from 'react';
 import '@/styles/SuperStyles/SuperCriticalAlertsCard.css';
 
-const alerts = [
-  {
-    tone: 'red',
-    title: 'Shipment #AX-429 Delay',
-    desc: 'Customs clearance pending for > 24h in Singapore.',
-    icon: AlertCircle,
-  },
-  {
-    tone: 'amber',
-    title: 'Route Alteration Required',
-    desc: 'Weather conditions affecting North Atlantic routes.',
-    icon: TriangleAlert,
-  },
-  {
-    tone: 'gray',
-    title: 'New Compliance Update',
-    desc: 'Revised EU transport regulations effective from Nov 1.',
-    icon: Info,
-  },
-];
+type CriticalAlert = {
+  shipment: string | null;
+  milestone: string | null;
+  note: string | null;
+};
+
+const tones = ['red'];
 
 export default function SuperCriticalAlertsCard() {
+  const [alerts, setAlerts] = useState<CriticalAlert[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  //  fetch function
+  const fetchAlerts = () => {
+    fetch('http://127.0.0.1:5000/api/dashboard/super/critical-alerts')
+      .then((res) => res.json())
+      .then((res) => {
+        setAlerts(res.data || []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchAlerts(); // initial load
+
+    // AUTO REFRESH EVERY 5 SECONDS
+    const interval = setInterval(() => {
+      fetchAlerts();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="ca-card">
       <div className="ca-head">
         <h2 className="ca-title">Critical Alerts</h2>
-        <button className="ca-link">View All</button>
       </div>
 
       <div className="ca-list">
-        {alerts.map((a) => {
-          const Icon = a.icon;
-          return (
-            <div key={a.title} className={`ca-item ca-item--${a.tone}`}>
-              <div className="ca-item__icon">
-                <Icon className="ca-item__iconSvg" />
-              </div>
+        {loading ? (
+          <div className="ca-empty">Loading...</div>
+        ) : alerts.length === 0 ? (
+          <div className="ca-empty">No critical alerts</div>
+        ) : (
+          alerts.map((a, index) => (
+            <div
+              key={`${a.shipment}-${a.milestone}-${index}`}
+              className={`ca-item ca-item--${tones[index % tones.length]}`}
+            >
               <div>
-                <div className="ca-item__t">{a.title}</div>
-                <div className="ca-item__d">{a.desc}</div>
+                <div className="ca-item__t">
+                  {a.shipment ? `Shipment ${a.shipment}` : 'Critical Shipment'}
+                </div>
+
+                <div className="ca-item__d">
+                  {a.milestone || "Unknown milestone"}
+                  {a.note ? ` - ${a.note}` : ''}
+                </div>
               </div>
             </div>
-          );
-        })}
+          ))
+        )}
       </div>
-
-      <button className="ca-mark">Mark All as Read</button>
     </div>
   );
 }

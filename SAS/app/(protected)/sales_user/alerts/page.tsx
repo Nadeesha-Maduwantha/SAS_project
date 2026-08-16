@@ -9,6 +9,8 @@ import {
 import AlertDetailsModal, { AlertData } from '@/components/AlertDetailsModal';
 import EmailComposeModal from '@/components/EmailComposeModal';
 
+const FLASK_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Alert = {
     id: string;
@@ -28,15 +30,10 @@ type Alert = {
 
 type SupabaseRow = {
     shipment_id: string;
-    name: string;
-    status: string;
-    notes: string;
+    title: string;
+    message: string;
     is_critical: boolean;
-    due_date: string | null;
-    completed_date: string | null;
-    assigned_to: string;
-    assigned_email: string;
-    alert_sent: boolean;
+    status: string;
     created_at?: string;
 }
 
@@ -190,6 +187,7 @@ export default function AlertDashboardPage() {
     const [alerts, setAlerts] = useState<Alert[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const { email } = useAuth();
 
     // ── Modal state ──────────────────────────────────────────────
     const [detailsOpen, setDetailsOpen]   = useState(false);
@@ -248,7 +246,7 @@ export default function AlertDashboardPage() {
         setLoading(false);
     };
 
-    useEffect(() => { fetchAlerts(); }, []);
+    useEffect(() => { fetchAlerts(); }, [email]);
 
     const filtered = alerts.filter((a) => {
         const matchPriority = priorityFilter === 'All Priorities' || a.priority === priorityFilter;

@@ -1,15 +1,25 @@
-import os
 from supabase import create_client, Client
-from dotenv import load_dotenv
+from config import SUPABASE_URL, SUPABASE_KEY
 
-load_dotenv()
 
 def get_supabase() -> Client:
-    url: str = os.environ.get("SUPABASE_URL")
-    key: str = os.environ.get("SUPABASE_KEY")
-    
-    if not url or not key:
+    if not SUPABASE_URL or not SUPABASE_KEY:
         raise ValueError("Missing Supabase URL or Key in environment variables.")
+
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
+
+
+supabase = get_supabase()
+
+def get_all_shipments():
+    response = supabase.table('shipments').select('*').execute()
+    return response.data
+
+supabase = get_supabase()
+
+def get_all_shipments():
+    response = supabase.table('shipments').select('*').execute()
+    return response.data
     
     print(f"Connecting to Supabase: {url}")
     return create_client(url, key)
@@ -21,11 +31,17 @@ def get_all_shipments():
     return response.data
 
 def get_shipment_milestones(shipment_id):
-    response = supabase.table('shipment_milestones') \
-        .select('*') \
-        .eq('shipment_id', shipment_id) \
-        .order('sequence_order') \
+    supabase = get_supabase()  
+
+    response = (
+        supabase.table('shipment_milestones')
+        .select('*')
+        .eq('shipment_id', shipment_id)
+        .order('sequence_order')
         .execute()
+    )
+
+    return response.data if response.data else []
     return response.data if response.data else []
 
 def upsert_shipment(shipment_data):
