@@ -13,6 +13,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { AlertTriangle, Check, RefreshCw, Plus, X } from "lucide-react";
 import { T, solidBtn, outlineBtn } from "@/styles/tokens";
+import { humanizeError } from "@/lib/humanizeError";
 
 const API = "http://localhost:5000";
 
@@ -118,7 +119,7 @@ export default function FieldRegistryPage() {
         </div>
 
         {error && (
-          <div style={{ padding: "11px 14px", background: T.redBg, border: `1px solid ${T.redBorder}`, borderRadius: "10px", color: T.red, fontSize: "13px", marginBottom: "16px" }}>{error}</div>
+          <div title={error} style={{ padding: "11px 14px", background: T.redBg, border: `1px solid ${T.redBorder}`, borderRadius: "10px", color: T.red, fontSize: "13px", marginBottom: "16px" }}>{humanizeError(error)}</div>
         )}
 
         {/* ── Mismatches ── */}

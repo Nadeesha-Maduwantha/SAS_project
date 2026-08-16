@@ -3,20 +3,44 @@
 // =============================================================
 //  System Settings — /admin/system_settings
 //
-//  For now: Milestone settings -> "Milestone name mismatch" ->
-//  choose which admin account receives the field-naming alert email.
+//  Grouped into sections; each setting is a collapsible accordion
+//  (name shown first, click to expand the full controls).
 // =============================================================
 
 import { useState, useEffect } from "react";
-import { Settings, MapPin, Check, BookOpen } from "lucide-react";
+import { Settings, MapPin, Check, BookOpen, ChevronDown } from "lucide-react";
 import { T, solidBtn } from "@/styles/tokens";
 import FieldDefinitionsManager from "@/components/settings/FieldDefinitionsManager";
+import { humanizeError } from "@/lib/humanizeError";
 
 const API = "http://localhost:5000";
 
 function authHeaders() {
   const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : "";
   return { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+}
+
+// ── Collapsible setting ───────────────────────────────────────────────────────
+function Accordion({ icon, title, subtitle, children, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div style={{ background: T.cardBg, border: T.cardBorder, borderRadius: "12px", overflow: "hidden", marginBottom: "12px" }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "16px 20px", background: "transparent", border: "none", cursor: "pointer", fontFamily: T.font, textAlign: "left" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+          {icon}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: "14px", fontWeight: "700", color: T.gray900 }}>{title}</div>
+            {subtitle && <div style={{ fontSize: "12px", color: T.gray500, marginTop: "2px" }}>{subtitle}</div>}
+          </div>
+        </div>
+        <ChevronDown size={18} color={T.gray400} style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s", flexShrink: 0 }} />
+      </button>
+      {open && <div style={{ padding: "0 20px 20px" }}>{children}</div>}
+    </div>
+  );
 }
 
 export default function SystemSettingsPage() {
@@ -69,21 +93,25 @@ export default function SystemSettingsPage() {
         </div>
         <p style={{ fontSize: "13px", color: T.gray500, margin: "0 0 22px" }}>Configure how the SAS system behaves.</p>
 
-        {/* Milestone settings section */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+        {/* ── Milestone settings section ── */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
           <MapPin size={16} color={T.blue} />
           <h2 style={{ fontSize: "15px", fontWeight: "700", color: T.gray900, margin: 0 }}>Milestone settings</h2>
         </div>
 
-        <div style={{ background: T.cardBg, border: T.cardBorder, borderRadius: "12px", padding: "22px" }}>
-          <div style={{ fontSize: "14px", fontWeight: "700", color: T.gray900, marginBottom: "4px" }}>Milestone name mismatch</div>
+        {/* Setting 1 — Milestone name mismatch */}
+        <Accordion
+          icon={<MapPin size={16} color={T.blue} />}
+          title="Milestone name mismatch"
+          subtitle="Who gets emailed when an expected field isn't in the feed"
+        >
           <p style={{ fontSize: "12.5px", color: T.gray500, margin: "0 0 18px", lineHeight: "1.6" }}>
             When a milestone expects a CargoWise field the feed doesn't provide (a naming mismatch), the system
             emails the chosen admin so they can map the real field on the Field Registry page.
           </p>
 
           {error && (
-            <div style={{ padding: "10px 13px", background: T.redBg, border: `1px solid ${T.redBorder}`, borderRadius: "8px", color: T.red, fontSize: "13px", marginBottom: "16px" }}>{error}</div>
+            <div title={error} style={{ padding: "10px 13px", background: T.redBg, border: `1px solid ${T.redBorder}`, borderRadius: "8px", color: T.red, fontSize: "13px", marginBottom: "16px" }}>{humanizeError(error)}</div>
           )}
 
           {loading ? (
@@ -123,20 +151,20 @@ export default function SystemSettingsPage() {
               </div>
             </>
           )}
-        </div>
+        </Accordion>
 
-        {/* Field definitions card */}
-        <div style={{ background: T.cardBg, border: T.cardBorder, borderRadius: "12px", padding: "22px", marginTop: "18px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-            <BookOpen size={16} color={T.blue} />
-            <div style={{ fontSize: "14px", fontWeight: "700", color: T.gray900 }}>Field definitions</div>
-          </div>
+        {/* Setting 2 — Field definitions */}
+        <Accordion
+          icon={<BookOpen size={16} color={T.blue} />}
+          title="Field definitions"
+          subtitle="Plain-language meaning for each data field"
+        >
           <p style={{ fontSize: "12.5px", color: T.gray500, margin: "0 0 18px", lineHeight: "1.6" }}>
             Give each data field a plain-language meaning. These definitions appear in the milestone builder,
             so anyone creating a milestone or template knows exactly what a field represents.
           </p>
           <FieldDefinitionsManager />
-        </div>
+        </Accordion>
       </div>
     </div>
   );

@@ -281,8 +281,8 @@ export default function AdminLeftNavBar({ topOffset = 57 }: { topOffset?: number
         />
         <NavItem
           label="Current Milestones"
-          isActive={active('/admin/current_milestones')}
-          onClick={() => go('/admin/current_milestones')}
+          isActive={active('/admin/current_milestone')}
+          onClick={() => go('/admin/current_milestone')}
         />
         <NavItem
           label="Field Registry"
