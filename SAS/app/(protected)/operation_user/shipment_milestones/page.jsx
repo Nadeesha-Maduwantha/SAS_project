@@ -68,8 +68,8 @@ export default function ShipmentMilestonesPage() {
       try {
         setError(null);
         const url = shipmentId
-          ? `http://127.0.0.1:5000/api/shipments/${shipmentId}`
-          : `http://127.0.0.1:5000/api/shipments/job/${jobNumber}`;
+          ? `http://localhost:5000/api/shipments/${shipmentId}`
+          : `http://localhost:5000/api/shipments/job/${jobNumber}`;
 
         const response = await fetch(url);
         const result   = await response.json();
@@ -227,17 +227,17 @@ export default function ShipmentMilestonesPage() {
                 </span>
               </>
             )}
-            {shipment?.pickup_date_status && (
+            {shipment?.milestones?.cargo_pickup?.pickup_date_status && (
               <>
                 <span style={{ fontSize: "12px", color: T.gray300 }}>·</span>
                 <span style={{
                   fontSize: "11px", fontWeight: "600",
                   padding: "2px 9px", borderRadius: "5px",
-                  background: shipment.pickup_date_status.toLowerCase().includes("overdue") ? "#fef2f2" : "#f0fdf4",
-                  color:      shipment.pickup_date_status.toLowerCase().includes("overdue") ? "#dc2626" : "#15803d",
-                  border:     shipment.pickup_date_status.toLowerCase().includes("overdue") ? "1px solid #fecaca" : "1px solid #bbf7d0",
+                  background: shipment.milestones.cargo_pickup.pickup_date_status.toLowerCase().includes("overdue") ? "#fef2f2" : "#f0fdf4",
+                  color:      shipment.milestones.cargo_pickup.pickup_date_status.toLowerCase().includes("overdue") ? "#dc2626" : "#15803d",
+                  border:     shipment.milestones.cargo_pickup.pickup_date_status.toLowerCase().includes("overdue") ? "1px solid #fecaca" : "1px solid #bbf7d0",
                 }}>
-                  {shipment.pickup_date_status}
+                  {shipment.milestones.cargo_pickup.pickup_date_status}
                 </span>
               </>
             )}

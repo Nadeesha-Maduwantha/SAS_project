@@ -32,6 +32,38 @@ def get_device_info(user_agent):
     return f"{browser} on {platform}".title()
 
 
+# DEBUG ENDPOINT - Remove this after testing
+@bp.route('/debug', methods=['GET', 'POST'])
+def debug():
+    """Debug endpoint to check token and headers"""
+    print("[DEBUG ENDPOINT] Called")
+    auth_header = request.headers.get('Authorization')
+    print(f"[DEBUG] Authorization header: {bool(auth_header)}")
+    
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+        print(f"[DEBUG] Token length: {len(token)}")
+        try:
+            decoded = jwt.decode(token, options={"verify_signature": False})
+            print(f"[DEBUG] Token decoded successfully")
+            print(f"[DEBUG] Token claims: {list(decoded.keys())}")
+            print(f"[DEBUG] User ID (sub): {decoded.get('sub')}")
+            return jsonify({
+                'status': 'ok',
+                'token_valid': True,
+                'token_keys': list(decoded.keys()),
+                'user_id': decoded.get('sub')
+            }), 200
+        except Exception as e:
+            print(f"[DEBUG] Token decode failed: {str(e)}")
+            return jsonify({
+                'status': 'error',
+                'error': str(e)
+            }), 400
+    
+    return jsonify({'status': 'no_token'}), 400
+
+
 @bp.route('/signup', methods=['POST'])
 def signup():
     try:
@@ -223,9 +255,13 @@ def logout():
 @bp.route('/me', methods=['GET'])
 @require_auth
 def get_me():
+    print("[ME ENDPOINT] /me endpoint called")
     try:
-        user_id, _ = get_current_user()
+        user_id, user_role = get_current_user()
+        print(f"[ME ENDPOINT] Got user_id: {user_id}, user_role: {user_role}")
+        
         if not user_id:
+            print("[ME ENDPOINT] User ID is None, returning 401")
             return jsonify({'error': 'Unauthorized'}), 401
             
         supabase = get_supabase()
@@ -234,6 +270,8 @@ def get_me():
         profile_response = supabase.table('profiles').select(
             'id, full_name, email, role, department, phoneNumber, created_at'
         ).eq('id', user_id).execute()
+        
+        print(f"[ME ENDPOINT] Profile query returned: {bool(profile_response.data)}")
         
         if not profile_response.data:
             return jsonify({'error': 'Profile not found'}), 404

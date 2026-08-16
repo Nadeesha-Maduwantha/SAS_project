@@ -1,25 +1,29 @@
-"use client";
+// app/(protected)/Super_user/dashboard/page.tsx
+// Super User sees same full metric cards as admin (AIR/SEA/Critical/Summary)
+import DashboardMetricCards from '@/components/AdminUser/DashboardMetricCards';
+import AlertFeedTable from '@/components/shared/AlertFeedTable';
+import PinnedTableStatCards from '@/components/shared/PinnedTableStatCard';
 
-import SuperStatsGrid from '@/components/SuperUser/SuperStatsGrid';
-import SuperRecentActivityTable from '@/components/SuperUser/SuperRecentActivityTable';
-import SuperCriticalAlertsCard from '@/components/SuperUser/SuperCriticalAlertsCard';
-import '@/styles/SuperStyles/SuperDashboardLayout.css';
-import SuperDashboardHeader from '@/components/SuperUser/SuperDashboardHeader';
-
-export default function SuperUserDashboard() {
+export default function SuperDashboardPage() {
   return (
-    <div className="super-dashboard">
-      <SuperDashboardHeader />
+    <div>
+      <h1 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 20, letterSpacing: '-0.02em' }}>
+        Super User Dashboard
+      </h1>
 
-      <div className="super-grid-2">
-        <div className="super-grid-2__left">
-          <SuperStatsGrid />
-        </div>
+      {/* Full metric cards — same as admin */}
+      <DashboardMetricCards />
 
-        <div className="super-grid-2__right">
-          <SuperCriticalAlertsCard />
-        </div>
-        <SuperCriticalAlertsCard />
+      {/* Pinned custom table stat cards */}
+      <PinnedTableStatCards />
+
+      {/* Alert feed */}
+      <div style={{ marginTop: 4 }}>
+        <AlertFeedTable
+          title="Department Alert Feed"
+          apiBase="http://localhost:5000"
+          maxRows={8}
+        />
       </div>
 
       <div className="super-section-gap">

@@ -1,12 +1,10 @@
 "use client";
 import AdminHeader from '@/components/AdminUser/AdminHeader';
-import StatCard from '@/components/AdminUser/StatCard';
-import ShipmentFeed from '@/components/AdminUser/ShipmentFeed';
-import type { ShipmentFeedItem } from '@/components/AdminUser/ShipmentFeed';
+import DashboardMetricCards from '@/components/AdminUser/DashboardMetricCards';
+import AlertFeedTable from '@/components/shared/AlertFeedTable';
+import PinnedTableStatCards from '@/components/shared/PinnedTableStatCard';
 import ProgressLogs from '@/components/AdminUser/ProgressLogs';
 import SystemTechnicalLogs from '@/components/AdminUser/SystemTechnicalLogs';
-import { useEffect, useState } from "react";
-import { ShieldCheck, Users, BellRing, Mail } from 'lucide-react';
 import '@/styles/AdminStyles/AdminLayout.css';
 
 import SyncSummaryCard from '@/components/AdminUser/SyncSummaryCard';
@@ -70,31 +68,25 @@ export default function AdminDashboardPage() {
     <div className="admin-inner">
       <AdminHeader />
 
-      <div className="stats-grid">
-        <StatCard
-          title="Milestone Success Rate"
-          value={`${metrics.success_rate}%`}
-          icon={<ShieldCheck size={16} />}
-        />
+      {/*
+        Two narrow stat cards:
+        Left  — Department Overview (AIR + SEA: ongoing / overdue / completed)
+        Right — Shipment Summary (total completed + totals)
+      */}
+      <DashboardMetricCards />
 
-        <StatCard
-          title="Total Users"
-          value={metrics.total_users.toString()}
-          icon={<Users size={16} />}
-        />
+      {/* Pinned custom table cards — only if user has pinned tables */}
+      <PinnedTableStatCards />
 
-        <StatCard
-          title="Active Alerts"
-          value={metrics.active_alerts.toString()}
-          icon={<BellRing size={16} />}
-        />
-
-        <StatCard
-          title="Total Generated Emails"
-          value={metrics.total_emails.toString()}
-          icon={<Mail size={16} />}
+      {/* Alert feed */}
+      <div className="section-gap">
+        <AlertFeedTable
+          title="Admin Shipment Alert Feed"
+          apiBase="http://localhost:5000"
+          maxRows={8}
         />
       </div>
+
       <div className="bottom-grid">
         <ProgressLogs />
         <SyncSummaryCard syncData={MOCK_SYNC_STATUS} />

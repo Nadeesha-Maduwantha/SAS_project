@@ -1,22 +1,29 @@
-import SalesDashboardHeader from '@/components/SalesUser/SalesDashboardHeader';
-import SalesSectionTitle from '@/components/SalesUser/SalesSectionTitle';
-import SalesStatsGrid from '@/components/SalesUser/SalesStatsGrid';
-import SalesPriorityShipments from '@/components/SalesUser/SalesPriorityShipments';
+// app/(protected)/sales_user/dashboard/page.tsx
+import UserDashboardMetricCards from '@/components/shared/UserDashboardMetricCards';
+import AlertFeedTable from '@/components/shared/AlertFeedTable';
+import PinnedTableStatCards from '@/components/shared/PinnedTableStatCard';
 
-import { BarChart3, Star } from 'lucide-react';
-
-export default function SalesUserDashboardPage() {
+export default function SalesDashboardPage() {
   return (
     <div>
-      <SalesDashboardHeader />
+      <h1 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 20, letterSpacing: '-0.02em' }}>
+        Sales Dashboard
+      </h1>
 
-      <SalesStatsGrid />
+      {/* My Shipments + My Alerts stat cards */}
+      <UserDashboardMetricCards />
 
-      <SalesSectionTitle
-        title="Priority Shipments" 
-      />
+      {/* Pinned custom table stat cards */}
+      <PinnedTableStatCards />
 
-      <SalesPriorityShipments />
+      {/* Alert feed — shows all active alerts (filtered by user when auth wired) */}
+      <div style={{ marginTop: 4 }}>
+        <AlertFeedTable
+          title="My Shipment Alert Feed"
+          apiBase="http://localhost:5000"
+          maxRows={8}
+        />
+      </div>
     </div>
   );
 }
