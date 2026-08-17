@@ -45,6 +45,12 @@ interface SyncResult {
   errors: number
 }
 
+interface IgnoredField {
+  api_field: string
+  ignored_at: string
+  note: string | null
+}
+
 interface CustomSchedule {
   id: string
   schedule_time: string   // 'HH:MM' 24-hour, as stored
@@ -129,6 +135,13 @@ export default function SyncManagementPage() {
   const [minErrors, setMinErrors]               = useState(1)
   const [settingsError, setSettingsError]       = useState<string | null>(null)
   const [savingSettings, setSavingSettings]     = useState(false)
+  // Fields reported by the sync that are still unregistered (Door 3)
+  const [newFieldReports, setNewFieldReports]   = useState<SyncError[]>([])
+  // Fields an admin reviewed and marked as not milestones, kept visible so the
+  // decision can be seen and reversed
+  const [ignoredFields, setIgnoredFields]       = useState<IgnoredField[]>([])
+  const [showIgnored, setShowIgnored]           = useState(false)
+  const [fieldActionError, setFieldActionError] = useState<string | null>(null)
 
   const now = new Date()
 
@@ -180,6 +193,31 @@ export default function SyncManagementPage() {
     }
   }, [])
 
+  // Loads unknown-field reports that are STILL unknown. The server re-checks
+  // each reported field against the current configuration, so a field that has
+  // since been registered no longer appears and the notice clears itself.
+  const fetchNewFields = useCallback(async () => {
+    try {
+      const response = await fetch(`${FLASK_API}/api/sync/new-fields`)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const result = await response.json()
+      setNewFieldReports(result.data ?? [])
+    } catch (err) {
+      console.error('Failed to fetch new field reports:', err)
+    }
+  }, [])
+
+  const fetchIgnoredFields = useCallback(async () => {
+    try {
+      const response = await fetch(`${FLASK_API}/api/sync/ignored-fields`)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const result = await response.json()
+      setIgnoredFields(result.data ?? [])
+    } catch (err) {
+      console.error('Failed to fetch ignored fields:', err)
+    }
+  }, [])
+
   // Loads the saved alert preferences so the toggles reflect what is actually
   // stored, rather than resetting to their defaults on every page load.
   const fetchAlertSettings = useCallback(async () => {
@@ -200,10 +238,10 @@ export default function SyncManagementPage() {
   useEffect(() => {
   async function init() {
     setLoadingHistory(true)
-    await Promise.all([fetchSyncLogs(), fetchSyncErrors(), fetchSchedule(), fetchAlertSettings()])
+    await Promise.all([fetchSyncLogs(), fetchSyncErrors(), fetchSchedule(), fetchAlertSettings(), fetchNewFields(), fetchIgnoredFields()])
   }
   init()
-}, [fetchSyncLogs, fetchSyncErrors, fetchSchedule, fetchAlertSettings])
+}, [fetchSyncLogs, fetchSyncErrors, fetchSchedule, fetchAlertSettings, fetchNewFields, fetchIgnoredFields])
 
   // Actions 
 
@@ -229,6 +267,8 @@ export default function SyncManagementPage() {
       setSyncResult(result)
       await fetchSyncLogs()
       await fetchSyncErrors()
+      // A run may have reported a field not seen before
+      await fetchNewFields()
     } catch (err) {
       
       clearInterval(interval)
@@ -237,6 +277,30 @@ export default function SyncManagementPage() {
       console.error('Sync failed:', err)
     } finally {
       setIsSyncing(false)
+    }
+  }
+
+  // Marks a reported field as not a milestone (or reverses that decision).
+  // Both refresh the notice and the ignored list so the two stay consistent.
+  async function handleFieldDecision(apiField: string, ignore: boolean) {
+    setFieldActionError(null)
+    try {
+      const response = await fetch(`${FLASK_API}/api/sync/ignored-fields/${encodeURIComponent(apiField)}`, {
+        method: ignore ? 'POST' : 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') ?? '' : ''}`,
+        },
+      })
+      const result = await response.json()
+      if (!response.ok || result.error) {
+        setFieldActionError(result.error ?? `Request failed (HTTP ${response.status})`)
+        return
+      }
+      await Promise.all([fetchNewFields(), fetchIgnoredFields()])
+    } catch (err) {
+      console.error('Failed to update field decision:', err)
+      setFieldActionError('Could not reach the server. Is the backend running?')
     }
   }
 
@@ -336,11 +400,11 @@ export default function SyncManagementPage() {
     historyPage * HISTORY_PAGE_SIZE
   )
 
-  // New fields reported by the sync (Door 3). These are not shipment errors,
-  // so they are shown as their own notice rather than mixed into the error
+  // New-field reports are fetched separately (see fetchNewFields) because the
+  // server re-checks each one against the current configuration, so the notice
+  // clears itself once a field is registered. They are excluded from the error
   // table, which lists per-shipment validation warnings.
-  const newFieldReports = syncErrors.filter((e) => e.job_number?.startsWith('[new-field]'))
-  const shipmentErrors  = syncErrors.filter((e) => !e.job_number?.startsWith('[new-field]'))
+  const shipmentErrors = syncErrors.filter((e) => !e.job_number?.startsWith('[new-field]'))
 
   const paginatedErrors = shipmentErrors.slice(
     (errorsPage - 1) * ERRORS_PAGE_SIZE,
@@ -539,18 +603,81 @@ export default function SyncManagementPage() {
               <p style={{ fontSize: '12px', color: '#1e40af', margin: '0 0 10px' }}>
                 The following fields arrived from CargoWise but are not mapped to a column or
                 registered to a milestone. Their values are stored in full, so nothing is lost.
-                Register a field in the Field Registry if it represents a milestone.
+                Register a field in the{' '}
+                <a href="/admin/field_registry" style={{ color: '#1d4ed8', fontWeight: 600, textDecoration: 'underline' }}>
+                  Field Registry
+                </a>{' '}
+                if it represents a milestone — this notice clears itself once the field is registered.
               </p>
               {newFieldReports.map((r) => (
-                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
+                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0' }}>
                   <code style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', padding: '2px 8px', borderRadius: '5px' }}>
                     {r.field_name}
                   </code>
                   <span style={{ fontSize: '11px', color: '#60a5fa' }}>
                     first seen {formatDateTime(r.created_at)}
                   </span>
+                  <button
+                    onClick={() => handleFieldDecision(r.field_name, true)}
+                    title="This field is not a milestone — stop showing it here"
+                    style={{
+                      marginLeft: 'auto', fontSize: '11px', fontWeight: 600,
+                      padding: '3px 10px', borderRadius: '6px', cursor: 'pointer',
+                      background: 'white', color: '#1d4ed8', border: '1px solid #bfdbfe',
+                    }}
+                  >
+                    Not a milestone
+                  </button>
                 </div>
               ))}
+
+              {fieldActionError && (
+                <p style={{ fontSize: '11px', color: '#dc2626', margin: '8px 0 0' }}>{fieldActionError}</p>
+              )}
+            </div>
+          )}
+
+          {/* Fields reviewed and set aside. Kept visible and reversible — a
+              field hidden with no way to find it again is effectively lost. */}
+          {ignoredFields.length > 0 && (
+            <div style={{ background: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '12px 16px' }}>
+              <button
+                onClick={() => setShowIgnored((v) => !v)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px', width: '100%',
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                  fontSize: '12px', fontWeight: 600, color: '#6b7280', textAlign: 'left',
+                }}
+              >
+                <span style={{ fontSize: '10px' }}>{showIgnored ? '▾' : '▸'}</span>
+                {ignoredFields.length} field{ignoredFields.length > 1 ? 's' : ''} marked as not milestones
+              </button>
+
+              {showIgnored && (
+                <div style={{ marginTop: '10px' }}>
+                  {ignoredFields.map((f) => (
+                    <div key={f.api_field} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
+                      <code style={{ fontSize: '12px', color: '#6b7280', background: '#f3f4f6', padding: '2px 8px', borderRadius: '5px' }}>
+                        {f.api_field}
+                      </code>
+                      <span style={{ fontSize: '11px', color: '#9ca3af' }}>
+                        set aside {formatDateTime(f.ignored_at)}
+                      </span>
+                      <button
+                        onClick={() => handleFieldDecision(f.api_field, false)}
+                        title="Show this field in the notice again"
+                        style={{
+                          marginLeft: 'auto', fontSize: '11px', fontWeight: 600,
+                          padding: '3px 10px', borderRadius: '6px', cursor: 'pointer',
+                          background: 'white', color: '#374151', border: '1px solid #d1d5db',
+                        }}
+                      >
+                        Undo
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

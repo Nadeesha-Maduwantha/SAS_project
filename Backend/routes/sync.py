@@ -181,6 +181,88 @@ def get_errors():
 
 
 
+@sync_bp.route('/api/sync/new-fields', methods=['GET'])
+def get_new_fields():
+    """Fields reported as unknown that are STILL unknown.
+
+    The report rows in sync_errors are historical: once a field has been
+    reported the row remains. Re-checking each reported field against the
+    current configuration means the notice clears itself as soon as an
+    administrator registers or maps the field, instead of persisting after
+    the work is done."""
+    try:
+        from services.cargowise_service import load_field_map, MAPPED_API_FIELDS
+        from services.supabase_service import get_new_field_reports, get_ignored_api_fields
+
+        field_map = load_field_map()
+        claimed = MAPPED_API_FIELDS | {
+            f['api_field'] for fields in field_map.values() for f in fields
+        }
+        # Reviewed and deliberately set aside — a decision, not a claim
+        ignored = {r['api_field'] for r in get_ignored_api_fields()}
+
+        # Keep only those still unclaimed and not set aside, one row per field
+        seen, still_unknown = set(), []
+        for e in get_new_field_reports():
+            name = e.get('field_name')
+            if name and name not in claimed and name not in ignored and name not in seen:
+                seen.add(name)
+                still_unknown.append(e)
+
+        return jsonify({'data': still_unknown}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@sync_bp.route('/api/sync/ignored-fields', methods=['GET'])
+def list_ignored_fields():
+    """Fields an administrator has marked as not being milestones. Listed so a
+    decision taken once remains visible and can be reversed."""
+    try:
+        from services.supabase_service import get_ignored_api_fields
+        return jsonify({'data': get_ignored_api_fields()}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@sync_bp.route('/api/sync/ignored-fields/<api_field>', methods=['POST'])
+@require_auth
+def ignore_field(api_field):
+    """Mark a reported field as not a milestone, removing it from the notice."""
+    try:
+        from flask import request
+        from services.supabase_service import add_ignored_api_field
+
+        user_id, role = get_current_user()
+        if 'admin' not in (role or '').lower():
+            return jsonify({'error': 'Admin access required'}), 403
+
+        # silent=True: the request carries a JSON content type but no body,
+        # which get_json() would otherwise reject with a 400.
+        note = ((request.get_json(silent=True) or {}).get('note') or '').strip() or None
+        add_ignored_api_field(api_field, ignored_by=user_id, note=note)
+        return jsonify({'success': True, 'message': f"'{api_field}' marked as not a milestone"}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@sync_bp.route('/api/sync/ignored-fields/<api_field>', methods=['DELETE'])
+@require_auth
+def unignore_field(api_field):
+    """Reverse the decision, so the field appears in the notice again."""
+    try:
+        from services.supabase_service import remove_ignored_api_field
+
+        _, role = get_current_user()
+        if 'admin' not in (role or '').lower():
+            return jsonify({'error': 'Admin access required'}), 403
+
+        remove_ignored_api_field(api_field)
+        return jsonify({'success': True, 'message': f"'{api_field}' restored to the notice"}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 # ── Alert settings ─────────────────────────────────────────────────────
 # Stored on the single sync_settings row:
 #   alert_on_failure     — notify admins when a sync run fails
@@ -215,7 +297,7 @@ def save_alert_settings():
         if 'admin' not in (role or '').lower():
             return jsonify({'error': 'Admin access required'}), 403
 
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
 
         # Validate before writing: a threshold below 1 would mean "alert even
         # when there are no errors", which is never intended.
@@ -269,7 +351,7 @@ def add_schedule():
         from services.supabase_service import add_sync_schedule, get_sync_schedules
         from apscheduler.triggers.cron import CronTrigger
 
-        schedule_time = (request.get_json() or {}).get('schedule_time')
+        schedule_time = (request.get_json(silent=True) or {}).get('schedule_time')
         parsed = _parse_hhmm(schedule_time)
         if not parsed:
             return jsonify({'error': 'schedule_time must be in HH:MM 24-hour format'}), 400

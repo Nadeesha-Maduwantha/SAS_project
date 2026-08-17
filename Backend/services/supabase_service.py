@@ -88,6 +88,54 @@ def save_sync_settings(schedule_hours, schedule_minute):
 # mismatch detector uses '[field-map]' for the same purpose.
 NEW_FIELD_MARKER = '[new-field]'
 
+# ── Fields deliberately marked as "not a milestone" ────────────────────
+# An administrator who has reviewed a reported field and decided it is not a
+# milestone records that decision here, so the notice stops showing it. The
+# decision is recorded rather than the report deleted, so it can be listed and
+# reversed later — a field hidden with no way to find it again is effectively
+# lost.
+
+def get_ignored_api_fields():
+    response = (
+        supabase.table('ignored_api_fields')
+        .select('*')
+        .order('ignored_at', desc=True)
+        .execute()
+    )
+    return response.data or []
+
+def add_ignored_api_field(api_field, ignored_by=None, note=None):
+    response = supabase.table('ignored_api_fields').upsert(
+        {'api_field': api_field, 'ignored_by': ignored_by, 'note': note},
+        on_conflict='api_field'
+    ).execute()
+    return (response.data or [None])[0]
+
+def remove_ignored_api_field(api_field):
+    response = (
+        supabase.table('ignored_api_fields')
+        .delete()
+        .eq('api_field', api_field)
+        .execute()
+    )
+    return response.data
+
+
+def get_new_field_reports():
+    """Unknown-field reports only. Queried separately from get_sync_errors()
+    because that function returns the latest 50 rows of all kinds, in which
+    per-shipment validation warnings would crowd these out."""
+    response = (
+        supabase.table('sync_errors')
+        .select('*')
+        .like('job_number', f'{NEW_FIELD_MARKER}%')
+        .order('created_at', desc=True)
+        .limit(50)
+        .execute()
+    )
+    return response.data or []
+
+
 def get_flagged_new_fields():
     """Field names already reported as unknown, so each is reported once
     rather than on every synchronisation run."""
