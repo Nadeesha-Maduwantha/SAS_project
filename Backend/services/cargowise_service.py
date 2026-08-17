@@ -69,6 +69,30 @@ def _normalize_date(value):
             continue
     return value
 
+# API fields the sync maps directly to shipments columns. Together with the
+# fields declared in milestone_field_map these account for everything we
+# currently understand; anything else the API sends is unclaimed.
+# NOTE: keep this in step with the shipment dict in routes/sync.py and app.py —
+# a field added there but not here would be reported as unknown for ever.
+MAPPED_API_FIELDS = {
+    'branch', 'cargo_pickup_date', 'consignee', 'gb_code', 'gc_code',
+    'gen_custom_last_edit_time', 'house_bill_number', 'job_docs_last_edit_time',
+    'job_number', 'job_shipment_last_edit_time', 'js_pk', 'llm_cargo_pickup_date',
+    'llm_identified_type', 'llm_note', 'note_last_edit_time', 'note_number',
+    'oh_full_name', 'running_date_time', 'st_description', 'st_note_text',
+    'transport_mode',
+}
+
+def find_unknown_fields(item, field_map):
+    """Fields present in an API record that are neither mapped to a column nor
+    registered against a milestone — i.e. data arriving that nobody has claimed.
+
+    The value is kept in shipments.raw_json regardless, so nothing is lost;
+    this only surfaces the field so an administrator can decide what it is."""
+    registered = {f['api_field'] for fields in field_map.values() for f in fields}
+    return set(item.keys()) - MAPPED_API_FIELDS - registered
+
+
 def build_milestones(item, field_map):
     """Build the shipments.milestones jsonb value from one API record.
     Values are read from the API under api_field but written under
