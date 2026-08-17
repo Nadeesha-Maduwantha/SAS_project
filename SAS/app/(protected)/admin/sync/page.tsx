@@ -34,7 +34,8 @@ interface SyncError {
   job_number: string
   field_name: string
   error_reason: string
-  severity: 'critical' | 'warning'
+  // 'info' is used for new-field reports raised by the sync (Door 3)
+  severity: 'critical' | 'warning' | 'info'
   created_at: string
 }
 
@@ -120,13 +121,14 @@ export default function SyncManagementPage() {
   const [syncErrors, setSyncErrors]   = useState<SyncError[]>([])
   const [loadingHistory, setLoadingHistory] = useState(true)
 
-  // Alert Settings state
-  // TODO (after interim): fetch initial values from Flask /api/sync/schedule
-  // endpoint which reads from sync_settings table columns:
- 
+  // Alert Settings state — loaded from and saved to sync_settings via
+  // /api/sync/settings. NOTE: alert_on_validation is also editable from the
+  // System Settings page (milestone mismatch), so both act on the same value.
   const [alertOnFailure, setAlertOnFailure]     = useState(true)
   const [alertOnValidation, setAlertOnValidation] = useState(true)
   const [minErrors, setMinErrors]               = useState(1)
+  const [settingsError, setSettingsError]       = useState<string | null>(null)
+  const [savingSettings, setSavingSettings]     = useState(false)
 
   const now = new Date()
 
@@ -173,20 +175,35 @@ export default function SyncManagementPage() {
         }))
       )
 
-      // TODO (after interim): read alert settings from /api/sync/settings:
-      //   alert_on_failure / alert_on_validation / min_errors_threshold
     } catch (err) {
       console.error('Failed to fetch schedules:', err)
+    }
+  }, [])
+
+  // Loads the saved alert preferences so the toggles reflect what is actually
+  // stored, rather than resetting to their defaults on every page load.
+  const fetchAlertSettings = useCallback(async () => {
+    try {
+      const response = await fetch(`${FLASK_API}/api/sync/settings`)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const result = await response.json()
+      if (result.data) {
+        setAlertOnFailure(result.data.alert_on_failure ?? true)
+        setAlertOnValidation(result.data.alert_on_validation ?? true)
+        setMinErrors(result.data.min_errors_threshold ?? 1)
+      }
+    } catch (err) {
+      console.error('Failed to fetch alert settings:', err)
     }
   }, [])
 
   useEffect(() => {
   async function init() {
     setLoadingHistory(true)
-    await Promise.all([fetchSyncLogs(), fetchSyncErrors(), fetchSchedule()])
+    await Promise.all([fetchSyncLogs(), fetchSyncErrors(), fetchSchedule(), fetchAlertSettings()])
   }
   init()
-}, [fetchSyncLogs, fetchSyncErrors, fetchSchedule])
+}, [fetchSyncLogs, fetchSyncErrors, fetchSchedule, fetchAlertSettings])
 
   // Actions 
 
@@ -223,11 +240,39 @@ export default function SyncManagementPage() {
     }
   }
 
-  function handleSaveSettings() {
-    // TODO (after interim): send alert settings to Flask:
-    //  for now just simulates saving and shows a temporary "Settings saved" message when the user clicks Save Settings in the Alert Settings section.
-    setSettingsSaved(true)
-    setTimeout(() => setSettingsSaved(false), 2000)
+  async function handleSaveSettings() {
+    setSettingsError(null)
+    setSavingSettings(true)
+    try {
+      const response = await fetch(`${FLASK_API}/api/sync/settings`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          // The endpoint is admin-only, so the session token must be sent.
+          Authorization: `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') ?? '' : ''}`,
+        },
+        body: JSON.stringify({
+          alert_on_failure:     alertOnFailure,
+          alert_on_validation:  alertOnValidation,
+          min_errors_threshold: minErrors,
+        }),
+      })
+      const result = await response.json()
+      if (!response.ok || result.error) {
+        setSettingsError(result.error ?? `Request failed (HTTP ${response.status})`)
+        return
+      }
+      // Re-read from the server so the panel shows what was actually stored,
+      // not merely what was sent.
+      await fetchAlertSettings()
+      setSettingsSaved(true)
+      setTimeout(() => setSettingsSaved(false), 2000)
+    } catch (err) {
+      console.error('Failed to save alert settings:', err)
+      setSettingsError('Could not reach the server. Is the backend running?')
+    } finally {
+      setSavingSettings(false)
+    }
   }
 
   // Adds one more custom sync time (existing ones are kept).
@@ -291,7 +336,13 @@ export default function SyncManagementPage() {
     historyPage * HISTORY_PAGE_SIZE
   )
 
-  const paginatedErrors = syncErrors.slice(
+  // New fields reported by the sync (Door 3). These are not shipment errors,
+  // so they are shown as their own notice rather than mixed into the error
+  // table, which lists per-shipment validation warnings.
+  const newFieldReports = syncErrors.filter((e) => e.job_number?.startsWith('[new-field]'))
+  const shipmentErrors  = syncErrors.filter((e) => !e.job_number?.startsWith('[new-field]'))
+
+  const paginatedErrors = shipmentErrors.slice(
     (errorsPage - 1) * ERRORS_PAGE_SIZE,
     errorsPage * ERRORS_PAGE_SIZE
   )
@@ -471,14 +522,46 @@ export default function SyncManagementPage() {
         {/* ── LEFT COLUMN ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
+          {/* New fields detected in the CargoWise feed (Door 3).
+              Informational, not an error — the values are already safe in
+              raw_json; the admin only has to decide what the field is. */}
+          {newFieldReports.length > 0 && (
+            <div style={{ background: '#eff6ff', borderRadius: '12px', border: '1px solid #bfdbfe', padding: '16px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                <Database style={{ width: '16px', height: '16px', color: '#2563eb' }} />
+                <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#1e3a8a', margin: 0 }}>
+                  New Fields in CargoWise Feed
+                </h2>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', padding: '2px 8px', borderRadius: '9999px' }}>
+                  {newFieldReports.length}
+                </span>
+              </div>
+              <p style={{ fontSize: '12px', color: '#1e40af', margin: '0 0 10px' }}>
+                The following fields arrived from CargoWise but are not mapped to a column or
+                registered to a milestone. Their values are stored in full, so nothing is lost.
+                Register a field in the Field Registry if it represents a milestone.
+              </p>
+              {newFieldReports.map((r) => (
+                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
+                  <code style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', padding: '2px 8px', borderRadius: '5px' }}>
+                    {r.field_name}
+                  </code>
+                  <span style={{ fontSize: '11px', color: '#60a5fa' }}>
+                    first seen {formatDateTime(r.created_at)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Validation Errors Table */}
-          {syncErrors.length > 0 && (
+          {shipmentErrors.length > 0 && (
             <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
               <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <AlertTriangle style={{ width: '16px', height: '16px', color: '#dc2626' }} />
                 <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: 0 }}>Validation Errors</h2>
                 <span style={{ fontSize: '11px', fontWeight: 700, color: '#dc2626', background: '#fee2e2', padding: '2px 8px', borderRadius: '9999px' }}>
-                  {syncErrors.length}
+                  {shipmentErrors.length}
                 </span>
               </div>
 
@@ -530,14 +613,14 @@ export default function SyncManagementPage() {
               {/* Errors Pagination */}
               <div style={{ padding: '12px 16px', borderTop: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <p style={{ fontSize: '12px', color: '#9ca3af' }}>
-                  Showing {((errorsPage - 1) * ERRORS_PAGE_SIZE) + 1}–{Math.min(errorsPage * ERRORS_PAGE_SIZE, syncErrors.length)} of {syncErrors.length}
+                  Showing {((errorsPage - 1) * ERRORS_PAGE_SIZE) + 1}–{Math.min(errorsPage * ERRORS_PAGE_SIZE, shipmentErrors.length)} of {shipmentErrors.length}
                 </p>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   <button onClick={() => setErrorsPage((p) => Math.max(1, p - 1))} disabled={errorsPage === 1}
                     style={{ padding: '5px 10px', fontSize: '12px', border: '1px solid #e5e7eb', borderRadius: '6px', cursor: errorsPage === 1 ? 'not-allowed' : 'pointer', background: 'white', color: errorsPage === 1 ? '#d1d5db' : '#374151' }}>
                     Previous
                   </button>
-                  <button onClick={() => setErrorsPage((p) => Math.min(Math.ceil(syncErrors.length / ERRORS_PAGE_SIZE), p + 1))} disabled={errorsPage >= Math.ceil(syncErrors.length / ERRORS_PAGE_SIZE)}
+                  <button onClick={() => setErrorsPage((p) => Math.min(Math.ceil(shipmentErrors.length / ERRORS_PAGE_SIZE), p + 1))} disabled={errorsPage >= Math.ceil(shipmentErrors.length / ERRORS_PAGE_SIZE)}
                     style={{ padding: '5px 10px', fontSize: '12px', border: '1px solid #e5e7eb', borderRadius: '6px', cursor: 'pointer', background: 'white', color: '#374151' }}>
                     Next
                   </button>
@@ -801,15 +884,28 @@ export default function SyncManagementPage() {
               />
             </div>
 
+            {settingsError && (
+              <p style={{
+                fontSize: '12px', color: '#dc2626', background: '#fef2f2',
+                border: '1px solid #fecaca', borderRadius: '8px',
+                padding: '8px 10px', margin: '0 0 10px',
+              }}>
+                {settingsError}
+              </p>
+            )}
+
             <button
               onClick={handleSaveSettings}
+              disabled={savingSettings}
               style={{
                 width: '100%', padding: '8px', fontSize: '13px', fontWeight: 600,
-                color: 'white', background: settingsSaved ? '#16a34a' : '#2563eb',
-                border: 'none', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s',
+                color: 'white',
+                background: settingsSaved ? '#16a34a' : savingSettings ? '#93c5fd' : '#2563eb',
+                border: 'none', borderRadius: '8px',
+                cursor: savingSettings ? 'default' : 'pointer', transition: 'background 0.2s',
               }}
             >
-              {settingsSaved ? '✓ Saved' : 'Save Settings'}
+              {settingsSaved ? '✓ Saved' : savingSettings ? 'Saving…' : 'Save Settings'}
             </button>
           </div>
         </div>

@@ -145,8 +145,9 @@ from routes.field_definitions import field_definitions_bp
 
 def run_sync_job():
     try:
-        from services.cargowise_service import fetch_shipments_from_api, build_milestones, load_field_map
+        from services.cargowise_service import fetch_shipments_from_api, build_milestones, load_field_map, find_unknown_fields
         from services.supabase_service import upsert_shipment, save_sync_log, save_sync_error
+        from datetime import datetime, timezone
         import time
 
         print('Running scheduled sync...')
@@ -162,12 +163,15 @@ def run_sync_job():
         errors = 0
         error_list = []
         field_map = load_field_map()
+        unknown_fields = set()   # Door 3 — API fields nobody has claimed
 
         for item in raw_data:
             job_number = item.get('job_number')
             if not job_number or job_number in seen:
                 continue
             seen.add(job_number)
+
+            unknown_fields |= find_unknown_fields(item, field_map)
 
             if not item.get('transport_mode'):
                 error_list.append({
@@ -204,6 +208,9 @@ def run_sync_job():
                     'house_bill_number': item.get('house_bill_number'),
                     'milestones': build_milestones(item, field_map),
                     'raw_json': item,
+                    # Postgres does not touch updated_at on its own, and the
+                    # upsert does not either — so the sync sets it explicitly.
+                    'updated_at': datetime.now(timezone.utc).isoformat(),
                     'js_pk': item.get('js_pk'),
                     'note_number': item.get('note_number'),
                     'running_date_time': item.get('running_date_time'),
@@ -243,6 +250,28 @@ def run_sync_job():
                     severity=err['severity']
                 )
             print(f'Saved {len(error_list)} errors')
+
+        # Door 3 — report API fields that are neither mapped to a column nor
+        # registered to a milestone. Reported once per field. Non-fatal.
+        try:
+            from services.supabase_service import get_flagged_new_fields, NEW_FIELD_MARKER
+            new_fields = sorted(unknown_fields - get_flagged_new_fields())
+            if new_fields and log:
+                for field in new_fields:
+                    save_sync_error(
+                        sync_id=log.get('id'),
+                        job_number=f'{NEW_FIELD_MARKER} {field}',
+                        field_name=field,
+                        error_reason=(
+                            f"New field '{field}' is present in the CargoWise feed but is not "
+                            f"mapped to a column or registered to a milestone. Its values are "
+                            f"stored in raw_json. Register it in the Field Registry if it is a milestone."
+                        ),
+                        severity='info',
+                    )
+                print(f'New API fields detected: {", ".join(new_fields)}')
+        except Exception as e:
+            print(f'unknown field detection failed (non-fatal): {e}')
 
         # Field-name mismatch check right after fresh data lands (Ronaka's
         # detector — idempotent, dedup-safe). Never allowed to fail the sync.

@@ -1,6 +1,8 @@
 from flask import Blueprint, jsonify
-from services.cargowise_service import fetch_shipments_from_api, build_milestones, load_field_map
+from services.cargowise_service import fetch_shipments_from_api, build_milestones, load_field_map, find_unknown_fields
 from services.supabase_service import upsert_shipment, save_sync_log, get_sync_logs, save_sync_error, get_sync_errors
+from utils.auth_helper import require_auth, get_current_user
+from datetime import datetime, timezone
 import time
 
 sync_bp = Blueprint('sync', __name__)
@@ -20,12 +22,17 @@ def run_sync():
         errors = 0
         error_list = []
         field_map = load_field_map()
+        unknown_fields = set()   # Door 3 — API fields nobody has claimed
 
         for item in raw_data:
             job_number = item.get('job_number')
             if not job_number or job_number in seen:
                 continue
             seen.add(job_number)
+
+            # Collected across all records, since a new field may appear on
+            # only some of them.
+            unknown_fields |= find_unknown_fields(item, field_map)
 
             if not item.get('transport_mode'):
                 error_list.append({
@@ -62,6 +69,9 @@ def run_sync():
                     'house_bill_number': item.get('house_bill_number'),
                     'milestones': build_milestones(item, field_map),
                     'raw_json': item,
+                    # Postgres does not touch updated_at on its own, and the
+                    # upsert does not either — so the sync sets it explicitly.
+                    'updated_at': datetime.now(timezone.utc).isoformat(),
                     'js_pk': item.get('js_pk'),
                     'note_number': item.get('note_number'),
                     'running_date_time': item.get('running_date_time'),
@@ -103,8 +113,34 @@ def run_sync():
                     severity=err['severity']
                 )
 
+        # Door 3 — report API fields that are neither mapped to a column nor
+        # registered against a milestone, so an administrator can decide what
+        # they are. Reported once per field; the data itself is already safe
+        # in raw_json. Never allowed to fail the sync.
+        new_fields = []
+        try:
+            from services.supabase_service import get_flagged_new_fields, NEW_FIELD_MARKER
+            new_fields = sorted(unknown_fields - get_flagged_new_fields())
+            if new_fields and log:
+                for field in new_fields:
+                    save_sync_error(
+                        sync_id=log.get('id'),
+                        job_number=f'{NEW_FIELD_MARKER} {field}',
+                        field_name=field,
+                        error_reason=(
+                            f"New field '{field}' is present in the CargoWise feed but is not "
+                            f"mapped to a column or registered to a milestone. Its values are "
+                            f"stored in raw_json. Register it in the Field Registry if it is a milestone."
+                        ),
+                        severity='info',
+                    )
+                print(f'New API fields detected: {", ".join(new_fields)}')
+        except Exception as e:
+            print(f'unknown field detection failed (non-fatal): {e}')
+
         # Field-name mismatch check right after fresh data lands (Ronaka's
-        # detector — idempotent, dedup-safe). Never allowed to fail the sync.
+        # detector — the opposite direction: registered but absent from the
+        # feed). Idempotent and dedup-safe; never allowed to fail the sync.
         try:
             from services.field_registry import detect_and_notify
             detect_and_notify()
@@ -113,6 +149,7 @@ def run_sync():
 
         return jsonify({
             'success': True,
+            'new_fields_detected': new_fields,
             'inserted': inserted,
             'updated': updated,
             'errors': len(error_list),
@@ -142,6 +179,62 @@ def get_errors():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+
+# ── Alert settings ─────────────────────────────────────────────────────
+# Stored on the single sync_settings row:
+#   alert_on_failure     — notify admins when a sync run fails
+#   alert_on_validation  — notify admins about data validation issues
+#   min_errors_threshold — minimum validation issues before notifying
+# NOTE: alert_on_validation is also written by routes/system_settings.py
+# (milestone mismatch settings). Both pages act on the same row.
+
+@sync_bp.route('/api/sync/settings', methods=['GET'])
+def get_alert_settings():
+    try:
+        from services.supabase_service import get_sync_settings
+        row = get_sync_settings() or {}
+        return jsonify({'data': {
+            'alert_on_failure':     row.get('alert_on_failure', True),
+            'alert_on_validation':  row.get('alert_on_validation', True),
+            'min_errors_threshold': row.get('min_errors_threshold', 1),
+            'admin_emails':         row.get('admin_emails'),
+        }}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@sync_bp.route('/api/sync/settings', methods=['PUT'])
+@require_auth
+def save_alert_settings():
+    try:
+        from flask import request
+        from services.supabase_service import save_alert_settings as persist
+
+        _, role = get_current_user()
+        if 'admin' not in (role or '').lower():
+            return jsonify({'error': 'Admin access required'}), 403
+
+        data = request.get_json() or {}
+
+        # Validate before writing: a threshold below 1 would mean "alert even
+        # when there are no errors", which is never intended.
+        try:
+            threshold = int(data.get('min_errors_threshold', 1))
+        except (TypeError, ValueError):
+            return jsonify({'error': 'min_errors_threshold must be a whole number'}), 400
+        if threshold < 1:
+            return jsonify({'error': 'min_errors_threshold must be at least 1'}), 400
+
+        persist(
+            alert_on_failure=bool(data.get('alert_on_failure', True)),
+            alert_on_validation=bool(data.get('alert_on_validation', True)),
+            min_errors_threshold=threshold,
+        )
+        return jsonify({'success': True, 'message': 'Alert settings saved'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 # ── Custom sync schedules ──────────────────────────────────────────────
