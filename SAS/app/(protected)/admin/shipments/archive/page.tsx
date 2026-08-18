@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { CheckCircle } from 'lucide-react'
 import { getArchivedShipments } from '@/lib/services/shipment.service'
 import { ShipmentStatusBadge } from '@/components/shipments/ShipmentStatusBadge'
@@ -13,7 +13,7 @@ import ShipmentDetailModal from '@/components/shipments/ShipmentDetailModal'
 import { ShipmentCard } from '@/components/shipments/ShipmentCard'
 import { ShipmentViewToggle, ShipmentView } from '@/components/shipments/ShipmentViewToggle'
 import { FilterGroup,
-  TRANSPORT_MODE_OPTIONS,
+  buildModeOptions,
   TRANSPORT_MODE_STYLES,
   PICKUP_STATUS_STYLES,
 } from '@/constants/shipment.constants'
@@ -35,18 +35,8 @@ const ARCHIVED_STAGE_OPTIONS: FilterGroup['options'] = [
   { label: 'Delivered to CFS', value: 'Delivered to CFS' }, 
 ]
 
-const filterGroups: FilterGroup[] = [
-  {
-    label: 'By Department',
-    key: 'transportMode',
-    options: TRANSPORT_MODE_OPTIONS,
-  },
-  {
-    label: 'By Type',
-    key: 'currentStage',
-    options: ARCHIVED_STAGE_OPTIONS,
-  },
-]
+// filterGroups moved inside the component (as a useMemo) because the
+// department options are now derived from the loaded shipments.
 
 
 
@@ -55,6 +45,15 @@ const filterGroups: FilterGroup[] = [
 export default function ArchivedShipmentsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [shipments, setShipments] = useState<Shipment[]>([])
+
+  // Department options derived from the loaded data — dropdown never offers
+  // a mode with no rows. Archive "By Type" stays a fixed list (delivered
+  // variants only). Memoized: rebuilt only when data changes.
+  const filterGroups: FilterGroup[] = useMemo(() => [
+    { label: 'By Department', key: 'transportMode', options: buildModeOptions(shipments) },
+    { label: 'By Type',       key: 'currentStage',  options: ARCHIVED_STAGE_OPTIONS },
+  ], [shipments])
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>(DEFAULT_FILTERS)
@@ -142,7 +141,7 @@ export default function ArchivedShipmentsPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-y border-gray-100 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <tr className="border-y border-gray-200 bg-gray-50 text-[11px] font-semibold [&>th]:font-semibold text-gray-500 uppercase tracking-[0.06em]">
                   <th className="text-left px-5 py-3">Shipment ID</th>
                   <th className="text-left px-5 py-3">Consignee</th>
                   <th className="text-left px-5 py-3">Status</th>
@@ -151,7 +150,7 @@ export default function ArchivedShipmentsPage() {
                   <th className="text-left px-5 py-3">AI Note</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-100">
                 {filteredShipments.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-5 py-10 text-center text-sm text-gray-400">
@@ -170,7 +169,7 @@ export default function ArchivedShipmentsPage() {
                       <div className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
                         <div>
-                          <p className="text-sm font-medium text-gray-900">#{shipment.cargowiseId}</p>
+                          <p className="text-sm font-mono font-bold text-gray-900">{shipment.cargowiseId}</p>
                           {shipment.branch && (
                             <p className="text-xs text-gray-400 mt-0.5">Branch: {shipment.branch}</p>
                           )}

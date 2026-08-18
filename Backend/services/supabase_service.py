@@ -81,3 +81,113 @@ def save_sync_settings(schedule_hours, schedule_minute):
         'updated_at': 'now()'
     }).neq('id', '00000000-0000-0000-0000-000000000000').execute()
     return response.data
+
+
+# Marker used in sync_errors.job_number for unknown-field reports, so they can
+# be told apart from per-shipment validation warnings. Ronaka's milestone
+# mismatch detector uses '[field-map]' for the same purpose.
+NEW_FIELD_MARKER = '[new-field]'
+
+# ── Fields deliberately marked as "not a milestone" ────────────────────
+# An administrator who has reviewed a reported field and decided it is not a
+# milestone records that decision here, so the notice stops showing it. The
+# decision is recorded rather than the report deleted, so it can be listed and
+# reversed later — a field hidden with no way to find it again is effectively
+# lost.
+
+def get_ignored_api_fields():
+    response = (
+        supabase.table('ignored_api_fields')
+        .select('*')
+        .order('ignored_at', desc=True)
+        .execute()
+    )
+    return response.data or []
+
+def add_ignored_api_field(api_field, ignored_by=None, note=None):
+    response = supabase.table('ignored_api_fields').upsert(
+        {'api_field': api_field, 'ignored_by': ignored_by, 'note': note},
+        on_conflict='api_field'
+    ).execute()
+    return (response.data or [None])[0]
+
+def remove_ignored_api_field(api_field):
+    response = (
+        supabase.table('ignored_api_fields')
+        .delete()
+        .eq('api_field', api_field)
+        .execute()
+    )
+    return response.data
+
+
+def get_new_field_reports():
+    """Unknown-field reports only. Queried separately from get_sync_errors()
+    because that function returns the latest 50 rows of all kinds, in which
+    per-shipment validation warnings would crowd these out."""
+    response = (
+        supabase.table('sync_errors')
+        .select('*')
+        .like('job_number', f'{NEW_FIELD_MARKER}%')
+        .order('created_at', desc=True)
+        .limit(50)
+        .execute()
+    )
+    return response.data or []
+
+
+def get_flagged_new_fields():
+    """Field names already reported as unknown, so each is reported once
+    rather than on every synchronisation run."""
+    response = (
+        supabase.table('sync_errors')
+        .select('field_name')
+        .like('job_number', f'{NEW_FIELD_MARKER}%')
+        .execute()
+    )
+    return {r['field_name'] for r in (response.data or []) if r.get('field_name')}
+
+
+def save_alert_settings(alert_on_failure, alert_on_validation, min_errors_threshold):
+    """Update the alert preferences on the single sync_settings row."""
+    response = supabase.table('sync_settings').update({
+        'alert_on_failure':     alert_on_failure,
+        'alert_on_validation':  alert_on_validation,
+        'min_errors_threshold': min_errors_threshold,
+        'updated_at': 'now()'
+    }).neq('id', '00000000-0000-0000-0000-000000000000').execute()
+    return response.data
+
+
+# ── Custom sync schedules ──────────────────────────────────────────────
+# One row per custom time, so admins can add several. Previously a single
+# custom time was squeezed into sync_settings.schedule_hours, which also
+# holds the fixed multi-hour cron string ('0,6,12,18') — one column with
+# two meanings, and saving a second time silently replaced the first.
+
+def get_sync_schedules():
+    response = (
+        supabase.table('sync_schedules')
+        .select('*')
+        .eq('is_active', True)
+        .order('schedule_time')
+        .execute()
+    )
+    return response.data or []
+
+def add_sync_schedule(schedule_time):
+    """schedule_time is 'HH:MM' (24h). Returns the new row, or None if the
+    time already exists (unique constraint)."""
+    response = supabase.table('sync_schedules').insert({
+        'schedule_time': schedule_time,
+    }).execute()
+    return response.data[0] if response.data else None
+
+def delete_sync_schedule(schedule_id):
+    response = (
+        supabase.table('sync_schedules')
+        .delete()
+        .eq('id', schedule_id)
+        .execute()
+    )
+    return response.data
