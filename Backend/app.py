@@ -235,6 +235,22 @@ scheduler.add_job(
     id='field_mismatch_detect',
     replace_existing=True,
 )
+
+# Stand-in for the alert engine's status pass: recompute completed/overdue/pending
+# on assigned milestones so the dashboard + alert feed stay current. No emails.
+def run_status_recompute():
+    try:
+        from services.status_recompute import recompute_milestone_status
+        recompute_milestone_status()
+    except Exception as e:
+        print(f"[status_recompute] ERROR: {e}")
+
+scheduler.add_job(
+    run_status_recompute,
+    CronTrigger(minute='*/30', timezone='Asia/Colombo'),
+    id='status_recompute',
+    replace_existing=True,
+)
 app.config['SCHEDULER'] = scheduler
 app.config['RUN_SYNC_JOB'] = run_sync_job
 
