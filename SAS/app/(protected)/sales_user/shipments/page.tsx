@@ -10,6 +10,8 @@ import { ShipmentPagination } from '@/components/shipments/ShipmentPagination'
 import { ShipmentFilter } from '@/components/shipments/ShipmentFilter'
 import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
 import ShipmentDetailModal from '@/components/shipments/ShipmentDetailModal'
+import EmailComposeModal from '@/components/EmailComposeModal'
+import { AlertData } from '@/components/AlertDetailsModal'
 import { ShipmentCard } from '@/components/shipments/ShipmentCard'
 import { ShipmentViewToggle, ShipmentView } from '@/components/shipments/ShipmentViewToggle'
 import { exportAllShipmentsPDF } from '@/lib/Utils/exportPDF'
@@ -49,6 +51,24 @@ function formatPickupDate(date: string | undefined): string {
 }
 
 //Component
+
+// Build the email-compose payload from a shipment row (used by "Take Action").
+function buildEmail(shipment: Shipment): AlertData {
+  const stage  = shipment.llmIdentifiedType ?? shipment.currentStage ?? 'Unknown'
+  const pickup = shipment.pickupDateStatus ?? '—'
+  const delayed = String(pickup).toLowerCase().includes('delay')
+  return {
+    id:            shipment.jobNumber ?? shipment.id,
+    shipment_id:   shipment.id,
+    client:        shipment.consigneeName ?? 'Customer',
+    priority:      delayed ? 'Critical' : 'Medium',
+    milestone:     String(stage),
+    milestoneIcon: null,
+    issue:         `Shipment ${shipment.jobNumber ?? shipment.id} — current stage "${stage}", pickup status "${pickup}".`,
+    delay:         shipment.delayDays ? `${shipment.delayDays} day${shipment.delayDays !== 1 ? 's' : ''}` : null,
+    status:        'Get Action',
+  }
+}
 
 export default function SalesUserShipmentsPage() {
   const router = useRouter()

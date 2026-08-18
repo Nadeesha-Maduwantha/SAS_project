@@ -12,6 +12,8 @@ import { ShipmentFilter } from '@/components/shipments/ShipmentFilter'
 import { exportAllShipmentsPDF } from '@/lib/Utils/exportPDF'
 import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
 import ShipmentDetailModal from '@/components/shipments/ShipmentDetailModal'
+import EmailComposeModal from '@/components/EmailComposeModal'
+import { AlertData } from '@/components/AlertDetailsModal'
 import { ShipmentCard } from '@/components/shipments/ShipmentCard'
 import { ShipmentViewToggle, ShipmentView } from '@/components/shipments/ShipmentViewToggle'
 import {
@@ -35,6 +37,24 @@ const DEFAULT_FILTERS: Record<string, string> = {
 
 // Component 
 
+// Build the email-compose payload from a shipment row (used by "Take Action").
+function buildEmail(shipment: Shipment): AlertData {
+  const stage  = shipment.llmIdentifiedType ?? shipment.currentStage ?? 'Unknown'
+  const pickup = shipment.pickupDateStatus ?? '—'
+  const delayed = String(pickup).toLowerCase().includes('delay')
+  return {
+    id:            shipment.jobNumber ?? shipment.id,
+    shipment_id:   shipment.id,
+    client:        shipment.consigneeName ?? 'Customer',
+    priority:      delayed ? 'Critical' : 'Medium',
+    milestone:     String(stage),
+    milestoneIcon: null,
+    issue:         `Shipment ${shipment.jobNumber ?? shipment.id} — current stage "${stage}", pickup status "${pickup}".`,
+    delay:         shipment.delayDays ? `${shipment.delayDays} day${shipment.delayDays !== 1 ? 's' : ''}` : null,
+    status:        'Get Action',
+  }
+}
+
 export default function AllShipmentsPage() {
   const router = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
@@ -51,6 +71,7 @@ export default function AllShipmentsPage() {
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>(DEFAULT_FILTERS)
   const [searchQuery, setSearchQuery] = useState('')
   const [stats, setStats] = useState<ShipmentStats>({ total: 0, pending: 0, delivered: 0, delayed: 0 })
+  const [emailData, setEmailData] = useState<AlertData | null>(null)
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null)
   const [view, setView] = useState<ShipmentView>('table')
 
@@ -125,7 +146,7 @@ export default function AllShipmentsPage() {
       <button
         onClick={(e) => {
           e.stopPropagation()
-          router.push(`/admin/shipments/${shipment.id}/action`)
+          setEmailData(buildEmail(shipment))
         }}
         className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700"
       >
@@ -331,6 +352,12 @@ export default function AllShipmentsPage() {
         isOpen={!!selectedShipment}
         onClose={() => setSelectedShipment(null)}
         shipment={selectedShipment}
+      />
+
+      <EmailComposeModal
+        isOpen={!!emailData}
+        onClose={() => setEmailData(null)}
+        alertData={emailData}
       />
     </div>
   )

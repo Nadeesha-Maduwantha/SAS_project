@@ -40,6 +40,7 @@ from routes.milestone_library import milestone_library_bp
 from routes.field_map import field_map_bp
 from routes.system_settings import system_settings_bp
 from routes.field_definitions import field_definitions_bp
+from routes.field_watch import field_watch_bp
 
         print("Running scheduled sync...")
         start_time = time.time()
@@ -340,7 +341,8 @@ app.register_blueprint(system_settings_bp)
 
 app.register_blueprint(field_definitions_bp)
 
-@app.route("/health", methods=["GET"])
+app.register_blueprint(field_watch_bp)
+
 def health_check():
     return {"status": "Backend is running"}, 200
 
@@ -408,6 +410,23 @@ scheduler.add_job(
     run_status_recompute,
     CronTrigger(minute='*/30', timezone='Asia/Colombo'),
     id='status_recompute',
+    replace_existing=True,
+)
+
+# Field Integrity / Registry Watch — its own module: detects expected data fields
+# that are delayed / possibly renamed and emails its own admin (settings). Runs a
+# few minutes after the status pass so due dates are fresh.
+def run_field_watch():
+    try:
+        from services.field_watch import scan_field_alerts
+        scan_field_alerts()
+    except Exception as e:
+        print(f"[field_watch] ERROR: {e}")
+
+scheduler.add_job(
+    run_field_watch,
+    CronTrigger(minute='5,35', timezone='Asia/Colombo'),
+    id='field_watch_scan',
     replace_existing=True,
 )
 app.config['SCHEDULER'] = scheduler

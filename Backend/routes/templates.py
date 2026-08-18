@@ -87,6 +87,11 @@ def _snapshot_row(shipment, template_id, cfg, rules, seq, milestone_lib_id):
         'status':               'pending',
         'due_date':             _compute_due_date(cfg, shipment),
         'automated':            False,
+        # Responsible person comes straight from CargoWise (created_by). The
+        # existing "is this a real user account?" check runs off assigned_email;
+        # if it isn't a known user, the admin is alerted (already built).
+        'assigned_to':          shipment.get('created_by_name'),
+        'assigned_email':       shipment.get('created_by_email'),
         'milestone_lib_id':     milestone_lib_id,
         'milestone_type':       cfg.get('milestone_type'),
         'primary_field':        cfg.get('primary_field'),
@@ -406,23 +411,20 @@ def preview_assignment(template_id):
         # ── Build the shipments query ─────────────────────────
         query = supabase.table('shipments').select(
             'id, job_number, consignee_name, transport_mode, '
-            'origin_country_code, destination_country_code, branch'
+            'branch, st_description, current_stage'
         )
- 
-        if assign_type == 'air_import':
-            # AIR, origin is NOT Sri Lanka → arriving into LK
-            query = query.eq('transport_mode', 'AIR').neq('origin_country_code', 'LK')
- 
-        elif assign_type == 'air_export':
-            # AIR, origin IS Sri Lanka → departing from LK
-            query = query.eq('transport_mode', 'AIR').eq('origin_country_code', 'LK')
- 
-        elif assign_type == 'sea_import':
-            query = query.eq('transport_mode', 'SEA').neq('origin_country_code', 'LK')
- 
-        elif assign_type == 'sea_export':
-            query = query.eq('transport_mode', 'SEA').eq('origin_country_code', 'LK')
- 
+
+        # Direction (import/export) comes from the CargoWise stage text
+        # (e.g. "Import Delivery Instructions"), NOT from country codes — those
+        # are null on most records, and the same branch handles both directions.
+        _MODE = {'air_import': 'air', 'air_export': 'air', 'sea_import': 'sea', 'sea_export': 'sea'}
+        _DIR  = {'air_import': 'import', 'air_export': 'export', 'sea_import': 'import', 'sea_export': 'export'}
+
+        if assign_type in _MODE:
+            query = (query
+                     .ilike('transport_mode', _MODE[assign_type])
+                     .ilike('st_description', f"%{_DIR[assign_type]}%"))
+
         elif assign_type == 'by_client':
             if not consignee_name:
                 return jsonify({'error': 'consignee_name is required for by_client'}), 400
