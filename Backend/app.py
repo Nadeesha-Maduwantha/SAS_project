@@ -27,6 +27,8 @@ from routes.milestone_library import milestone_library_bp
 from routes.field_map import field_map_bp
 from routes.system_settings import system_settings_bp
 from routes.field_definitions import field_definitions_bp
+from routes.dashboard import dashboard_bp
+from routes.notes import notes_bp
 
 load_dotenv()
 
@@ -179,6 +181,8 @@ app.register_blueprint(sync_bp)
 
 app.register_blueprint(alerts_bp)
 
+app.register_blueprint(notes_bp)
+
 app.register_blueprint(milestone_library_bp)
 
 app.register_blueprint(field_map_bp)
@@ -186,6 +190,8 @@ app.register_blueprint(field_map_bp)
 app.register_blueprint(system_settings_bp)
 
 app.register_blueprint(field_definitions_bp)
+
+app.register_blueprint(dashboard_bp)
 
 def health_check():
     return {'status': 'Backend is running'}, 200
@@ -249,6 +255,25 @@ def list_routes():
     return jsonify([str(r) for r in app.url_map.iter_rules()])
 
 
+def find_available_port(start_port: int, max_attempts: int = 20) -> int:
+    import socket
+
+    configured_port = int(os.getenv('PORT', str(start_port)))
+    ports_to_try = [configured_port] + list(range(configured_port + 1, configured_port + max_attempts + 1))
+
+    for port in ports_to_try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                sock.bind(('127.0.0.1', port))
+                return port
+            except OSError:
+                continue
+
+    raise RuntimeError(f'No free port found starting from {configured_port} within {max_attempts} attempts.')
+
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000, use_reloader=False)
+    port = find_available_port(5001)
+    print(f'Starting Flask app on port {port}')
+    app.run(debug=True, host='0.0.0.0', port=port, use_reloader=False)
