@@ -37,7 +37,7 @@ export default function SuperUserProfilePage() {
             isVerified: true,
             lastLogin: "Today",
             memberSince: data.user.memberSince || data.user.created_at?.slice(0,10) || "Recently",
-            avatarUrl: null
+            avatarUrl: data.user.avatarUrl || null
           });
         }
       } catch (error) {

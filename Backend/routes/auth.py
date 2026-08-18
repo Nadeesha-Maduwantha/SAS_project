@@ -268,7 +268,7 @@ def get_me():
         
         # 1. ADD 'phoneNumber' to the select query to fetch the column
         profile_response = supabase.table('profiles').select(
-            'id, full_name, email, role, department, phoneNumber, created_at'
+            'id, full_name, email, role, department, phoneNumber, created_at, avatar_url'
         ).eq('id', user_id).execute()
         
         print(f"[ME ENDPOINT] Profile query returned: {bool(profile_response.data)}")
@@ -290,7 +290,7 @@ def get_me():
                 'isVerified': True,
                 'lastLogin': 'Today',
                 'memberSince': user_data.get('created_at')[:10] if user_data.get('created_at') else 'Recently',
-                'profileImage': None
+                'avatarUrl': user_data.get('avatar_url')
             }
         }), 200
         

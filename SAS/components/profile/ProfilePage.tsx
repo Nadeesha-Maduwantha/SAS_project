@@ -85,6 +85,30 @@ export default function ProfilePage({ user }: ProfilePageProps) {
     }
   };
 
+  const handleAvatarUpload = async (file: File) => {
+    const token = localStorage.getItem('access_token');
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch('http://localhost:5000/api/profile/avatar', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to upload profile picture');
+    }
+
+    setUserProfile((prev) => ({
+      ...prev,
+      profileImage: data.avatarUrl,
+    }));
+  };
+
   const handlePasswordChange = async (data: PasswordChange) => {
     try {
       const token = localStorage.getItem('access_token');
@@ -127,7 +151,7 @@ export default function ProfilePage({ user }: ProfilePageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
             {/* The left card will now show the correct email, status, and dates */}
-            <ProfileCard profile={userProfile} />
+            <ProfileCard profile={userProfile} onAvatarUpload={handleAvatarUpload} />
           </div>
 
           <div className="lg:col-span-2 space-y-6">
