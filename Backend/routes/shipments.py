@@ -308,6 +308,58 @@ def get_current_milestones():
         return jsonify({"error": str(e)}), 500
 
 
+@shipments_bp.route('/api/shipments/all-milestones', methods=['GET'])
+def get_all_milestones():
+    """
+    Every shipment with its FULL milestone list (not just the current one),
+    plus who it's allocated to. Feeds the Current Milestones grouped views
+    (By Client / By Member) and the Completed/Overdue/Delayed tabs.
+
+    Shape: { data: [ { shipment: {...}, milestones: [ {..., field_alert} ] } ] }
+    Milestone.status is one of completed | overdue | delayed | pending.
+    """
+    try:
+        shipments_res = (
+            supabase.table('shipments')
+            .select(
+                'id, job_number, house_bill_number, transport_mode, branch,'
+                'consignee_name, consignee_email,'
+                'origin_city, origin_country_code,'
+                'destination_city, destination_country_code,'
+                'current_stage, carrier, is_priority,'
+                'created_by_name, created_by_email, sales_user_name'
+            )
+            .order('created_at', desc=True)
+            .execute()
+        )
+        shipments = shipments_res.data or []
+        if not shipments:
+            return jsonify({"data": []}), 200
+
+        ms_res = (
+            supabase.table('shipment_milestones')
+            .select(
+                'id, shipment_id, name, sequence_order, status, is_critical, '
+                'due_date, completed_date, assigned_to, assigned_email, field_alert'
+            )
+            .order('shipment_id')
+            .order('sequence_order')
+            .execute()
+        )
+
+        ms_by_ship: dict = {}
+        for m in (ms_res.data or []):
+            ms_by_ship.setdefault(m['shipment_id'], []).append(m)
+
+        result = [
+            {"shipment": s, "milestones": ms_by_ship.get(s['id'], [])}
+            for s in shipments
+        ]
+        return jsonify({"data": result}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @shipments_bp.route('/api/shipments/job/<job_number>', methods=['GET'])
 def get_shipment_by_job(job_number):
     try:

@@ -10,6 +10,8 @@ import { ShipmentPagination } from '@/components/shipments/ShipmentPagination'
 import { ShipmentFilter } from '@/components/shipments/ShipmentFilter'
 import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
 import ShipmentDetailModal from '@/components/shipments/ShipmentDetailModal'
+import EmailComposeModal from '@/components/EmailComposeModal'
+import { AlertData } from '@/components/AlertDetailsModal'
 import { ShipmentCard } from '@/components/shipments/ShipmentCard'
 import { ShipmentViewToggle, ShipmentView } from '@/components/shipments/ShipmentViewToggle'
 import { exportAllShipmentsPDF } from '@/lib/Utils/exportPDF'
@@ -48,6 +50,24 @@ function formatPickupDate(date: string | undefined): string {
 
 // Component 
 
+// Build the email-compose payload from a shipment row (used by "Take Action").
+function buildEmail(shipment: Shipment): AlertData {
+  const stage  = shipment.llmIdentifiedType ?? shipment.currentStage ?? 'Unknown'
+  const pickup = shipment.pickupDateStatus ?? '—'
+  const delayed = String(pickup).toLowerCase().includes('delay')
+  return {
+    id:            shipment.jobNumber ?? shipment.id,
+    shipment_id:   shipment.id,
+    client:        shipment.consigneeName ?? 'Customer',
+    priority:      delayed ? 'Critical' : 'Medium',
+    milestone:     String(stage),
+    milestoneIcon: null,
+    issue:         `Shipment ${shipment.jobNumber ?? shipment.id} — current stage "${stage}", pickup status "${pickup}".`,
+    delay:         shipment.delayDays ? `${shipment.delayDays} day${shipment.delayDays !== 1 ? 's' : ''}` : null,
+    status:        'Get Action',
+  }
+}
+
 export default function OperationUserShipmentsPage() {
   const router = useRouter()
 
@@ -67,6 +87,7 @@ export default function OperationUserShipmentsPage() {
   const [searchQuery, setSearchQuery]    = useState('')
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>(DEFAULT_FILTERS)
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null)
+  const [emailData, setEmailData] = useState<AlertData | null>(null)
   const [view, setView] = useState<ShipmentView>('table')
 
   // To fetch data from backend API on component mount.
@@ -182,7 +203,7 @@ export default function OperationUserShipmentsPage() {
       <button
         onClick={(e) => {
           e.stopPropagation()
-          router.push(`/operation_user/shipments/${shipment.id}/action`)
+          setEmailData(buildEmail(shipment))
         }}
         className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700"
       >
@@ -422,6 +443,12 @@ export default function OperationUserShipmentsPage() {
         isOpen={!!selectedShipment}
         onClose={() => setSelectedShipment(null)}
         shipment={selectedShipment}
+      />
+
+      <EmailComposeModal
+        isOpen={!!emailData}
+        onClose={() => setEmailData(null)}
+        alertData={emailData}
       />
     </div>
   )

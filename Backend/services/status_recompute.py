@@ -146,6 +146,52 @@ def _completed_date(cfg, shipment):
     return datetime.now(timezone.utc)
 
 
+# ── "expected data field delayed / possibly renamed" detection ───────────────
+def _expected_field(cfg):
+    """The field whose absence keeps this milestone outstanding."""
+    t = cfg.get('milestone_type')
+    if t in ('date', 'missing'):     return cfg.get('primary_field')
+    if t == 'document':              return cfg.get('tracking_field')
+    if t in ('status', 'comparison'):return cfg.get('field_a')
+    if t == 'custom':
+        for b in (cfg.get('extra_logics') or []):
+            f = b.get('primary_field') or b.get('tracking_field') or b.get('field_a')
+            if f:
+                return f
+    return cfg.get('primary_field') or cfg.get('field_a') or cfg.get('tracking_field')
+
+
+def _unclaimed_for(shipment, field_map):
+    """Fields this shipment's raw_json carries that no column/registry claims."""
+    raw = shipment.get('raw_json')
+    if not isinstance(raw, dict):
+        return set()
+    try:
+        from services.cargowise_service import find_unknown_fields
+        return find_unknown_fields(raw, field_map)
+    except Exception:
+        return set()
+
+
+def _resolve_due(cfg, shipment, prev_completed_dt):
+    """Live deadline from the milestone's OWN firing logic (its due-basis),
+    evaluated against the shipment's current data. No stored due_date needed.
+    Returns a datetime, or None when the basis can't yet be resolved
+    ('manual', or a source field/previous-completion that isn't there yet)."""
+    src = cfg.get('expected_date_source')
+    off = _int(cfg.get('expected_date_offset'))
+    mkey = cfg.get('milestone_key')
+    if src == 'another_field':
+        base = _parse_dt(resolve_field_value(shipment, mkey, cfg.get('expected_date_field')))
+    elif src == 'days_after_creation':
+        base = _parse_dt(shipment.get('created_at'))
+    elif src == 'after_previous_milestone':
+        base = prev_completed_dt
+    else:                                   # 'manual' / unknown → rely on stored due_date
+        return None
+    return (base + timedelta(days=off)) if base else None
+
+
 # ── main pass ─────────────────────────────────────────────────────────────────
 def recompute_milestone_status():
     ms_rows = (
@@ -176,22 +222,37 @@ def recompute_milestone_status():
             cd = _completed_date(cfg, sh).isoformat()
         info[r['id']] = {'sat': sat, 'cd': cd, 'cfg': cfg, 'row': r, 'due': None}
 
-    # Pass 2: resolve 'after_previous_milestone' due dates from the prior milestone.
+    # Pass 2: per shipment — resolve live deadlines from each milestone's own
+    # firing logic, and flag out-of-sequence (a LATER milestone already arrived).
     by_ship = {}
     for r in ms_rows:
         by_ship.setdefault(r['shipment_id'], []).append(r)
     for rows in by_ship.values():
         rows.sort(key=lambda x: (x.get('sequence_order') or 0))
-        for idx, r in enumerate(rows):
-            cfg = info[r['id']]['cfg']
-            if cfg.get('expected_date_source') == 'after_previous_milestone' and not r.get('due_date') and idx > 0:
-                prev_cd = info[rows[idx - 1]['id']]['cd']
-                base = _parse_dt(prev_cd) if prev_cd else None
-                if base:
-                    info[r['id']]['due'] = (base + timedelta(days=_int(cfg.get('expected_date_offset')))).isoformat()
+        # forward: live due date; 'after_previous' chains off the immediately
+        # preceding milestone's real completion (None if it isn't done yet).
+        prev_cd = None
+        for r in rows:
+            d = info[r['id']]
+            if not r.get('due_date'):
+                live = _resolve_due(d['cfg'], shipments.get(r['shipment_id']) or {}, prev_cd)
+                if live:
+                    d['due'] = live.isoformat()
+            prev_cd = _parse_dt(d['cd']) if d['cd'] else None
+        # backward: is any later milestone in this shipment already satisfied?
+        acc = False
+        for r in reversed(rows):
+            info[r['id']]['later_sat'] = acc
+            if info[r['id']]['sat']:
+                acc = True
 
     # Pass 3: decide final status and write changes.
-    counts = {'completed': 0, 'overdue': 0, 'pending': 0}
+    #   completed → satisfied
+    #   overdue   → outstanding AND its resolved deadline has passed  (measured late)
+    #   delayed   → outstanding, no passed deadline, but a later milestone already
+    #               arrived out of sequence                            (inferred late)
+    #   pending   → outstanding with no evidence it's late yet
+    counts = {'completed': 0, 'overdue': 0, 'delayed': 0, 'pending': 0}
     for rid, d in info.items():
         r = d['row']
         due = d['due'] or r.get('due_date')
@@ -203,7 +264,12 @@ def recompute_milestone_status():
                 patch['completed_date'] = d['cd']
         else:
             dd = _parse_dt(due)
-            new_status = 'overdue' if (dd and dd < now) else 'pending'
+            if dd and dd < now:
+                new_status = 'overdue'
+            elif d.get('later_sat'):
+                new_status = 'delayed'
+            else:
+                new_status = 'pending'
 
         if d['due'] and not r.get('due_date'):
             patch['due_date'] = d['due']

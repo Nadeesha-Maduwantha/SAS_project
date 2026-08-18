@@ -27,6 +27,7 @@ export default function AdminDashboardPage() {
           title="Admin Shipment Alert Feed"
           apiBase="http://localhost:5000"
           maxRows={8}
+          showFieldDelayed
         />
       </div>
 

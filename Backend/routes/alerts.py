@@ -20,6 +20,8 @@ def recompute_statuses():
         return jsonify({'error': str(e)}), 500
 
 
+
+
 @alerts_bp.route('/api/alerts', methods=['GET'])
 def get_alerts():
     try:
@@ -57,7 +59,9 @@ def update_alert_status(shipment_id):
 @alerts_bp.route('/api/alerts/active', methods=['GET'])
 def get_active_alerts():
     try:
-        # Step 1: Get all overdue milestones
+        # Step 1: Get all INCOMPLETE late milestones — overdue (deadline passed,
+        # dark red) and delayed (out of sequence, lighter red). Completed
+        # milestones are never late, so they never appear on the dashboard.
         milestones_res = (
             supabase.table('shipment_milestones')
             .select(
@@ -65,7 +69,7 @@ def get_active_alerts():
                 'due_date, completed_date, assigned_to, assigned_email, '
                 'alert_sent, notes'
             )
-            .eq('status', 'overdue')
+            .in_('status', ['overdue', 'delayed'])
             .order('due_date')
             .execute()
         )
@@ -142,16 +146,20 @@ def get_active_alerts():
             alerts      = group['alerts']
             max_overdue = max(a['overdue_days'] for a in alerts)
             has_critical = any(a['is_critical'] for a in alerts)
- 
+
             group['alert_count']      = len(alerts)
             group['overdue_days_max'] = max_overdue
             group['has_critical']     = has_critical
- 
+            # dark-red vs lighter-red: a group is "overdue" if any milestone in it
+            # is overdue; otherwise it's purely "delayed" (out of sequence).
+            group['has_overdue']      = any(a['status'] == 'overdue' for a in alerts)
+            group['has_delayed']      = any(a['status'] == 'delayed' for a in alerts)
+
             result.append(group)
- 
-        # Sort: critical + multi-alert groups first, then by overdue_days_max desc
+
+        # Sort: overdue + critical + multi-alert groups first, then by overdue days.
         result.sort(key=lambda g: (
-            -(g['has_critical'] or g['alert_count'] > 1),
+            -(g['has_overdue'] or g['has_critical'] or g['alert_count'] > 1),
             -g['overdue_days_max'],
         ))
  
