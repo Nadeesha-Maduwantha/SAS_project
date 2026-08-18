@@ -55,6 +55,19 @@ alerts_bp = Blueprint('alerts', __name__)
 ALLOWED_STATUS = {'Get Action', 'Action Taken', 'Resolved'}
 
 
+# ── Recompute milestone statuses (stand-in for the alert engine's status pass) ──
+# Evaluates every assigned milestone's frozen check against live shipment data and
+# sets completed / overdue / pending. Does NOT send emails. Safe to run repeatedly.
+@alerts_bp.route('/api/alerts/recompute', methods=['GET', 'POST'])
+def recompute_statuses():
+    try:
+        from services.status_recompute import recompute_milestone_status
+        counts = recompute_milestone_status()
+        return jsonify({'message': 'Recomputed', 'counts': counts}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @alerts_bp.route('/api/alerts', methods=['GET'])
 def get_alerts():
     try:
