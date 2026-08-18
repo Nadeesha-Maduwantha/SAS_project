@@ -145,7 +145,10 @@ from routes.field_definitions import field_definitions_bp
 
 def run_sync_job():
     try:
-        from services.cargowise_service import fetch_shipments_from_api, build_milestones, load_field_map, find_unknown_fields
+        from services.cargowise_service import (
+            fetch_shipments_from_api, build_milestones, load_field_map,
+            find_unknown_fields, notify_sync_outcome,
+        )
         from services.supabase_service import upsert_shipment, save_sync_log, save_sync_error
         from datetime import datetime, timezone
         import time
@@ -250,6 +253,10 @@ def run_sync_job():
                     severity=err['severity']
                 )
             print(f'Saved {len(error_list)} errors')
+
+        # Notify administrators of the outcome, according to the preferences on
+        # the Alert Settings panel. Never allowed to fail the sync.
+        notify_sync_outcome(status, updated, error_list, duration)
 
         # Door 3 — report API fields that are neither mapped to a column nor
         # registered to a milestone. Reported once per field. Non-fatal.
