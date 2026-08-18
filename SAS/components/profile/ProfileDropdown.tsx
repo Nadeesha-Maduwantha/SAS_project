@@ -13,7 +13,9 @@ import { useTheme } from '@/contexts/ThemeContext';
 
 export default function ProfileDropdown() {
   const [isOpen, setIsOpen] = useState(false);
-  const [user, setUser]     = useState({ full_name: '', role: '', email: '' });
+  const [user, setUser]     = useState<{ full_name: string; role: string; email: string; avatarUrl: string | null }>(
+    { full_name: '', role: '', email: '', avatarUrl: null }
+  );
   const dropdownRef         = useRef<HTMLDivElement>(null);
   const router              = useRouter();
   const { isDark, toggleTheme } = useTheme();
@@ -55,6 +57,7 @@ export default function ProfileDropdown() {
             full_name: data.user.fullName || data.user.full_name || 'Dart User',
             email:     data.user.email    || '',
             role:      data.user.role     || localStorage.getItem('user_role') || '',
+            avatarUrl: data.user.avatarUrl || null,
           });
         }
       } catch (err) {
@@ -87,7 +90,8 @@ export default function ProfileDropdown() {
   };
 
   const basePath   = getBasePath(user.role);
-  const avatarUrl  = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name)}&background=ebd5c9&color=333&size=128`;
+  const avatarUrl  = user.avatarUrl
+    || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name)}&background=ebd5c9&color=333&size=128`;
 
   return (
     <div className="relative" ref={dropdownRef}>
