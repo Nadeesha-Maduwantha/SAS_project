@@ -9,11 +9,13 @@ type AdminMetrics = {
   success_rate: number;
   total_emails: number;
   active_alerts: number;
+  critical_alerts?: number;
+  alert_shipments?: number;
   total_users: number;
   user_roles?: Record<string, number>;
 };
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5000';
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5001';
 
 function formatNumber(value: number) {
   return Number.isFinite(value) ? value.toLocaleString() : '0';
@@ -104,7 +106,11 @@ export default function AdminOverviewMetricCards() {
     {
       title: 'Active Alerts',
       value: loading ? '...' : formatNumber(metrics?.active_alerts ?? 0),
-      hint: 'Alerts currently requiring attention',
+      // An alert is one overdue milestone, so the count runs well ahead of the
+      // number of shipments. Spell both out rather than leaving it ambiguous.
+      hint: loading
+        ? 'Overdue milestones requiring attention'
+        : `${formatNumber(metrics?.critical_alerts ?? 0)} critical, across ${formatNumber(metrics?.alert_shipments ?? 0)} shipments`,
       tag: 'Active',
       icon: <AlertTriangle size={18} color="var(--c-danger)" />,
     },

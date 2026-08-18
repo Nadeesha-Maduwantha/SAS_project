@@ -1,0 +1,124 @@
+@reference "tailwindcss";
+
+/* Shared card + table styling for dashboard feed tables.
+   Every value comes from theme.css so these match the stat cards. */
+
+.feed-card {
+  @apply p-4;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-light);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.feed-card__head {
+  @apply flex items-center justify-between gap-4 pb-3;
+  border-bottom: 1px solid var(--c-border-light);
+}
+
+.feed-card__title {
+  @apply m-0;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--c-text-strong);
+}
+
+.feed-card__sub {
+  @apply mt-1;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-normal);
+  color: var(--c-text-muted);
+}
+
+.feed-card__link {
+  @apply px-2.5 py-1 shrink-0;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-pill);
+  background: var(--c-surface-sunken);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--c-text-muted);
+  cursor: pointer;
+}
+
+.feed-card__link:hover {
+  color: var(--c-text-strong);
+  border-color: var(--c-text-subtle);
+}
+
+.feed-tableWrap {
+  @apply overflow-x-auto;
+}
+
+.feed-table {
+  @apply w-full border-collapse;
+  font-size: var(--fs-md);
+  color: var(--c-text);
+}
+
+.feed-table thead th {
+  @apply px-3 py-2 text-left uppercase whitespace-nowrap;
+  border-bottom: 1px solid var(--c-border);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-caps);
+  color: var(--c-text-muted);
+}
+
+.feed-table tbody td {
+  @apply px-3 py-3 align-middle;
+  border-bottom: 1px solid var(--c-border-light);
+}
+
+.feed-table tbody tr:last-child td {
+  @apply border-b-0;
+}
+
+.feed-table tbody tr {
+  cursor: pointer;
+}
+
+.feed-table tbody tr:hover {
+  background: var(--c-surface-sunken);
+}
+
+.feed-id {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-weight: var(--fw-medium);
+  color: var(--c-text-strong);
+}
+
+.feed-sub {
+  @apply mt-0.5;
+  font-size: var(--fs-xs);
+  color: var(--c-text-subtle);
+}
+
+.feed-strong {
+  font-weight: var(--fw-normal);
+  color: var(--c-text-strong);
+}
+
+.feed-muted {
+  color: var(--c-text-muted);
+}
+
+.feed-empty {
+  @apply px-3 py-10 text-center;
+  font-size: var(--fs-md);
+  color: var(--c-text-subtle);
+}
+
+/* Status pills — one shape, colour varies by role */
+.feed-pill {
+  @apply inline-flex items-center px-2.5 py-1 whitespace-nowrap;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+}
+
+.feed-pill--neutral { background: var(--c-surface-sunken); color: var(--c-text-muted); }
+.feed-pill--accent  { background: var(--c-accent-bg);      color: var(--c-accent); }
+.feed-pill--success { background: var(--c-success-bg);     color: var(--c-success); }
+.feed-pill--danger  { background: var(--c-danger-bg);      color: var(--c-danger); }
+.feed-pill--warning { background: var(--c-warning-bg);     color: var(--c-warning); }

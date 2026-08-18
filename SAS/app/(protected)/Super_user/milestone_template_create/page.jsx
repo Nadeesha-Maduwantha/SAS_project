@@ -54,7 +54,7 @@ export default function CreateTemplatePage() {
     if (!validate()) return;
     setSaving(true);
     try {
-      const res = await fetch("http://127.0.0.1:5000/api/templates", {
+      const res = await fetch("http://127.0.0.1:5001/api/templates", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -84,7 +84,7 @@ export default function CreateTemplatePage() {
     if (!validate()) return;
     setSaving(true);
     try {
-      const res = await fetch("http://127.0.0.1:5000/api/templates", {
+      const res = await fetch("http://127.0.0.1:5001/api/templates", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

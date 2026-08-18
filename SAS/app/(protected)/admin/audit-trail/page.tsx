@@ -23,7 +23,7 @@ export default function AuditTrailPage() {
       try {
         setIsLoading(true);
         // Replace with your actual backend URL if different
-        const response = await fetch('http://127.0.0.1:5000/api/audit-trail/');
+        const response = await fetch('http://127.0.0.1:5001/api/audit-trail/');
         
         if (!response.ok) {
           throw new Error('Failed to fetch audit logs');

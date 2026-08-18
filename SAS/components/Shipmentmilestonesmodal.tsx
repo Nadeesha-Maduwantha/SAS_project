@@ -120,7 +120,7 @@ function NoLocationPlaceholder() {
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-export default function ShipmentMilestonesModal({ isOpen, onClose, shipmentId, apiBase='http://127.0.0.1:5000', onMilestoneClick }: Props) {
+export default function ShipmentMilestonesModal({ isOpen, onClose, shipmentId, apiBase='http://127.0.0.1:5001', onMilestoneClick }: Props) {
   const [shipment,     setShipment]     = useState<Shipment | null>(null);
   const [milestones,   setMilestones]   = useState<Milestone[]>([]);
   const [loading,      setLoading]      = useState(false);

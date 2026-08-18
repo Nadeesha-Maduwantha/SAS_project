@@ -12,7 +12,7 @@ import { Settings, MapPin, Check, BookOpen } from "lucide-react";
 import { T, solidBtn } from "@/styles/tokens";
 import FieldDefinitionsManager from "@/components/settings/FieldDefinitionsManager";
 
-const API = "http://127.0.0.1:5000";
+const API = "http://127.0.0.1:5001";
 
 function authHeaders() {
   const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : "";

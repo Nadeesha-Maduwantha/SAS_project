@@ -10,10 +10,10 @@
 // =============================================================
 
 import { useState, useEffect } from 'react';
-import { Package, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Package, AlertTriangle } from 'lucide-react';
 import DonutChart, { DonutLegendRow } from '@/components/shared/DonutChart';
 
-const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
+const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5001';
 
 function authHeaders() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
@@ -85,21 +85,35 @@ function MyShipmentsCard() {
 }
 
 // ── My Alerts card ─────────────────────────────────────────────────────────────
+// Mirrors the three stat cards at the top of the alerts page — High Priority,
+// Pending Review and Resolved — reading the same /api/alerts rows so the
+// dashboard and that page can never disagree.
 function MyAlertsCard() {
-  const [count,   setCount]   = useState(0);
+  const [stats,   setStats]   = useState<{ high: number; pending: number; resolved: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API}/api/alerts/active`, { headers: authHeaders() })
+    fetch(`${API}/api/alerts`, { headers: authHeaders() })
       .then(r => r.json())
       .then(d => {
-        const groups: any[] = d.data || [];
-        const total = groups.reduce((sum: number, g: any) => sum + (g.alert_count || 0), 0);
-        setCount(total);
+        const rows: any[] = d.data || [];
+        setStats({
+          high:     rows.filter(r => r.is_critical).length,
+          pending:  rows.filter(r => r.status === 'Get Action').length,
+          resolved: rows.filter(r => r.status === 'Resolved').length,
+        });
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  const high = stats?.high ?? 0;
+
+  const rows = [
+    { label: 'High Priority', value: high,                 color: 'var(--c-chart-5)' },
+    { label: 'Pending Review', value: stats?.pending ?? 0, color: 'var(--c-chart-4)' },
+    { label: 'Resolved',      value: stats?.resolved ?? 0, color: 'var(--c-chart-3)' },
+  ];
 
   return (
     <div style={card}>
@@ -110,9 +124,9 @@ function MyAlertsCard() {
           </div>
           <span style={title}>My Alerts</span>
         </div>
-        {!loading && count > 0 && (
+        {!loading && high > 0 && (
           <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: '#FEE2E2', color: '#B91C1C', border: '1px solid #FECACA' }}>
-            {count}
+            {high}
           </span>
         )}
       </div>
@@ -121,19 +135,18 @@ function MyAlertsCard() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <SpinDot /><span style={{ fontSize: 12, color: '#9CA3AF' }}>Loading…</span>
         </div>
-      ) : count === 0 ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>
-          <CheckCircle2 size={13} color="#10B981" />
-          <span style={{ fontSize: 12, color: '#6B7280' }}>No active alerts</span>
-        </div>
       ) : (
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-          <span style={{ fontSize: 26, fontWeight: 800, color: '#B91C1C', lineHeight: 1, letterSpacing: '-0.02em' }}>
-            {count}
-          </span>
-          <span style={{ fontSize: 11, color: '#9CA3AF' }}>
-            overdue {count === 1 ? 'milestone' : 'milestones'}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <DonutChart
+            slices={rows.map(r => ({ label: r.label, value: r.value, color: r.color }))}
+            centerValue={high + (stats?.pending ?? 0) + (stats?.resolved ?? 0)}
+            centerLabel="alerts"
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {rows.map(r => (
+              <DonutLegendRow key={r.label} color={r.color} label={r.label} value={r.value} />
+            ))}
+          </div>
         </div>
       )}
     </div>

@@ -675,7 +675,7 @@ function SortDropdown({ value, onChange }: { value: SortKey; onChange: (v: SortK
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function AlertFeedTable({
   title   = 'Alert Feed',
-  apiBase = 'http://127.0.0.1:5000',
+  apiBase = 'http://127.0.0.1:5001',
   maxRows = 8,
 }: Props) {
   const [groups,    setGroups]    = useState<ShipmentAlertGroup[]>([]);

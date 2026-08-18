@@ -14,7 +14,7 @@ import { Mail, Search, RefreshCw, ChevronRight, AlertTriangle, CheckCircle2, Pac
 import EmailComposeModal from '@/components/EmailComposeModal';
 import { AlertData } from '@/components/AlertDetailsModal';
 
-const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
+const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5001';
 
 function authHeaders(): Record<string, string> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';

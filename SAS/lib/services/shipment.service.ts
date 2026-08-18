@@ -2,7 +2,7 @@ import { Shipment, ShipmentMilestone, ShipmentStats, DelayedStats, DepartmentSta
 import { supabase } from '@/lib/supabase'
 
 
-const FLASK_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5000'
+const FLASK_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5001'
 
 // Row Type 
 

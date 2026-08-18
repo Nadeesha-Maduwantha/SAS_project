@@ -37,7 +37,7 @@ const EditUserPage: React.FC = () => {
       const token = localStorage.getItem('access_token');
       
       // Connects to your Python Flask backend
-      const response = await fetch(`http://127.0.0.1:5000/api/users/search?email=${encodeURIComponent(searchEmail)}`, {
+      const response = await fetch(`http://127.0.0.1:5001/api/users/search?email=${encodeURIComponent(searchEmail)}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -100,7 +100,7 @@ const EditUserPage: React.FC = () => {
     try {
       const token = localStorage.getItem('access_token');
       
-      const response = await fetch(`http://127.0.0.1:5000/api/users/${formData.id}`, {
+      const response = await fetch(`http://127.0.0.1:5001/api/users/${formData.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -150,7 +150,7 @@ const EditUserPage: React.FC = () => {
         return;
       }
 
-      const response = await fetch(`http://127.0.0.1:5000/api/users/${formData.id}`, {
+      const response = await fetch(`http://127.0.0.1:5001/api/users/${formData.id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
