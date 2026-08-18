@@ -1,5 +1,8 @@
 from flask import Blueprint, jsonify
-from services.cargowise_service import fetch_shipments_from_api, build_milestones, load_field_map, find_unknown_fields
+from services.cargowise_service import (
+    fetch_shipments_from_api, build_milestones, load_field_map,
+    find_unknown_fields, notify_sync_outcome,
+)
 from services.supabase_service import upsert_shipment, save_sync_log, get_sync_logs, save_sync_error, get_sync_errors
 from utils.auth_helper import require_auth, get_current_user
 from datetime import datetime, timezone
@@ -112,6 +115,10 @@ def run_sync():
                     error_reason=err['error_reason'],
                     severity=err['severity']
                 )
+
+        # Notify administrators of the outcome, according to the preferences on
+        # the Alert Settings panel. Never allowed to fail the sync.
+        notify_sync_outcome(status, updated, error_list, duration)
 
         # Door 3 — report API fields that are neither mapped to a column nor
         # registered against a milestone, so an administrator can decide what

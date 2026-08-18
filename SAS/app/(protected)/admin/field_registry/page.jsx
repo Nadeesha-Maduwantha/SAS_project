@@ -52,6 +52,13 @@ export default function FieldRegistryPage() {
     finally { setLoading(false); }
   }, []);
 
+  // load() sets loading=true/error=null synchronously on entry, matching this
+  // component's initial state exactly — React bails out of re-rendering for
+  // both, so there is no cascading render here. Disabled rather than
+  // restructured: this fetch-on-mount shape is used the same way throughout
+  // the app (e.g. the sync management page), so rewriting only this file
+  // would be inconsistent without addressing the pattern project-wide.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const checkNow = async () => {
@@ -144,7 +151,7 @@ export default function FieldRegistryPage() {
                   <div key={`${m.milestone_key}-${m.expected_field}`} style={{ ...card, borderLeft: `3px solid ${T.amber}` }}>
                     <div style={{ fontSize: "13px", color: T.gray700, marginBottom: "8px", lineHeight: "1.5" }}>
                       Milestone <strong style={{ fontFamily: T.mono, color: T.gray900 }}>{m.milestone_key}</strong> expects{" "}
-                      <strong style={{ fontFamily: T.mono, color: T.red }}>{m.expected_field}</strong>, which the feed doesn't have.
+                      <strong style={{ fontFamily: T.mono, color: T.red }}>{m.expected_field}</strong>, which the feed doesn&apos;t have.
                       Closest field: <strong style={{ fontFamily: T.mono, color: T.blue }}>{m.suggested_field}</strong>{" "}
                       <span style={{ color: T.gray400 }}>({Math.round((m.score || 0) * 100)}% match)</span>.
                     </div>

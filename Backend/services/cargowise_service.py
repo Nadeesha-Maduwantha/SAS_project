@@ -1,5 +1,6 @@
 import requests
 import os
+import re
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -68,6 +69,75 @@ def _normalize_date(value):
         except ValueError:
             continue
     return value
+
+def notify_sync_outcome(status, updated, error_list, duration):
+    """Email administrators about a synchronisation run, according to the alert
+    preferences held on sync_settings.
+
+    Two independent conditions, each with its own preference:
+      alert_on_failure     — the run itself failed
+      alert_on_validation  — validation issues reached min_errors_threshold
+
+    Defined here rather than in the route so that both the manual and the
+    scheduled sync use identical logic. Returns a short summary for logging;
+    never raises, since a notification problem must not fail a sync."""
+    result = {'sent': 0, 'reason': None}
+    try:
+        from services.supabase_service import get_sync_settings
+
+        settings = get_sync_settings() or {}
+        recipients = [
+            e.strip() for e in re.split(r'[,;\s]+', settings.get('admin_emails') or '')
+            if e.strip()
+        ]
+        if not recipients:
+            result['reason'] = 'no admin_emails configured'
+            return result
+
+        failed = status == 'failed'
+        threshold = settings.get('min_errors_threshold') or 1
+        many_errors = len(error_list) >= threshold
+
+        subject = body = None
+        if failed and settings.get('alert_on_failure', True):
+            subject = '[SAS] CargoWise synchronisation failed'
+            body = (
+                f'A CargoWise synchronisation run failed.\n\n'
+                f'Records updated: {updated}\n'
+                f'Validation issues: {len(error_list)}\n'
+                f'Duration: {duration}s\n\n'
+                f'Review the run on the Sync Management page.'
+            )
+        elif many_errors and settings.get('alert_on_validation', True):
+            fields = sorted({e['field_name'] for e in error_list})
+            subject = f'[SAS] {len(error_list)} validation issues in CargoWise synchronisation'
+            body = (
+                f'A CargoWise synchronisation run completed with validation issues.\n\n'
+                f'Status: {status}\n'
+                f'Records updated: {updated}\n'
+                f'Validation issues: {len(error_list)} (threshold {threshold})\n'
+                f'Fields affected: {", ".join(fields)}\n\n'
+                f'Review the issues on the Sync Management page.'
+            )
+
+        if not subject:
+            result['reason'] = 'no condition met or alerts disabled'
+            return result
+
+        from services.email_service import send_email
+        for to in recipients:
+            try:
+                send_email(to, subject, body)
+                result['sent'] += 1
+            except Exception as e:
+                print(f'sync notification to {to} failed: {e}')
+
+    except Exception as e:
+        result['reason'] = str(e)
+        print(f'sync notification failed (non-fatal): {e}')
+
+    return result
+
 
 # API fields the sync maps directly to shipments columns. Together with the
 # fields declared in milestone_field_map these account for everything we
