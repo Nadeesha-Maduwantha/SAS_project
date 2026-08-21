@@ -8,6 +8,13 @@ import {
 } from 'lucide-react';
 import { AlertData } from './AlertDetailsModal';
 
+const escapeHtml = (value: string) => value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
 interface EmailComposeModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -30,9 +37,20 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }: EmailC
     const editorRef = useRef<HTMLDivElement>(null);
 
     const shipmentId = alertData?.id || 'Shipment #49201';
-    const clientName = alertData?.client || 'Customer';
     const clientEmail = alertData?.client ? `contact@${alertData.client.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}.com` : 'recipient@logistics.com';
-    const defaultBody = `Dear ${clientName},<br><br>This is an automated update regarding your ${shipmentId.toLowerCase()}. The cargo has successfully cleared customs and is currently en route to the distribution center in Hamburg.<br>Estimated Time of Arrival: Nov 14, 2023 - 14:00 CET<br><br>Best Regards,<br>Logistics Team`;
+    const dueDate = alertData?.dueDate ? alertData.dueDate.slice(0, 10) : '—';
+    const alertStatus = alertData?.alertStatus || (alertData?.status === 'Resolved' ? 'resolved' : 'overdue');
+    const milestone = alertData?.milestone || '—';
+    const critical = alertData?.isCritical ?? alertData?.priority === 'Critical';
+    const notes = alertData?.issue || '—';
+    const defaultBody = `Shipment <strong>${escapeHtml(shipmentId)}</strong> has an overdue milestone.<br><br>` +
+        `<ul><li><strong>Milestone:</strong> ${escapeHtml(milestone)}</li>` +
+        `<li><strong>Due date:</strong> ${escapeHtml(dueDate)}</li>` +
+        `<li><strong>Status:</strong> ${escapeHtml(alertStatus)}</li>` +
+        `<li><strong>Critical:</strong> ${critical ? 'Yes' : 'No'}</li>` +
+        `<li><strong>Notes:</strong> ${escapeHtml(notes)}</li></ul>` +
+        `Please review the shipment and take action as needed.<br><br>` +
+        `Thank you,<br>Logistics Team`;
 
     useEffect(() => {
         if (!isOpen) return;

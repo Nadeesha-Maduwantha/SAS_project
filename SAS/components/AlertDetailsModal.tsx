@@ -20,6 +20,9 @@ export interface AlertData {
     delay: string | null;
     delayColor?: string;
     status: 'Get Action' | 'Action Taken' | 'Resolved';
+    dueDate?: string | null;
+    alertStatus?: string | null;
+    isCritical?: boolean;
     resolvedAt?: string;
     createdAt?: Date;
 }

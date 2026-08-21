@@ -27,6 +27,7 @@ from routes.milestone_library import milestone_library_bp
 from routes.field_map import field_map_bp
 from routes.system_settings import system_settings_bp
 from routes.field_definitions import field_definitions_bp
+from routes.alert_engine_routes import alert_engine_bp
 
 load_dotenv()
 
@@ -179,6 +180,8 @@ app.register_blueprint(system_settings_bp)
 
 app.register_blueprint(field_definitions_bp)
 
+app.register_blueprint(alert_engine_bp)
+
 def health_check():
     return {'status': 'Backend is running'}, 200
 
@@ -233,6 +236,29 @@ scheduler.add_job(
     run_field_mismatch_check,
     CronTrigger(minute=15, timezone='Asia/Colombo'),
     id='field_mismatch_detect',
+    replace_existing=True,
+)
+
+
+# Runtime alert engine. Reads the milestone + alert-rule snapshots frozen onto
+# each shipment_milestones row, evaluates the combined check (including
+# multi-logic / custom milestones) and emails whichever rules are due.
+# alert_fire_log makes each pass idempotent, so running hourly is safe.
+def run_alert_engine_job():
+    try:
+        from services.alert_engine import run_alert_engine
+        result = run_alert_engine()
+        print(f"[alert_engine] evaluated={result.get('evaluated')} "
+              f"outstanding={result.get('outstanding')} sent={result.get('sent')} "
+              f"skipped={result.get('skipped')} stopped={result.get('stopped')} "
+              f"errors={len(result.get('errors', []))}")
+    except Exception as e:
+        print(f"[alert_engine] ERROR: {e}")
+
+scheduler.add_job(
+    run_alert_engine_job,
+    CronTrigger(minute=5, timezone='Asia/Colombo'),
+    id='alert_engine_run',
     replace_existing=True,
 )
 app.config['SCHEDULER'] = scheduler
