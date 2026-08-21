@@ -73,13 +73,38 @@ def recompute_statuses():
 @alerts_bp.route('/api/alerts', methods=['GET'])
 def get_alerts():
     try:
+        sales_email = (request.args.get('email') or '').strip().lower()
+
         response = (
             supabase.table('shipment_milestones')
             .select('shipment_id, assigned_to, assigned_email, is_critical, name, notes, due_date, completed_date, status, alert_sent, created_at')
             .order('created_at', desc=True)
             .execute()
         )
-        return jsonify({'data': response.data or []}), 200
+        rows = response.data or []
+
+        # Attach each row's shipment-level sales_user_email so a sales user
+        # can be shown only the alerts for shipments assigned to them.
+        shipment_ids = list({r['shipment_id'] for r in rows if r.get('shipment_id')})
+        sales_email_by_shipment = {}
+        if shipment_ids:
+            shipments_res = (
+                supabase.table('shipments')
+                .select('id, sales_user_email')
+                .in_('id', shipment_ids)
+                .execute()
+            )
+            sales_email_by_shipment = {
+                s['id']: (s.get('sales_user_email') or '') for s in (shipments_res.data or [])
+            }
+
+        for r in rows:
+            r['sales_user_email'] = sales_email_by_shipment.get(r['shipment_id'], '')
+
+        if sales_email:
+            rows = [r for r in rows if (r.get('sales_user_email') or '').strip().lower() == sales_email]
+
+        return jsonify({'data': rows}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

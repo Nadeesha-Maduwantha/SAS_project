@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import {
     CheckCircle2,
-    Download,
     Search,
     Eye,
     Mail,
@@ -208,16 +207,6 @@ export default function ResolvedAlertsPage() {
                                 Showing <strong style={{ color: '#15803d' }}>{filtered.length}</strong> resolved alerts — all issues successfully closed.
                             </p>
                         </div>
-                        <button style={{
-                            display: 'flex', alignItems: 'center', gap: '7px',
-                            background: 'white', border: '1px solid #e5e7eb',
-                            borderRadius: '8px', padding: '8px 16px',
-                            fontSize: '13px', fontWeight: 500, color: '#374151',
-                            cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                        } as React.CSSProperties}>
-                            <Download size={14} />
-                            Export Report
-                        </button>
                     </div>
 
                     {/* Green info banner */}

@@ -584,6 +584,9 @@ function ShipmentAlertRow({
                   delay: mDelayed ? 'Delayed' : `${alert.overdue_days} day${alert.overdue_days !== 1 ? 's' : ''}`,
                   delayColor: mDelayed ? '#F43F5E' : '#B91C1C',
                   status: 'Get Action',
+                  dueDate: alert.due_date,
+                  alertStatus: alert.status || 'overdue',
+                  isCritical: alert.is_critical,
                 });
                 return (
                   <div key={alert.milestone_id} onClick={() => {
