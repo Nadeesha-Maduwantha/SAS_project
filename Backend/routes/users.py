@@ -2,6 +2,9 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 import traceback
 from services.supabase_service import get_supabase
+from utils.access_logger import log_access_event
+from utils.audit_logger import log_audit_action
+from utils.auth_helper import get_current_user
 
 print("=== USERS.PY MODULE LOADED ===")  # ← TOP OF FILE outside function
 
@@ -59,6 +62,21 @@ def create_user():
             return jsonify({'error': f'Profile Insert failed: {str(table_err)}'}), 400
 
         print("=== STEP 4: Success ===")
+        log_access_event('Create', status='Success', email_attempted=email, user_id=user_id)
+
+        requester_id, _ = get_current_user()
+        if requester_id:
+            # action_type_id=1 -> CREATE, entity_type_id=2 -> User Profile
+            # (matches public.action_types / public.entity_types)
+            log_audit_action(
+                user_id=requester_id,
+                action_type_id=1,
+                entity_type_id=2,
+                entity_id=user_id,
+                new_value=user_data,
+                description=f"Created user {email}",
+            )
+
         return jsonify({
             'message': 'User created successfully',
             'user_id': user_id,

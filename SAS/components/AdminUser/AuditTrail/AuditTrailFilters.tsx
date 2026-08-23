@@ -39,7 +39,6 @@ export default function AuditTrailFilters({
             <option value="all">All Modules</option>
             <option value="Shipment">Shipment</option>
             <option value="User Profile">User Profile</option>
-            <option value="Department">Department</option>
             <option value="Security Settings">Security Settings</option>
             <option value="System">System</option>
           </select>
@@ -58,7 +57,6 @@ export default function AuditTrailFilters({
           >
             <option value="all">All Severity</option>
             <option value="Info">Info</option>
-            <option value="Warning">Warning</option>
             <option value="Critical">Critical</option>
           </select>
         </div>
