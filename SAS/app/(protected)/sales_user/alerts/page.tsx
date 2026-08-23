@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import {
-    AlertCircle, Clock, CheckCircle2, Download, Search, Eye, Mail,
+    AlertCircle, Clock, CheckCircle2, Search, Eye, Mail,
     MoreHorizontal, Anchor, Truck, Warehouse, Plane, Navigation,
     LayoutList, LayoutGrid, ChevronLeft, ChevronRight,
 } from 'lucide-react';
@@ -25,6 +25,9 @@ type Alert = {
     delay: string;
     delayColor: string;
     status: 'Get Action' | 'Action Taken' | 'Resolved';
+    dueDate: string | null;
+    alertStatus: string;
+    isCritical: boolean;
     createdAt: Date;
 }
 
@@ -35,6 +38,7 @@ type SupabaseRow = {
     is_critical: boolean;
     status: string;
     created_at?: string;
+    sales_user_email?: string;
 }
 
 const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
@@ -79,6 +83,9 @@ function mapRow(row: SupabaseRow, idx: number): Alert {
         status: (row.status === 'Action Taken' || row.status === 'Resolved' || row.status === 'Get Action')
             ? row.status
             : 'Get Action',
+        dueDate: row.due_date,
+        alertStatus: row.due_date && !row.completed_date ? 'overdue' : row.status,
+        isCritical: row.is_critical,
         createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     };
 }
@@ -98,6 +105,9 @@ function toAlertData(alert: Alert): AlertData {
         delay: alert.delay,
         delayColor: alert.delayColor,
         status: alert.status,
+        dueDate: alert.dueDate,
+        alertStatus: alert.alertStatus,
+        isCritical: alert.isCritical,
         createdAt: alert.createdAt,
     };
 }
@@ -234,7 +244,11 @@ export default function AlertDashboardPage() {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(`${BACKEND_BASE_URL}/api/alerts`);
+            const userEmail = (localStorage.getItem('user_email') || '').trim();
+            const url = userEmail
+                ? `${BACKEND_BASE_URL}/api/alerts?email=${encodeURIComponent(userEmail)}`
+                : `${BACKEND_BASE_URL}/api/alerts`;
+            const response = await fetch(url);
             const payload = await parseApiResponse(response);
             if (!response.ok) {
                 throw new Error(payload?.error || 'Failed to load alerts');
@@ -295,9 +309,6 @@ export default function AlertDashboardPage() {
                     <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1a1a2e', letterSpacing: '-0.4px' }}>Alert Dashboard</h1>
                     <p style={{ fontSize: '13.5px', color: '#6b7280', marginTop: '4px' }}>Overview of shipment delays and critical issues requiring attention.</p>
                 </div>
-                <button style={{ display: 'flex', alignItems: 'center', gap: '7px', background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 500, color: '#374151', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-                    <Download size={14} /> Export Report
-                </button>
             </div>
 
             {/* Stats cards */}

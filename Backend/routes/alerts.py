@@ -55,16 +55,56 @@ alerts_bp = Blueprint('alerts', __name__)
 ALLOWED_STATUS = {'Get Action', 'Action Taken', 'Resolved'}
 
 
+# ── Recompute milestone statuses (stand-in for the alert engine's status pass) ──
+# Evaluates every assigned milestone's frozen check against live shipment data and
+# sets completed / overdue / pending. Does NOT send emails. Safe to run repeatedly.
+@alerts_bp.route('/api/alerts/recompute', methods=['GET', 'POST'])
+def recompute_statuses():
+    try:
+        from services.status_recompute import recompute_milestone_status
+        counts = recompute_milestone_status()
+        return jsonify({'message': 'Recomputed', 'counts': counts}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+
+
 @alerts_bp.route('/api/alerts', methods=['GET'])
 def get_alerts():
     try:
+        sales_email = (request.args.get('email') or '').strip().lower()
+
         response = (
             supabase.table('shipment_milestones')
             .select('shipment_id, assigned_to, assigned_email, is_critical, name, notes, due_date, completed_date, status, alert_sent, created_at')
             .order('created_at', desc=True)
             .execute()
         )
-        return jsonify({'data': response.data or []}), 200
+        rows = response.data or []
+
+        # Attach each row's shipment-level sales_user_email so a sales user
+        # can be shown only the alerts for shipments assigned to them.
+        shipment_ids = list({r['shipment_id'] for r in rows if r.get('shipment_id')})
+        sales_email_by_shipment = {}
+        if shipment_ids:
+            shipments_res = (
+                supabase.table('shipments')
+                .select('id, sales_user_email')
+                .in_('id', shipment_ids)
+                .execute()
+            )
+            sales_email_by_shipment = {
+                s['id']: (s.get('sales_user_email') or '') for s in (shipments_res.data or [])
+            }
+
+        for r in rows:
+            r['sales_user_email'] = sales_email_by_shipment.get(r['shipment_id'], '')
+
+        if sales_email:
+            rows = [r for r in rows if (r.get('sales_user_email') or '').strip().lower() == sales_email]
+
+        return jsonify({'data': rows}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -92,7 +132,9 @@ def update_alert_status(shipment_id):
 @alerts_bp.route('/api/alerts/active', methods=['GET'])
 def get_active_alerts():
     try:
-        # Step 1: Get all overdue milestones
+        # Step 1: Get all INCOMPLETE late milestones — overdue (deadline passed,
+        # dark red) and delayed (out of sequence, lighter red). Completed
+        # milestones are never late, so they never appear on the dashboard.
         milestones_res = (
             supabase.table('shipment_milestones')
             .select(
@@ -100,7 +142,7 @@ def get_active_alerts():
                 'due_date, completed_date, assigned_to, assigned_email, '
                 'alert_sent, notes'
             )
-            .eq('status', 'overdue')
+            .in_('status', ['overdue', 'delayed'])
             .order('due_date')
             .execute()
         )
@@ -177,16 +219,20 @@ def get_active_alerts():
             alerts      = group['alerts']
             max_overdue = max(a['overdue_days'] for a in alerts)
             has_critical = any(a['is_critical'] for a in alerts)
- 
+
             group['alert_count']      = len(alerts)
             group['overdue_days_max'] = max_overdue
             group['has_critical']     = has_critical
- 
+            # dark-red vs lighter-red: a group is "overdue" if any milestone in it
+            # is overdue; otherwise it's purely "delayed" (out of sequence).
+            group['has_overdue']      = any(a['status'] == 'overdue' for a in alerts)
+            group['has_delayed']      = any(a['status'] == 'delayed' for a in alerts)
+
             result.append(group)
- 
-        # Sort: critical + multi-alert groups first, then by overdue_days_max desc
+
+        # Sort: overdue + critical + multi-alert groups first, then by overdue days.
         result.sort(key=lambda g: (
-            -(g['has_critical'] or g['alert_count'] > 1),
+            -(g['has_overdue'] or g['has_critical'] or g['alert_count'] > 1),
             -g['overdue_days_max'],
         ))
  

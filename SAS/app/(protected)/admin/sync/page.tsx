@@ -34,7 +34,8 @@ interface SyncError {
   job_number: string
   field_name: string
   error_reason: string
-  severity: 'critical' | 'warning'
+  // 'info' is used for new-field reports raised by the sync (Door 3)
+  severity: 'critical' | 'warning' | 'info'
   created_at: string
 }
 
@@ -44,14 +45,30 @@ interface SyncResult {
   errors: number
 }
 
-interface SyncSchedule {
-  schedule_hours: string
-  schedule_minute: number
+interface IgnoredField {
+  api_field: string
+  ignored_at: string
+  note: string | null
+}
+
+interface CustomSchedule {
+  id: string
+  schedule_time: string   // 'HH:MM' 24-hour, as stored
 }
 
 // TODO (Alert Settings — implement after interim):
 
-//Helpers 
+//Helpers
+
+// Schedules are stored as 24-hour 'HH:MM' but shown in 12-hour form so the
+// label matches the time input's own display (which follows the OS locale).
+function formatScheduleTime(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number)
+  if (Number.isNaN(h) || Number.isNaN(m)) return hhmm
+  const suffix = h >= 12 ? 'PM' : 'AM'
+  const hour12 = h % 12 === 0 ? 12 : h % 12
+  return `${hour12}:${String(m).padStart(2, '0')} ${suffix}`
+}
 
 function formatDateTime(dt: string): string {
   return new Date(dt).toLocaleString('en-US', {
@@ -99,7 +116,9 @@ export default function SyncManagementPage() {
   const [errorsPage, setErrorsPage]           = useState(1)
   const [expandedRow, setExpandedRow]         = useState<string | null>(null)
   const [scheduleTime, setScheduleTime]       = useState('08:00')
-  const [customScheduleTime, setCustomScheduleTime] = useState<string | null>(null)
+  // Several custom times can be active at once — one row per schedule.
+  const [customSchedules, setCustomSchedules] = useState<CustomSchedule[]>([])
+  const [scheduleError, setScheduleError]     = useState<string | null>(null)
   const [settingsSaved, setSettingsSaved]     = useState(false)
   const [scheduleSaved, setScheduleSaved]     = useState(false)
   const [syncError, setSyncError]             = useState<string | null>(null)
@@ -108,13 +127,21 @@ export default function SyncManagementPage() {
   const [syncErrors, setSyncErrors]   = useState<SyncError[]>([])
   const [loadingHistory, setLoadingHistory] = useState(true)
 
-  // Alert Settings state
-  // TODO (after interim): fetch initial values from Flask /api/sync/schedule
-  // endpoint which reads from sync_settings table columns:
- 
+  // Alert Settings state — loaded from and saved to sync_settings via
+  // /api/sync/settings. NOTE: alert_on_validation is also editable from the
+  // System Settings page (milestone mismatch), so both act on the same value.
   const [alertOnFailure, setAlertOnFailure]     = useState(true)
   const [alertOnValidation, setAlertOnValidation] = useState(true)
   const [minErrors, setMinErrors]               = useState(1)
+  const [settingsError, setSettingsError]       = useState<string | null>(null)
+  const [savingSettings, setSavingSettings]     = useState(false)
+  // Fields reported by the sync that are still unregistered (Door 3)
+  const [newFieldReports, setNewFieldReports]   = useState<SyncError[]>([])
+  // Fields an admin reviewed and marked as not milestones, kept visible so the
+  // decision can be seen and reversed
+  const [ignoredFields, setIgnoredFields]       = useState<IgnoredField[]>([])
+  const [showIgnored, setShowIgnored]           = useState(false)
+  const [fieldActionError, setFieldActionError] = useState<string | null>(null)
 
   const now = new Date()
 
@@ -150,35 +177,71 @@ export default function SyncManagementPage() {
 
   const fetchSchedule = useCallback(async () => {
     try {
-      const response = await fetch(`${FLASK_API}/api/sync/schedule`)
+      const response = await fetch(`${FLASK_API}/api/sync/schedules`)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const result = await response.json()
+      // Times come back as 'HH:MM' or 'HH:MM:SS' — normalize to HH:MM
+      setCustomSchedules(
+        (result.data ?? []).map((s: CustomSchedule) => ({
+          ...s,
+          schedule_time: s.schedule_time.slice(0, 5),
+        }))
+      )
+
+    } catch (err) {
+      console.error('Failed to fetch schedules:', err)
+    }
+  }, [])
+
+  // Loads unknown-field reports that are STILL unknown. The server re-checks
+  // each reported field against the current configuration, so a field that has
+  // since been registered no longer appears and the notice clears itself.
+  const fetchNewFields = useCallback(async () => {
+    try {
+      const response = await fetch(`${FLASK_API}/api/sync/new-fields`)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const result = await response.json()
+      setNewFieldReports(result.data ?? [])
+    } catch (err) {
+      console.error('Failed to fetch new field reports:', err)
+    }
+  }, [])
+
+  const fetchIgnoredFields = useCallback(async () => {
+    try {
+      const response = await fetch(`${FLASK_API}/api/sync/ignored-fields`)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const result = await response.json()
+      setIgnoredFields(result.data ?? [])
+    } catch (err) {
+      console.error('Failed to fetch ignored fields:', err)
+    }
+  }, [])
+
+  // Loads the saved alert preferences so the toggles reflect what is actually
+  // stored, rather than resetting to their defaults on every page load.
+  const fetchAlertSettings = useCallback(async () => {
+    try {
+      const response = await fetch(`${FLASK_API}/api/sync/settings`)
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const result = await response.json()
       if (result.data) {
-        const { schedule_hours, schedule_minute } = result.data as SyncSchedule
-        // Only show custom time if it differs from the default fixed schedule
-        if (schedule_hours !== '0,6,12,18') {
-          const formattedTime = `${String(schedule_hours).padStart(2, '0')}:${String(schedule_minute).padStart(2, '0')}`
-          setScheduleTime(formattedTime)
-          setCustomScheduleTime(formattedTime)
-        }
-
-        // TODO (after interim): also read alert settings from result.data:
-        //   setAlertOnFailure(result.data.alert_on_failure ?? true)
-        //   setAlertOnValidation(result.data.alert_on_validation ?? true)
-        //   setMinErrors(result.data.min_errors_threshold ?? 1)
+        setAlertOnFailure(result.data.alert_on_failure ?? true)
+        setAlertOnValidation(result.data.alert_on_validation ?? true)
+        setMinErrors(result.data.min_errors_threshold ?? 1)
       }
     } catch (err) {
-      console.error('Failed to fetch schedule:', err)
+      console.error('Failed to fetch alert settings:', err)
     }
   }, [])
 
   useEffect(() => {
   async function init() {
     setLoadingHistory(true)
-    await Promise.all([fetchSyncLogs(), fetchSyncErrors(), fetchSchedule()])
+    await Promise.all([fetchSyncLogs(), fetchSyncErrors(), fetchSchedule(), fetchAlertSettings(), fetchNewFields(), fetchIgnoredFields()])
   }
   init()
-}, [fetchSyncLogs, fetchSyncErrors, fetchSchedule])
+}, [fetchSyncLogs, fetchSyncErrors, fetchSchedule, fetchAlertSettings, fetchNewFields, fetchIgnoredFields])
 
   // Actions 
 
@@ -204,6 +267,8 @@ export default function SyncManagementPage() {
       setSyncResult(result)
       await fetchSyncLogs()
       await fetchSyncErrors()
+      // A run may have reported a field not seen before
+      await fetchNewFields()
     } catch (err) {
       
       clearInterval(interval)
@@ -215,29 +280,105 @@ export default function SyncManagementPage() {
     }
   }
 
-  function handleSaveSettings() {
-    // TODO (after interim): send alert settings to Flask:
-    //  for now just simulates saving and shows a temporary "Settings saved" message when the user clicks Save Settings in the Alert Settings section.
-    setSettingsSaved(true)
-    setTimeout(() => setSettingsSaved(false), 2000)
+  // Marks a reported field as not a milestone (or reverses that decision).
+  // Both refresh the notice and the ignored list so the two stay consistent.
+  async function handleFieldDecision(apiField: string, ignore: boolean) {
+    setFieldActionError(null)
+    try {
+      const response = await fetch(`${FLASK_API}/api/sync/ignored-fields/${encodeURIComponent(apiField)}`, {
+        method: ignore ? 'POST' : 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') ?? '' : ''}`,
+        },
+      })
+      const result = await response.json()
+      if (!response.ok || result.error) {
+        setFieldActionError(result.error ?? `Request failed (HTTP ${response.status})`)
+        return
+      }
+      await Promise.all([fetchNewFields(), fetchIgnoredFields()])
+    } catch (err) {
+      console.error('Failed to update field decision:', err)
+      setFieldActionError('Could not reach the server. Is the backend running?')
+    }
   }
 
-  async function handleSaveSchedule() {
+  async function handleSaveSettings() {
+    setSettingsError(null)
+    setSavingSettings(true)
     try {
-      const response = await fetch(`${FLASK_API}/api/sync/schedule`, {
-        method: 'POST', //to sending the new schedule time to Flask when the user clicks Save Schedule in the Sync Schedule section.
-        headers: { 'Content-Type': 'application/json' }, // to tell Flask that we're sending JSON data in the request body
+      const response = await fetch(`${FLASK_API}/api/sync/settings`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          // The endpoint is admin-only, so the session token must be sent.
+          Authorization: `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('access_token') ?? '' : ''}`,
+        },
+        body: JSON.stringify({
+          alert_on_failure:     alertOnFailure,
+          alert_on_validation:  alertOnValidation,
+          min_errors_threshold: minErrors,
+        }),
+      })
+      const result = await response.json()
+      if (!response.ok || result.error) {
+        setSettingsError(result.error ?? `Request failed (HTTP ${response.status})`)
+        return
+      }
+      // Re-read from the server so the panel shows what was actually stored,
+      // not merely what was sent.
+      await fetchAlertSettings()
+      setSettingsSaved(true)
+      setTimeout(() => setSettingsSaved(false), 2000)
+    } catch (err) {
+      console.error('Failed to save alert settings:', err)
+      setSettingsError('Could not reach the server. Is the backend running?')
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+
+  // Adds one more custom sync time (existing ones are kept).
+  async function handleAddSchedule() {
+    setScheduleError(null)
+    try {
+      const response = await fetch(`${FLASK_API}/api/sync/schedules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ schedule_time: scheduleTime }),
       })
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const result = await response.json()
-      if (result.success) {
-        setCustomScheduleTime(scheduleTime) 
-        setScheduleSaved(true)
-        setTimeout(() => setScheduleSaved(false), 2000)
+      if (!response.ok || result.error) {
+        // Surface the reason (duplicate time, bad format, server error)
+        // instead of failing silently as the previous version did.
+        setScheduleError(result.error ?? `Request failed (HTTP ${response.status})`)
+        return
       }
+      await fetchSchedule()
+      setScheduleSaved(true)
+      setTimeout(() => setScheduleSaved(false), 2000)
     } catch (err) {
       console.error('Failed to save schedule:', err)
+      setScheduleError('Could not reach the server. Is the backend running?')
+    }
+  }
+
+  async function handleDeleteSchedule(id: string) {
+    setScheduleError(null)
+    try {
+      const response = await fetch(`${FLASK_API}/api/sync/schedules/${id}`, {
+        method: 'DELETE',
+      })
+      const result = await response.json()
+      if (!response.ok || result.error) {
+        setScheduleError(result.error ?? `Request failed (HTTP ${response.status})`)
+        return
+      }
+      await fetchSchedule()
+    } catch (err) {
+      console.error('Failed to delete schedule:', err)
+      setScheduleError('Could not reach the server. Is the backend running?')
     }
   }
 
@@ -259,7 +400,13 @@ export default function SyncManagementPage() {
     historyPage * HISTORY_PAGE_SIZE
   )
 
-  const paginatedErrors = syncErrors.slice(
+  // New-field reports are fetched separately (see fetchNewFields) because the
+  // server re-checks each one against the current configuration, so the notice
+  // clears itself once a field is registered. They are excluded from the error
+  // table, which lists per-shipment validation warnings.
+  const shipmentErrors = syncErrors.filter((e) => !e.job_number?.startsWith('[new-field]'))
+
+  const paginatedErrors = shipmentErrors.slice(
     (errorsPage - 1) * ERRORS_PAGE_SIZE,
     errorsPage * ERRORS_PAGE_SIZE
   )
@@ -439,14 +586,109 @@ export default function SyncManagementPage() {
         {/* ── LEFT COLUMN ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
+          {/* New fields detected in the CargoWise feed (Door 3).
+              Informational, not an error — the values are already safe in
+              raw_json; the admin only has to decide what the field is. */}
+          {newFieldReports.length > 0 && (
+            <div style={{ background: '#eff6ff', borderRadius: '12px', border: '1px solid #bfdbfe', padding: '16px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                <Database style={{ width: '16px', height: '16px', color: '#2563eb' }} />
+                <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#1e3a8a', margin: 0 }}>
+                  New Fields in CargoWise Feed
+                </h2>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', padding: '2px 8px', borderRadius: '9999px' }}>
+                  {newFieldReports.length}
+                </span>
+              </div>
+              <p style={{ fontSize: '12px', color: '#1e40af', margin: '0 0 10px' }}>
+                The following fields arrived from CargoWise but are not mapped to a column or
+                registered to a milestone. Their values are stored in full, so nothing is lost.
+                Register a field in the{' '}
+                <a href="/admin/field_registry" style={{ color: '#1d4ed8', fontWeight: 600, textDecoration: 'underline' }}>
+                  Field Registry
+                </a>{' '}
+                if it represents a milestone — this notice clears itself once the field is registered.
+              </p>
+              {newFieldReports.map((r) => (
+                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 0' }}>
+                  <code style={{ fontSize: '12px', fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', padding: '2px 8px', borderRadius: '5px' }}>
+                    {r.field_name}
+                  </code>
+                  <span style={{ fontSize: '11px', color: '#60a5fa' }}>
+                    first seen {formatDateTime(r.created_at)}
+                  </span>
+                  <button
+                    onClick={() => handleFieldDecision(r.field_name, true)}
+                    title="This field is not a milestone — stop showing it here"
+                    style={{
+                      marginLeft: 'auto', fontSize: '11px', fontWeight: 600,
+                      padding: '3px 10px', borderRadius: '6px', cursor: 'pointer',
+                      background: 'white', color: '#1d4ed8', border: '1px solid #bfdbfe',
+                    }}
+                  >
+                    Not a milestone
+                  </button>
+                </div>
+              ))}
+
+              {fieldActionError && (
+                <p style={{ fontSize: '11px', color: '#dc2626', margin: '8px 0 0' }}>{fieldActionError}</p>
+              )}
+            </div>
+          )}
+
+          {/* Fields reviewed and set aside. Kept visible and reversible — a
+              field hidden with no way to find it again is effectively lost. */}
+          {ignoredFields.length > 0 && (
+            <div style={{ background: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '12px 16px' }}>
+              <button
+                onClick={() => setShowIgnored((v) => !v)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px', width: '100%',
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                  fontSize: '12px', fontWeight: 600, color: '#6b7280', textAlign: 'left',
+                }}
+              >
+                <span style={{ fontSize: '10px' }}>{showIgnored ? '▾' : '▸'}</span>
+                {ignoredFields.length} field{ignoredFields.length > 1 ? 's' : ''} marked as not milestones
+              </button>
+
+              {showIgnored && (
+                <div style={{ marginTop: '10px' }}>
+                  {ignoredFields.map((f) => (
+                    <div key={f.api_field} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0' }}>
+                      <code style={{ fontSize: '12px', color: '#6b7280', background: '#f3f4f6', padding: '2px 8px', borderRadius: '5px' }}>
+                        {f.api_field}
+                      </code>
+                      <span style={{ fontSize: '11px', color: '#9ca3af' }}>
+                        set aside {formatDateTime(f.ignored_at)}
+                      </span>
+                      <button
+                        onClick={() => handleFieldDecision(f.api_field, false)}
+                        title="Show this field in the notice again"
+                        style={{
+                          marginLeft: 'auto', fontSize: '11px', fontWeight: 600,
+                          padding: '3px 10px', borderRadius: '6px', cursor: 'pointer',
+                          background: 'white', color: '#374151', border: '1px solid #d1d5db',
+                        }}
+                      >
+                        Undo
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Validation Errors Table */}
-          {syncErrors.length > 0 && (
+          {shipmentErrors.length > 0 && (
             <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
               <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <AlertTriangle style={{ width: '16px', height: '16px', color: '#dc2626' }} />
                 <h2 style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: 0 }}>Validation Errors</h2>
                 <span style={{ fontSize: '11px', fontWeight: 700, color: '#dc2626', background: '#fee2e2', padding: '2px 8px', borderRadius: '9999px' }}>
-                  {syncErrors.length}
+                  {shipmentErrors.length}
                 </span>
               </div>
 
@@ -498,14 +740,14 @@ export default function SyncManagementPage() {
               {/* Errors Pagination */}
               <div style={{ padding: '12px 16px', borderTop: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <p style={{ fontSize: '12px', color: '#9ca3af' }}>
-                  Showing {((errorsPage - 1) * ERRORS_PAGE_SIZE) + 1}–{Math.min(errorsPage * ERRORS_PAGE_SIZE, syncErrors.length)} of {syncErrors.length}
+                  Showing {((errorsPage - 1) * ERRORS_PAGE_SIZE) + 1}–{Math.min(errorsPage * ERRORS_PAGE_SIZE, shipmentErrors.length)} of {shipmentErrors.length}
                 </p>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   <button onClick={() => setErrorsPage((p) => Math.max(1, p - 1))} disabled={errorsPage === 1}
                     style={{ padding: '5px 10px', fontSize: '12px', border: '1px solid #e5e7eb', borderRadius: '6px', cursor: errorsPage === 1 ? 'not-allowed' : 'pointer', background: 'white', color: errorsPage === 1 ? '#d1d5db' : '#374151' }}>
                     Previous
                   </button>
-                  <button onClick={() => setErrorsPage((p) => Math.min(Math.ceil(syncErrors.length / ERRORS_PAGE_SIZE), p + 1))} disabled={errorsPage >= Math.ceil(syncErrors.length / ERRORS_PAGE_SIZE)}
+                  <button onClick={() => setErrorsPage((p) => Math.min(Math.ceil(shipmentErrors.length / ERRORS_PAGE_SIZE), p + 1))} disabled={errorsPage >= Math.ceil(shipmentErrors.length / ERRORS_PAGE_SIZE)}
                     style={{ padding: '5px 10px', fontSize: '12px', border: '1px solid #e5e7eb', borderRadius: '6px', cursor: 'pointer', background: 'white', color: '#374151' }}>
                     Next
                   </button>
@@ -647,10 +889,37 @@ export default function SyncManagementPage() {
               <p style={{ fontSize: '13px', fontWeight: 600, color: '#111827', margin: 0 }}>Auto sync at 6AM, 12PM, 6PM, 12AM</p>
             </div>
 
-            {customScheduleTime && (
+            {customSchedules.length > 0 && (
               <div style={{ background: '#eff6ff', borderRadius: '8px', padding: '12px 14px', marginBottom: '14px' }}>
-                <p style={{ fontSize: '12px', color: '#3b82f6', margin: '0 0 2px' }}>Custom Schedule</p>
-                <p style={{ fontSize: '13px', fontWeight: 600, color: '#1d4ed8', margin: 0 }}>Also syncs at {customScheduleTime} Sri Lanka time</p>
+                <p style={{ fontSize: '12px', color: '#3b82f6', margin: '0 0 6px' }}>
+                  Custom Schedule{customSchedules.length > 1 ? 's' : ''}
+                </p>
+                {customSchedules.map((s) => (
+                  <div
+                    key={s.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      gap: '8px', padding: '3px 0',
+                    }}
+                  >
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#1d4ed8' }}>
+                      Also syncs at {formatScheduleTime(s.schedule_time)} Sri Lanka time
+                    </span>
+                    <button
+                      onClick={() => handleDeleteSchedule(s.id)}
+                      title="Remove this sync time"
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: '20px', height: '20px', flexShrink: 0,
+                        border: 'none', borderRadius: '50%', cursor: 'pointer',
+                        background: 'rgba(37,99,235,0.12)', color: '#1d4ed8', padding: 0,
+                        fontSize: '14px', lineHeight: 1,
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -666,15 +935,25 @@ export default function SyncManagementPage() {
               />
             </div>
 
+            {scheduleError && (
+              <p style={{
+                fontSize: '12px', color: '#dc2626', background: '#fef2f2',
+                border: '1px solid #fecaca', borderRadius: '8px',
+                padding: '8px 10px', margin: '0 0 10px',
+              }}>
+                {scheduleError}
+              </p>
+            )}
+
             <button
-              onClick={handleSaveSchedule}
+              onClick={handleAddSchedule}
               style={{
                 width: '100%', padding: '8px', fontSize: '13px', fontWeight: 600,
                 color: 'white', background: scheduleSaved ? '#16a34a' : '#2563eb',
                 border: 'none', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s',
               }}
             >
-              {scheduleSaved ? '✓ Saved' : 'Save Schedule'}
+              {scheduleSaved ? '✓ Added' : 'Add Sync Time'}
             </button>
           </div>
 
@@ -732,15 +1011,28 @@ export default function SyncManagementPage() {
               />
             </div>
 
+            {settingsError && (
+              <p style={{
+                fontSize: '12px', color: '#dc2626', background: '#fef2f2',
+                border: '1px solid #fecaca', borderRadius: '8px',
+                padding: '8px 10px', margin: '0 0 10px',
+              }}>
+                {settingsError}
+              </p>
+            )}
+
             <button
               onClick={handleSaveSettings}
+              disabled={savingSettings}
               style={{
                 width: '100%', padding: '8px', fontSize: '13px', fontWeight: 600,
-                color: 'white', background: settingsSaved ? '#16a34a' : '#2563eb',
-                border: 'none', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s',
+                color: 'white',
+                background: settingsSaved ? '#16a34a' : savingSettings ? '#93c5fd' : '#2563eb',
+                border: 'none', borderRadius: '8px',
+                cursor: savingSettings ? 'default' : 'pointer', transition: 'background 0.2s',
               }}
             >
-              {settingsSaved ? '✓ Saved' : 'Save Settings'}
+              {settingsSaved ? '✓ Saved' : savingSettings ? 'Saving…' : 'Save Settings'}
             </button>
           </div>
         </div>

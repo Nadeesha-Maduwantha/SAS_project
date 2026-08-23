@@ -376,6 +376,9 @@ function AlertTableRow({
             delay:         null,
             delayColor:    '#D97706',
             status:        'Get Action',
+            dueDate:       row.due_date,
+            alertStatus:   row.status,
+            isCritical:    row.is_critical,
           })}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, cursor: 'pointer', background: '#FEE2E2', color: '#B91C1C', border: '1px solid #FECACA' }}
           onMouseEnter={e => (e.currentTarget.style.opacity = '0.8')}

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ChevronRight, Mail, RefreshCw, AlertTriangle, LayoutGrid, List, Search, ChevronDown, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ChevronRight, Mail, RefreshCw, AlertTriangle, LayoutGrid, List, Search, ChevronDown, X, ArrowRight } from 'lucide-react';
 import EmailComposeModal from '@/components/EmailComposeModal';
 import { AlertData } from '@/components/AlertDetailsModal';
 import ShipmentMilestonesModal from '@/components/Shipmentmilestonesmodal';
@@ -31,12 +32,29 @@ interface ShipmentAlertGroup {
   alert_count:      number;
   overdue_days_max: number;
   has_critical:     boolean;
+  has_overdue?:     boolean;   // any milestone past its deadline → dark red
+  has_delayed?:     boolean;   // out of sequence, no passed deadline → lighter red
 }
 
 interface Props {
   title?:   string;
   apiBase?: string;
   maxRows?: number;
+  showFieldDelayed?: boolean;   // include yellow "expected data not arrived" rows/cards
+}
+
+// "expected data field delayed / possibly renamed" item (yellow)
+interface FDItem {
+  id:              string;
+  shipment_id:     string;
+  job_number:      string | null;
+  consignee_name:  string | null;
+  milestone_name:  string | null;
+  is_critical:     boolean;
+  expected_field:  string | null;
+  suggested_field: string | null;
+  score:           number | null;
+  reason:          string;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -50,13 +68,16 @@ function fmtDate(iso: string | null) {
 }
 
 const C = {
-  red:   { bg: '#FEE2E2', text: '#B91C1C', border: '#FECACA', accent: '#DC2626', dot: '#EF4444' },
-  amber: { bg: '#FEF3C7', text: '#92400E', border: '#FDE68A', accent: '#D97706', dot: '#F59E0B' },
-  crit:  { bg: '#450A0A', text: '#FCA5A5', border: '#7F1D1D' },
+  red:     { bg: '#FEE2E2', text: '#991B1B', border: '#FCA5A5', accent: '#B91C1C', dot: '#DC2626' }, // overdue — dark red
+  lightred:{ bg: '#FFF1F2', text: '#E11D48', border: '#FECDD3', accent: '#F43F5E', dot: '#FB7185' }, // delayed — lighter red
+  amber:   { bg: '#FEF3C7', text: '#92400E', border: '#FDE68A', accent: '#D97706', dot: '#F59E0B' }, // field mismatch — yellow
+  crit:    { bg: '#450A0A', text: '#FCA5A5', border: '#7F1D1D' },
 };
 
+// Group colour: dark red once anything in it is truly overdue, otherwise the
+// lighter "delayed" red. (Yellow/amber is reserved for field-name mismatches.)
 function tok(group: ShipmentAlertGroup) {
-  return isUrgent(group) ? C.red : C.amber;
+  return (group.has_overdue ?? isUrgent(group)) ? C.red : C.lightred;
 }
 
 // ── Tooltip ────────────────────────────────────────────────────────────────────
@@ -82,14 +103,16 @@ function Tooltip({ children, text }: { children: React.ReactNode; text: string }
   );
 }
 
-function OverdueBadge({ days }: { days: number }) {
-  const t = days >= 2 ? C.red : C.amber;
+function OverdueBadge({ days, status }: { days: number; status?: string }) {
+  // Delayed = out of sequence with no measured deadline → lighter red "Delayed".
+  const delayed = status === 'delayed';
+  const t = delayed ? C.lightred : C.red;
   return (
     <span style={{
       fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
       background: t.bg, color: t.text, border: `1px solid ${t.border}`, whiteSpace: 'nowrap',
     }}>
-      {days === 0 ? 'Due today' : `${days}d overdue`}
+      {delayed ? 'Delayed' : days === 0 ? 'Due today' : `${days}d overdue`}
     </span>
   );
 }
@@ -103,7 +126,7 @@ function MilestonePopup({
   onEmailClick: (d: AlertData) => void;
 }) {
   const urgent = isUrgent(group);
-  const t      = urgent ? C.red : C.amber;
+  const t      = (group.has_overdue ?? urgent) ? C.red : C.lightred;
 
   return (
     <div
@@ -186,19 +209,21 @@ function MilestonePopup({
         {/* Milestone cards */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {group.alerts.map((alert, idx) => {
-            const mUrgent = alert.is_critical || alert.overdue_days >= 2;
-            const mt      = mUrgent ? C.red : C.amber;
+            const mDelayed = alert.status === 'delayed';
+            const mt       = mDelayed ? C.lightred : C.red;
 
             const handleSend = () => onEmailClick({
               id:            group.job_number,
               shipment_id:   group.shipment_id,
               client:        group.consignee_name,
-              priority:      alert.is_critical ? 'Critical' : alert.overdue_days >= 2 ? 'Medium' : 'Low',
+              priority:      alert.is_critical ? 'Critical' : mDelayed ? 'Low' : 'Medium',
               milestone:     alert.name,
               milestoneIcon: null,
-              issue:         alert.notes ?? `"${alert.name}" is overdue by ${alert.overdue_days} day(s).`,
-              delay:         `${alert.overdue_days} day${alert.overdue_days !== 1 ? 's' : ''}`,
-              delayColor:    alert.overdue_days >= 2 ? '#DC2626' : '#D97706',
+              issue:         alert.notes ?? (mDelayed
+                               ? `"${alert.name}" is delayed — a later milestone arrived first.`
+                               : `"${alert.name}" is overdue by ${alert.overdue_days} day(s).`),
+              delay:         mDelayed ? 'Delayed' : `${alert.overdue_days} day${alert.overdue_days !== 1 ? 's' : ''}`,
+              delayColor:    mDelayed ? '#F43F5E' : '#B91C1C',
               status:        'Get Action',
             });
 
@@ -246,7 +271,7 @@ function MilestonePopup({
                 <div style={{ fontSize: 12, color: '#6B7280' }}>{fmtDate(alert.due_date)}</div>
 
                 {/* Overdue badge */}
-                <div><OverdueBadge days={alert.overdue_days} /></div>
+                <div><OverdueBadge days={alert.overdue_days} status={alert.status} /></div>
 
                 {/* Send alert button */}
                 <div style={{ textAlign: 'right' }}>
@@ -282,7 +307,7 @@ function AlertCard({
 }) {
   const [hov, setHov] = useState(false);
   const urgent        = isUrgent(group);
-  const t             = urgent ? C.red : C.amber;
+  const t             = (group.has_overdue ?? urgent) ? C.red : C.lightred;
   const nextDue       = group.alerts[0]?.due_date ?? null;
 
   return (
@@ -397,7 +422,7 @@ function AlertCard({
               {fmtDate(nextDue)}
             </div>
           </div>
-          <OverdueBadge days={group.overdue_days_max} />
+          <OverdueBadge days={group.overdue_days_max} status={group.has_overdue ? 'overdue' : 'delayed'} />
         </div>
       </div>
 
@@ -428,7 +453,7 @@ function ShipmentAlertRow({
   const [closing,  setClosing]  = useState(false);
 
   const urgent  = isUrgent(group);
-  const t       = urgent ? C.red : C.amber;
+  const t       = (group.has_overdue ?? urgent) ? C.red : C.lightred;
   const nextDue = group.alerts[0]?.due_date ?? null;
 
   const open  = () => { setExpanded(true); setVisible(true);  setClosing(false); };
@@ -546,17 +571,22 @@ function ShipmentAlertRow({
                 ))}
               </div>
               {group.alerts.map((alert, idx) => {
-                const mUrgent = alert.is_critical || alert.overdue_days >= 2;
-                const mt      = mUrgent ? C.red : C.amber;
+                const mDelayed = alert.status === 'delayed';
+                const mt       = mDelayed ? C.lightred : C.red;
                 const handleClick = () => onEmailClick({
                   id: group.job_number, shipment_id: group.shipment_id,
                   client: group.consignee_name,
-                  priority: alert.is_critical ? 'Critical' : alert.overdue_days >= 2 ? 'Medium' : 'Low',
+                  priority: alert.is_critical ? 'Critical' : mDelayed ? 'Low' : 'Medium',
                   milestone: alert.name, milestoneIcon: null,
-                  issue: alert.notes ?? `"${alert.name}" is overdue by ${alert.overdue_days} day(s).`,
-                  delay: `${alert.overdue_days} day${alert.overdue_days !== 1 ? 's' : ''}`,
-                  delayColor: alert.overdue_days >= 2 ? '#DC2626' : '#D97706',
+                  issue: alert.notes ?? (mDelayed
+                           ? `"${alert.name}" is delayed — a later milestone arrived first.`
+                           : `"${alert.name}" is overdue by ${alert.overdue_days} day(s).`),
+                  delay: mDelayed ? 'Delayed' : `${alert.overdue_days} day${alert.overdue_days !== 1 ? 's' : ''}`,
+                  delayColor: mDelayed ? '#F43F5E' : '#B91C1C',
                   status: 'Get Action',
+                  dueDate: alert.due_date,
+                  alertStatus: alert.status || 'overdue',
+                  isCritical: alert.is_critical,
                 });
                 return (
                   <div key={alert.milestone_id} onClick={() => {
@@ -587,7 +617,7 @@ function ShipmentAlertRow({
                       {alert.assigned_to && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2, paddingLeft: 13 }}>{alert.assigned_to}</div>}
                     </div>
                     <div style={{ fontSize: 12, color: '#6B7280', padding: '11px 4px' }}>{fmtDate(alert.due_date)}</div>
-                    <div style={{ padding: '11px 4px' }}><OverdueBadge days={alert.overdue_days} /></div>
+                    <div style={{ padding: '11px 4px' }}><OverdueBadge days={alert.overdue_days} status={alert.status} /></div>
                     <div style={{ padding: '11px 0', textAlign: 'right' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: mt.bg, color: mt.text, border: `1px solid ${mt.border}` }}>
                         <Mail size={11} /> Send Alert
@@ -672,12 +702,66 @@ function SortDropdown({ value, onChange }: { value: SortKey; onChange: (v: SortK
   );
 }
 
+// ── Field-delayed yellow card + row (data not arrived / possibly renamed) ──────
+function FDBody({ fd }: { fd: FDItem }) {
+  return (
+    <span style={{ fontSize: 12, color: '#78350F', lineHeight: 1.5 }}>
+      Expected field <strong style={{ fontFamily: 'monospace', color: '#92400E' }}>{fd.expected_field || '—'}</strong> hasn&apos;t arrived
+      {fd.suggested_field
+        ? <> — likely came as <strong style={{ fontFamily: 'monospace', color: '#1D4ED8' }}>{fd.suggested_field}</strong>{fd.score != null && <span style={{ color: '#B45309' }}> ({Math.round(fd.score * 100)}%)</span>}.</>
+        : <> — check for another name.</>}
+    </span>
+  );
+}
+
+function FDCard({ fd, onMap }: { fd: FDItem; onMap: () => void }) {
+  return (
+    <div style={{ background: C.amber.bg, border: `1px solid ${C.amber.border}`, borderTop: `4px solid ${C.amber.dot}`, borderRadius: 12, padding: '13px 15px', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 130 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+        <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 800, color: C.amber.text, background: '#fff', border: `1px solid ${C.amber.border}`, padding: '2px 8px', borderRadius: 6 }}>{fd.job_number || fd.shipment_id?.slice(0, 8)}</span>
+        {fd.is_critical && <span style={{ fontSize: 9, fontWeight: 800, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #FECACA', padding: '1px 6px', borderRadius: 4 }}>CRITICAL</span>}
+        <span style={{ fontSize: 9, fontWeight: 800, color: C.amber.text, background: '#fff', border: `1px solid ${C.amber.border}`, padding: '1px 6px', borderRadius: 4 }}>FIELD MISMATCH</span>
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{fd.milestone_name}</div>
+      <FDBody fd={fd} />
+      <button onClick={onMap} style={{ marginTop: 'auto', alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: '#fff', color: '#1D4ED8', border: '1px solid #BFDBFE', fontFamily: 'inherit' }}>
+        Map in Field Registry <ArrowRight size={12} />
+      </button>
+    </div>
+  );
+}
+
+function FDRow({ fd, onMap }: { fd: FDItem; onMap: () => void }) {
+  return (
+    <tr style={{ borderBottom: '1px solid #F3F4F6' }}>
+      <td colSpan={7} style={{ padding: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: '#FFFBEB', borderLeft: `4px solid ${C.amber.dot}` }}>
+          <span style={{ width: 150, flexShrink: 0, fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: C.amber.text, background: C.amber.bg, border: `1px solid ${C.amber.border}`, padding: '4px 10px', borderRadius: 6, textAlign: 'center' }}>{fd.job_number || fd.shipment_id?.slice(0, 8)}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{fd.milestone_name}</span>
+              <span style={{ fontSize: 9, fontWeight: 800, color: C.amber.text, background: '#fff', border: `1px solid ${C.amber.border}`, padding: '1px 6px', borderRadius: 4 }}>FIELD MISMATCH</span>
+              {fd.is_critical && <span style={{ fontSize: 9, fontWeight: 800, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #FECACA', padding: '1px 6px', borderRadius: 4 }}>CRITICAL</span>}
+            </div>
+            <div style={{ marginTop: 2 }}><FDBody fd={fd} /></div>
+          </div>
+          <button onClick={onMap} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer', background: '#fff', color: '#1D4ED8', border: '1px solid #BFDBFE', fontFamily: 'inherit' }}>
+            Map in Field Registry <ArrowRight size={11} />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function AlertFeedTable({
   title   = 'Alert Feed',
   apiBase = 'http://localhost:5000',
   maxRows = 8,
+  showFieldDelayed = false,
 }: Props) {
+  const router = useRouter();
   const [groups,    setGroups]    = useState<ShipmentAlertGroup[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState<string | null>(null);
@@ -686,6 +770,7 @@ export default function AlertFeedTable({
   const [shipmentModalId, setShipmentModalId] = useState<string | null>(null);
   const [milestoneDetail, setMilestoneDetail] = useState<{ milestone: any; shipment: any } | null>(null);
   const [popupGroup, setPopupGroup] = useState<ShipmentAlertGroup | null>(null);
+  const [fieldDelayed, setFieldDelayed] = useState<FDItem[]>([]);
 
   // ── Popup (card click) ──────────────────────────────────────
   
@@ -719,12 +804,19 @@ export default function AlertFeedTable({
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
       const data = await res.json();
       setGroups(data.data ?? []);
+      if (showFieldDelayed) {
+        try {
+          const fr = await fetch(`${apiBase}/api/field-watch/alerts`);
+          const fd = await fr.json();
+          setFieldDelayed(fd.data ?? []);
+        } catch { /* non-fatal */ }
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load alerts');
     } finally {
       setLoading(false);
     }
-  }, [apiBase]);
+  }, [apiBase, showFieldDelayed]);
 
   useEffect(() => { fetchAlerts(); }, [fetchAlerts]);
 
@@ -743,14 +835,22 @@ export default function AlertFeedTable({
     .sort((a, b) => {
       if (sortKey === 'due_date')     return (a.alerts[0]?.due_date ?? '9999') < (b.alerts[0]?.due_date ?? '9999') ? -1 : 1;
       if (sortKey === 'overdue_days') return b.overdue_days_max - a.overdue_days_max;
-      if (sortKey === 'consignee')    return a.consignee_name.localeCompare(b.consignee_name);
+      if (sortKey === 'consignee')    return (a.consignee_name ?? '').localeCompare(b.consignee_name ?? '');
       if (sortKey === 'alert_count')  return b.alert_count - a.alert_count;
       return 0;
     });
 
   const displayed = showAll ? processed : processed.slice(0, maxRows);
-  const redCount  = groups.filter(g => isUrgent(g)).length;
-  const orgCount  = groups.length - redCount;
+
+  const fdShown: FDItem[] = showFieldDelayed
+    ? fieldDelayed.filter(f => {
+        const q = search.toLowerCase();
+        return !q || (f.consignee_name || '').toLowerCase().includes(q) || (f.job_number || '').toLowerCase().includes(q);
+      })
+    : [];
+  const mapToRegistry = () => router.push('/admin/field_registry');
+  const redCount  = groups.filter(g => g.has_overdue ?? isUrgent(g)).length;   // overdue (dark red)
+  const orgCount  = groups.length - redCount;                                   // delayed (lighter red)
 
   const TH: React.CSSProperties = {
     padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600,
@@ -782,13 +882,13 @@ export default function AlertFeedTable({
             {!loading && groups.length > 0 && (
               <div style={{ display: 'flex', gap: 6 }}>
                 {redCount > 0 && (
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 99, background: '#FEE2E2', color: '#B91C1C', border: '1px solid #FECACA' }}>
-                    {redCount} critical
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 99, background: '#FEE2E2', color: '#991B1B', border: '1px solid #FCA5A5' }}>
+                    {redCount} overdue
                   </span>
                 )}
                 {orgCount > 0 && (
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 99, background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A' }}>
-                    {orgCount} warning
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 9px', borderRadius: 99, background: '#FFF1F2', color: '#E11D48', border: '1px solid #FECDD3' }}>
+                    {orgCount} delayed
                   </span>
                 )}
               </div>
@@ -895,7 +995,7 @@ export default function AlertFeedTable({
           </div>
         ) : error ? (
           <div style={{ textAlign: 'center', padding: '40px 20px', color: '#DC2626', fontSize: 13 }}>⚠ {error}</div>
-        ) : processed.length === 0 ? (
+        ) : processed.length === 0 && fdShown.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '48px 20px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
               <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#F0FDF4', border: '1px solid #BBF7D0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>✓</div>
@@ -916,10 +1016,14 @@ export default function AlertFeedTable({
             gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
             gap: 16,
           }}>
+            {/* Progress alerts first (overdue / delayed), field-name mismatches after. */}
             {displayed.map((group, idx) => (
               <div key={group.shipment_id} style={{ animation: `cardIn 0.25s ease ${idx * 40}ms both` }}>
                 <AlertCard group={group} onClick={() => setPopupGroup(group)} />
               </div>
+            ))}
+            {fdShown.map(fd => (
+              <div key={`fd-${fd.id}`}><FDCard fd={fd} onMap={mapToRegistry} /></div>
             ))}
           </div>
         ) : (
@@ -946,6 +1050,9 @@ export default function AlertFeedTable({
                     setShipmentModalId(shipmentId);
                   }}
                 />
+              ))}
+              {fdShown.map(fd => (
+                <FDRow key={`fd-${fd.id}`} fd={fd} onMap={mapToRegistry} />
               ))}
               </tbody>
             </table>
@@ -976,13 +1083,19 @@ export default function AlertFeedTable({
         {!loading && groups.length > 0 && (
           <div style={{ padding: '10px 20px', borderTop: '1px solid #F3F4F6', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 11, color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B', display: 'inline-block' }} />
-              1 day overdue / single alert
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#DC2626', display: 'inline-block' }} />
+              Overdue — past its deadline
             </span>
             <span style={{ fontSize: 11, color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF4444', display: 'inline-block' }} />
-              2+ days / multiple alerts / critical milestone
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#FB7185', display: 'inline-block' }} />
+              Delayed — out of sequence
             </span>
+            {showFieldDelayed && (
+              <span style={{ fontSize: 11, color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B', display: 'inline-block' }} />
+                Field name mismatch
+              </span>
+            )}
           </div>
         )}
       </div>

@@ -92,10 +92,20 @@ def resolve_field_value(shipment: dict, milestone_key: str, api_field: str):
 # ── Door 2 — registry writes ──────────────────────────────────────────────────
 def _milestone_field_names(milestone: dict) -> list:
     out = []
-    for col in FIELD_COLUMNS:
-        f = (milestone or {}).get(col)
-        if f and isinstance(f, str) and f.strip():
-            out.append(f.strip())
+
+    def _collect(d):
+        for col in FIELD_COLUMNS:
+            f = (d or {}).get(col)
+            if f and isinstance(f, str) and f.strip():
+                out.append(f.strip())
+
+    # Primary check fields...
+    _collect(milestone)
+    # ...plus any fields used inside additional logic blocks (multi-check /
+    # custom milestones), so Door 2 registers those too.
+    for block in (milestone or {}).get('extra_logics') or []:
+        _collect(block)
+
     # de-dupe, keep order
     seen, uniq = set(), []
     for f in out:

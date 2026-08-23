@@ -32,6 +32,8 @@ from routes.milestone_library import milestone_library_bp
 from routes.field_map import field_map_bp
 from routes.system_settings import system_settings_bp
 from routes.field_definitions import field_definitions_bp
+from routes.field_watch import field_watch_bp
+from routes.alert_engine_routes import alert_engine_bp
 
 from routes.dashboard import dashboard_bp
 
@@ -41,8 +43,13 @@ from routes.dashboard import dashboard_bp
 
 def run_sync_job():
     try:
-        from services.cargowise_service import fetch_shipments_from_api, build_milestones, load_field_map
+        from services.cargowise_service import (
+            fetch_shipments_from_api, build_milestones, load_field_map,
+            find_unknown_fields, notify_sync_outcome,
+        )
         from services.supabase_service import upsert_shipment, save_sync_log, save_sync_error
+        from datetime import datetime, timezone
+        import time
 
         print('Running scheduled sync...')
         start_time = time.time()
@@ -64,6 +71,8 @@ def run_sync_job():
             if not job_number or job_number in seen:
                 continue
             seen.add(job_number)
+
+            unknown_fields |= find_unknown_fields(item, field_map)
 
             if not item.get('transport_mode'):
                 error_list.append({
@@ -261,7 +270,8 @@ app.register_blueprint(field_map_bp)
 app.register_blueprint(system_settings_bp)
 app.register_blueprint(field_definitions_bp)
 
-@app.route("/health", methods=["GET"])
+app.register_blueprint(alert_engine_bp)
+
 def health_check():
     return {"status": "Backend is running"}, 200
 app.register_blueprint(field_watch_bp)
@@ -296,24 +306,21 @@ scheduler.add_job(
     replace_existing=True,
 )
 
-# Load custom schedule from database if exists
+# Load all custom schedules from the database — one job per row, so several
+# custom times can coexist alongside the fixed cron above.
 try:
-    from services.supabase_service import get_sync_settings
-    settings = get_sync_settings()
-    if settings:
+    from services.supabase_service import get_sync_schedules
+    for row in get_sync_schedules():
+        hh, mm = str(row['schedule_time']).split(':')[:2]
         scheduler.add_job(
             run_sync_job,
-            CronTrigger(
-                hour=settings['schedule_hours'],
-                minute=settings['schedule_minute'],
-                timezone='Asia/Colombo'
-            ),
-            id='custom_sync',
+            CronTrigger(hour=int(hh), minute=int(mm), timezone='Asia/Colombo'),
+            id=f"custom_sync_{row['id']}",
             replace_existing=True
         )
-        print(f"Custom sync loaded: {settings['schedule_hours']}:{settings['schedule_minute']}")
+        print(f"Custom sync loaded: {hh}:{mm}")
 except Exception as e:
-    print(f'Could not load custom schedule: {e}')
+    print(f'Could not load custom schedules: {e}')
 
 # Hourly field-mismatch check (runs at :15)
 scheduler.add_job(
@@ -322,6 +329,62 @@ scheduler.add_job(
     id='field_mismatch_detect',
     replace_existing=True,
 )
+
+# Stand-in for the alert engine's status pass: recompute completed/overdue/pending
+# on assigned milestones so the dashboard + alert feed stay current. No emails.
+def run_status_recompute():
+    try:
+        from services.status_recompute import recompute_milestone_status
+        recompute_milestone_status()
+    except Exception as e:
+        print(f"[status_recompute] ERROR: {e}")
+
+scheduler.add_job(
+    run_status_recompute,
+    CronTrigger(minute='*/30', timezone='Asia/Colombo'),
+    id='status_recompute',
+    replace_existing=True,
+)
+
+# Field Integrity / Registry Watch — its own module: detects expected data fields
+# that are delayed / possibly renamed and emails its own admin (settings). Runs a
+# few minutes after the status pass so due dates are fresh.
+def run_field_watch():
+    try:
+        from services.field_watch import scan_field_alerts
+        scan_field_alerts()
+    except Exception as e:
+        print(f"[field_watch] ERROR: {e}")
+
+scheduler.add_job(
+    run_field_watch,
+    CronTrigger(minute='5,35', timezone='Asia/Colombo'),
+    id='field_watch_scan',
+
+# Runtime alert engine. Reads the milestone + alert-rule snapshots frozen onto
+# each shipment_milestones row, evaluates the combined check (including
+# multi-logic / custom milestones) and emails whichever rules are due.
+# alert_fire_log makes each pass idempotent, so running hourly is safe.
+def run_alert_engine_job():
+    try:
+        from services.alert_engine import run_alert_engine
+        result = run_alert_engine()
+        print(f"[alert_engine] evaluated={result.get('evaluated')} "
+              f"outstanding={result.get('outstanding')} sent={result.get('sent')} "
+              f"skipped={result.get('skipped')} stopped={result.get('stopped')} "
+              f"errors={len(result.get('errors', []))}")
+    except Exception as e:
+        print(f"[alert_engine] ERROR: {e}")
+
+scheduler.add_job(
+    run_alert_engine_job,
+    CronTrigger(minute=5, timezone='Asia/Colombo'),
+    id='alert_engine_run',
+    replace_existing=True,
+)
+app.config['SCHEDULER'] = scheduler
+app.config['RUN_SYNC_JOB'] = run_sync_job
+
 
 # Milestone status recompute every 30 minutes
 scheduler.add_job(

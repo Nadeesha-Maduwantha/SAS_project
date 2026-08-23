@@ -10,15 +10,17 @@ import { ShipmentPagination } from '@/components/shipments/ShipmentPagination'
 import { ShipmentFilter } from '@/components/shipments/ShipmentFilter'
 import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
 import ShipmentDetailModal from '@/components/shipments/ShipmentDetailModal'
+import EmailComposeModal from '@/components/EmailComposeModal'
+import { AlertData } from '@/components/AlertDetailsModal'
 import { ShipmentCard } from '@/components/shipments/ShipmentCard'
 import { ShipmentViewToggle, ShipmentView } from '@/components/shipments/ShipmentViewToggle'
 import { exportAllShipmentsPDF } from '@/lib/Utils/exportPDF'
 import { Shipment } from '@/types'
 import { useAuth } from '@/lib/hooks/useAuth'
 import {
-  TRANSPORT_MODE_OPTIONS,
+  buildModeOptions,
   TRANSPORT_MODE_STYLES,
-  CURRENT_STAGE_OPTIONS,
+  buildStageOptions,
   PICKUP_STATUS_STYLES,
   isDelayedShipment,
 } from '@/constants/shipment.constants'
@@ -36,18 +38,8 @@ const DEFAULT_FILTERS: Record<string, string> = {
 
 // filterGroups is outside component.
 
-const filterGroups = [
-  {
-    label: 'By Department',
-    key: 'transportMode',
-    options: TRANSPORT_MODE_OPTIONS,
-  },
-  {
-    label: 'By Stage',
-    key: 'currentStage',
-    options: CURRENT_STAGE_OPTIONS,
-  },
-]
+// filterGroups moved inside the component (as a useMemo) because the stage
+// options are now derived from the loaded shipments — see buildStageOptions.
 
 // Helpers 
 
@@ -59,6 +51,24 @@ function formatPickupDate(date: string | undefined): string {
 }
 
 //Component
+
+// Build the email-compose payload from a shipment row (used by "Take Action").
+function buildEmail(shipment: Shipment): AlertData {
+  const stage  = shipment.llmIdentifiedType ?? shipment.currentStage ?? 'Unknown'
+  const pickup = shipment.pickupDateStatus ?? '—'
+  const delayed = String(pickup).toLowerCase().includes('delay')
+  return {
+    id:            shipment.jobNumber ?? shipment.id,
+    shipment_id:   shipment.id,
+    client:        shipment.consigneeName ?? 'Customer',
+    priority:      delayed ? 'Critical' : 'Medium',
+    milestone:     String(stage),
+    milestoneIcon: null,
+    issue:         `Shipment ${shipment.jobNumber ?? shipment.id} — current stage "${stage}", pickup status "${pickup}".`,
+    delay:         shipment.delayDays ? `${shipment.delayDays} day${shipment.delayDays !== 1 ? 's' : ''}` : null,
+    status:        'Get Action',
+  }
+}
 
 export default function SalesUserShipmentsPage() {
   const router = useRouter()
@@ -102,6 +112,13 @@ export default function SalesUserShipmentsPage() {
   // Stats
   // isDelayedShipment() imported from constants — single source of
   // truth for delay logic.
+  // Stage options derived from the loaded data — dropdown always matches
+  // what actually exists in the DB. Memoized: rebuilt only when data changes.
+  const filterGroups = useMemo(() => [
+    { label: 'By Department', key: 'transportMode', options: buildModeOptions(shipments) },
+    { label: 'By Stage',      key: 'currentStage',  options: buildStageOptions(shipments) },
+  ], [shipments])
+
   const stats = useMemo(() => ({
     total:     shipments.length,
     active:    shipments.filter((s) =>
@@ -194,11 +211,11 @@ export default function SalesUserShipmentsPage() {
 
   //Render
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-[1400px]">
 
-      {/* Header */}
+      {/* Header — title matches the dashboard's admin-header style */}
       <div className="mb-5">
-        <h1 className="text-xl font-semibold text-gray-900">Assigned Shipments</h1>
+        <h1 className="text-[18px] font-black text-slate-900">Assigned Shipments</h1>
         {/* FIXED: name now comes from useAuth() instead of hardcoded SALES_USER_NAME */}
         <p className="text-sm text-gray-500 mt-0.5">
           Manage and track your client shipments — {name}
@@ -281,7 +298,7 @@ export default function SalesUserShipmentsPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <tr className="border-b border-gray-200 bg-gray-50 text-[11px] font-semibold [&>th]:font-semibold text-gray-500 uppercase tracking-[0.06em]">
                   <th className="text-left px-5 py-3">Shipment ID</th>
                   <th className="text-left px-5 py-3">Client Name</th>
                   <th className="text-left px-5 py-3">Status</th>
@@ -291,7 +308,7 @@ export default function SalesUserShipmentsPage() {
                   <th className="text-left px-5 py-3">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-100">
                 {paginated.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-5 py-10 text-center text-sm text-gray-400">
@@ -323,7 +340,7 @@ export default function SalesUserShipmentsPage() {
                             <Truck className={`w-4 h-4 ${modeStyle.text}`} />
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-gray-900">#{shipment.cargowiseId}</p>
+                            <p className="text-sm font-mono font-bold text-gray-900">{shipment.cargowiseId}</p>
                             {shipment.branch && (
                               <p className="text-xs text-gray-400 mt-0.5">Branch: {shipment.branch}</p>
                             )}

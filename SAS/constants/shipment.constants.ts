@@ -7,11 +7,29 @@ export type { FilterGroup }
 
 //Transport Mode 
 // FilterGroup/FilterOption imported from ShipmentFilter — single source of truth for the type.
-export const TRANSPORT_MODE_OPTIONS: FilterGroup['options'] = [
-  { label: 'Air Freight', value: 'AIR' },
-  { label: 'Sea Freight', value: 'SEA' },
-  { label: 'Road Freight', value: 'ROAD' },
-]
+// Display labels for known modes. Kept as a lookup (not a fixed option list)
+// so an unknown mode from CargoWise still renders — see buildModeOptions.
+export const TRANSPORT_MODE_LABELS: Record<string, string> = {
+  AIR:  'Air Freight',
+  SEA:  'Sea Freight',
+  ROAD: 'Road Freight',
+  RAIL: 'Rail Freight',
+}
+
+// Department (transport mode) filter options, derived from the loaded
+// shipments so the dropdown never offers a mode that returns no rows.
+export function buildModeOptions(
+  shipments: { transportMode?: string }[]
+): FilterGroup['options'] {
+  const modes = new Set<string>()
+  for (const s of shipments) {
+    if (s.transportMode) modes.add(s.transportMode)
+  }
+  return [...modes].sort().map((v) => ({
+    label: TRANSPORT_MODE_LABELS[v] ?? v,
+    value: v,
+  }))
+}
 
 export const TRANSPORT_MODE_STYLES: Record<TransportMode | string, { bg: string; text: string }> = {
   AIR:  { bg: 'bg-yellow-100', text: 'text-yellow-800' },
@@ -19,17 +37,26 @@ export const TRANSPORT_MODE_STYLES: Record<TransportMode | string, { bg: string;
   ROAD: { bg: 'bg-green-50',   text: 'text-green-800'  },
 }
 
-// Current Stage Filter Options 
-// These match the actual llmIdentifiedType values returned by CargoWise via Flask.
-export const CURRENT_STAGE_OPTIONS: FilterGroup['options'] = [
-  { label: 'Delivered',                    value: 'Delivered'                    },
-  { label: 'Booking Approval',             value: 'Booking Approval'             },
-  { label: 'Shipment Approval',            value: 'Shipment Approval'            },
-  { label: 'Delivery Date',                value: 'Delivery Date'                },
-  { label: 'Delivered to CFS',             value: 'Delivered to CFS'             },
-  { label: 'Import Delivery Instructions', value: 'Import Delivery Instructions' },
-  { label: 'Delayed Shipments',            value: 'Delayed'                      },
-]
+// Current Stage Filter Options
+// Derived dynamically from the loaded shipments instead of a hardcoded list,
+// so the dropdown always matches the llmIdentifiedType values that actually
+// exist in the DB — CargoWise/LLM classifications change over time and a
+// static list goes stale (options returning empty results, real stages
+// missing). 'Delayed Shipments' is a synthetic option handled by the pages
+// via isDelayedShipment(), so it is always appended.
+export function buildStageOptions(
+  shipments: { llmIdentifiedType?: string }[]
+): FilterGroup['options'] {
+  const stages = new Set<string>()
+  for (const s of shipments) {
+    const v = s.llmIdentifiedType
+    if (v && v !== 'Delayed') stages.add(v)
+  }
+  return [
+    ...[...stages].sort().map((v) => ({ label: v, value: v })),
+    { label: 'Delayed Shipments', value: 'Delayed' },
+  ]
+}
 
 //Pickup Date Status Styles 
 export const PICKUP_STATUS_STYLES: Record<string, { bg: string; text: string }> = {

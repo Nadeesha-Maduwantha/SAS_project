@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import {
-    AlertCircle, Clock, CheckCircle2, Download, Search, Eye, Mail,
+    AlertCircle, Clock, CheckCircle2, Search, Eye, Mail,
     MoreHorizontal, Anchor, Truck, Warehouse, Plane, Navigation,
     LayoutList, LayoutGrid, ChevronLeft, ChevronRight,
 } from 'lucide-react';
@@ -25,6 +25,9 @@ type Alert = {
     delay: string;
     delayColor: string;
     status: 'Get Action' | 'Action Taken' | 'Resolved';
+    dueDate: string | null;
+    alertStatus: string;
+    isCritical: boolean;
     createdAt: Date;
 }
 
@@ -79,6 +82,9 @@ function mapRow(row: SupabaseRow, idx: number): Alert {
         status: (row.status === 'Action Taken' || row.status === 'Resolved' || row.status === 'Get Action')
             ? row.status
             : 'Get Action',
+        dueDate: row.due_date,
+        alertStatus: row.due_date && !row.completed_date ? 'overdue' : row.status,
+        isCritical: row.is_critical,
         createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     };
 }
@@ -98,6 +104,9 @@ function toAlertData(alert: Alert): AlertData {
         delay: alert.delay,
         delayColor: alert.delayColor,
         status: alert.status,
+        dueDate: alert.dueDate,
+        alertStatus: alert.alertStatus,
+        isCritical: alert.isCritical,
         createdAt: alert.createdAt,
     };
 }
@@ -183,7 +192,6 @@ export default function AlertDashboardPage() {
     const [priorityFilter, setPriorityFilter] = useState<string>('All Priorities');
     const [statusFilter, setStatusFilter] = useState<string>('All Statuses');
     const [search, setSearch] = useState<string>('');
-    const [selected, setSelected] = useState<string[]>([]);
     const [alerts, setAlerts] = useState<Alert[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -232,10 +240,6 @@ export default function AlertDashboardPage() {
         return matchPriority && matchStatus && matchSearch;
     });
 
-    const toggleRow = (id: string) => {
-        setSelected((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
-    };
-
     const highPriority = alerts.filter(a => a.priority === 'Critical').length;
     const pending      = alerts.filter(a => a.status === 'Get Action').length;
     const resolved     = alerts.filter(a => a.status === 'Resolved').length;
@@ -270,9 +274,6 @@ export default function AlertDashboardPage() {
                     <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1a1a2e', letterSpacing: '-0.4px' }}>Alert Dashboard</h1>
                     <p style={{ fontSize: '13.5px', color: '#6b7280', marginTop: '4px' }}>Overview of shipment delays and critical issues requiring attention.</p>
                 </div>
-                <button style={{ display: 'flex', alignItems: 'center', gap: '7px', background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 500, color: '#374151', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-                    <Download size={14} /> Export Report
-                </button>
             </div>
 
             {/* Stats cards */}
@@ -329,7 +330,6 @@ export default function AlertDashboardPage() {
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                                 <tr style={{ background: '#f9fafb', borderBottom: '1px solid #f0f0f0' }}>
-                                    <th style={thStyle}><input type="checkbox" /></th>
                                     <th style={thStyle}>SHIPMENT ID</th>
                                     <th style={thStyle}>ASSIGNED TO</th>
                                     <th style={thStyle}>PRIORITY</th>
@@ -343,14 +343,11 @@ export default function AlertDashboardPage() {
                             <tbody>
                                 {filtered.map((alert, idx) => (
                                     <tr key={alert.id}
-                                        style={{ borderBottom: idx < filtered.length - 1 ? '1px solid #f5f5f5' : 'none', background: selected.includes(alert.id) ? '#f0f4ff' : 'white', transition: 'background 0.15s', cursor: 'pointer' }}
+                                        style={{ borderBottom: idx < filtered.length - 1 ? '1px solid #f5f5f5' : 'none', background: 'white', transition: 'background 0.15s', cursor: 'pointer' }}
                                         onClick={() => openDetails(alert)}
-                                        onMouseEnter={(e) => { if (!selected.includes(alert.id)) e.currentTarget.style.background = '#fafbff'; }}
-                                        onMouseLeave={(e) => { if (!selected.includes(alert.id)) e.currentTarget.style.background = 'white'; }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.background = '#fafbff'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}
                                     >
-                                        <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                                            <input type="checkbox" checked={selected.includes(alert.id)} onChange={() => toggleRow(alert.id)} />
-                                        </td>
                                         <td style={{ ...tdStyle, fontWeight: 600, fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>{alert.shipment_id}</td>
                                         <td style={tdStyle}><ClientAvatar initial={alert.clientInitial} color={alert.clientColor} name={alert.client} /></td>
                                         <td style={tdStyle}><PriorityBadge level={alert.priority} /></td>

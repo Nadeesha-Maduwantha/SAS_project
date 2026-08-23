@@ -62,6 +62,19 @@ def _compute_due_date(cfg, shipment):
     return d.isoformat() if d else None
 
 
+def _identity(row):
+    """Stable identity for matching a milestone across a template re-assignment.
+    Works for both existing DB rows and freshly-built snapshot rows."""
+    lib = row.get('milestone_lib_id')
+    if lib:
+        return f"lib:{lib}"
+    snap = row.get('milestone_snapshot') or {}
+    key = snap.get('milestone_key')
+    if key:
+        return f"key:{key}"
+    return f"name:{(row.get('name') or '').strip().lower()}"
+
+
 def _snapshot_row(shipment, template_id, cfg, rules, seq, milestone_lib_id):
     """One shipment_milestones row with the milestone + its rules frozen in."""
     clean_cfg = {k: cfg.get(k) for k in _CONFIG_KEYS}
@@ -74,6 +87,11 @@ def _snapshot_row(shipment, template_id, cfg, rules, seq, milestone_lib_id):
         'status':               'pending',
         'due_date':             _compute_due_date(cfg, shipment),
         'automated':            False,
+        # Responsible person comes straight from CargoWise (created_by). The
+        # existing "is this a real user account?" check runs off assigned_email;
+        # if it isn't a known user, the admin is alerted (already built).
+        'assigned_to':          shipment.get('created_by_name'),
+        'assigned_email':       shipment.get('created_by_email'),
         'milestone_lib_id':     milestone_lib_id,
         'milestone_type':       cfg.get('milestone_type'),
         'primary_field':        cfg.get('primary_field'),
@@ -393,23 +411,20 @@ def preview_assignment(template_id):
         # ── Build the shipments query ─────────────────────────
         query = supabase.table('shipments').select(
             'id, job_number, consignee_name, transport_mode, '
-            'origin_country_code, destination_country_code, branch'
+            'branch, st_description, current_stage'
         )
- 
-        if assign_type == 'air_import':
-            # AIR, origin is NOT Sri Lanka → arriving into LK
-            query = query.eq('transport_mode', 'AIR').neq('origin_country_code', 'LK')
- 
-        elif assign_type == 'air_export':
-            # AIR, origin IS Sri Lanka → departing from LK
-            query = query.eq('transport_mode', 'AIR').eq('origin_country_code', 'LK')
- 
-        elif assign_type == 'sea_import':
-            query = query.eq('transport_mode', 'SEA').neq('origin_country_code', 'LK')
- 
-        elif assign_type == 'sea_export':
-            query = query.eq('transport_mode', 'SEA').eq('origin_country_code', 'LK')
- 
+
+        # Direction (import/export) comes from the CargoWise stage text
+        # (e.g. "Import Delivery Instructions"), NOT from country codes — those
+        # are null on most records, and the same branch handles both directions.
+        _MODE = {'air_import': 'air', 'air_export': 'air', 'sea_import': 'sea', 'sea_export': 'sea'}
+        _DIR  = {'air_import': 'import', 'air_export': 'export', 'sea_import': 'import', 'sea_export': 'export'}
+
+        if assign_type in _MODE:
+            query = (query
+                     .ilike('transport_mode', _MODE[assign_type])
+                     .ilike('st_description', f"%{_DIR[assign_type]}%"))
+
         elif assign_type == 'by_client':
             if not consignee_name:
                 return jsonify({'error': 'consignee_name is required for by_client'}), 400
@@ -503,7 +518,7 @@ def assign_template_to_shipments(template_id):
             # Check for existing milestones on this shipment
             existing = (
                 supabase.table('shipment_milestones')
-                .select('id')
+                .select('id, name, milestone_lib_id, status, completed_date, due_date, milestone_snapshot')
                 .eq('shipment_id', shipment_id)
                 .execute()
             )
@@ -538,6 +553,22 @@ def assign_template_to_shipments(template_id):
                 _snapshot_row(shipment, template_id, cfg, rules, seq, lib_id)
                 for seq, (cfg, rules, lib_id) in enumerate(milestone_specs)
             ]
+
+            # Preserve prior progress on Replace: a milestone that already existed
+            # (matched by identity) keeps its status / completed_date / due_date, so
+            # a previously overdue, delayed or completed milestone is NOT reset to a
+            # fresh 'pending' just because the template was re-assigned.
+            if conflict_strategy == 'replace' and existing.data:
+                prev = {_identity(m): m for m in existing.data}
+                for row in new_rows:
+                    old = prev.get(_identity(row))
+                    if old:
+                        if old.get('status'):
+                            row['status'] = old['status']
+                        row['completed_date'] = old.get('completed_date')
+                        if old.get('due_date'):
+                            row['due_date'] = old['due_date']
+
             if new_rows:
                 supabase.table('shipment_milestones').insert(new_rows).execute()
             assigned += 1

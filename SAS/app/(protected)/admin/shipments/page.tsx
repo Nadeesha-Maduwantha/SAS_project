@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Package, Clock, CheckCircle, AlertTriangle } from 'lucide-react'
 import { getAllShipments, getShipmentStats } from '@/lib/services/shipment.service'
@@ -12,31 +12,21 @@ import { ShipmentFilter } from '@/components/shipments/ShipmentFilter'
 import { exportAllShipmentsPDF } from '@/lib/Utils/exportPDF'
 import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
 import ShipmentDetailModal from '@/components/shipments/ShipmentDetailModal'
+import EmailComposeModal from '@/components/EmailComposeModal'
+import { AlertData } from '@/components/AlertDetailsModal'
 import { ShipmentCard } from '@/components/shipments/ShipmentCard'
 import { ShipmentViewToggle, ShipmentView } from '@/components/shipments/ShipmentViewToggle'
 import {
-  TRANSPORT_MODE_OPTIONS,
+  buildModeOptions,
   TRANSPORT_MODE_STYLES,
-  CURRENT_STAGE_OPTIONS,
+  buildStageOptions,
   PICKUP_STATUS_STYLES,
   isDelayedShipment,
 } from '@/constants/shipment.constants'
 
 //  Constants 
-// filterGroups was defined inside the component body and recreated on
-// every render. Moved outside since it has no dependency on state or props.
-const filterGroups = [
-  {
-    label: 'By Department',
-    key: 'transportMode',
-    options: TRANSPORT_MODE_OPTIONS,
-  },
-  {
-    label: 'By Current Stage',
-    key: 'currentStage',
-    options: CURRENT_STAGE_OPTIONS,
-  },
-]
+// filterGroups moved inside the component (as a useMemo) because the stage
+// options are now derived from the loaded shipments — see buildStageOptions.
 
 const PAGE_SIZE = 10
 
@@ -47,15 +37,41 @@ const DEFAULT_FILTERS: Record<string, string> = {
 
 // Component 
 
+// Build the email-compose payload from a shipment row (used by "Take Action").
+function buildEmail(shipment: Shipment): AlertData {
+  const stage  = shipment.llmIdentifiedType ?? shipment.currentStage ?? 'Unknown'
+  const pickup = shipment.pickupDateStatus ?? '—'
+  const delayed = String(pickup).toLowerCase().includes('delay')
+  return {
+    id:            shipment.jobNumber ?? shipment.id,
+    shipment_id:   shipment.id,
+    client:        shipment.consigneeName ?? 'Customer',
+    priority:      delayed ? 'Critical' : 'Medium',
+    milestone:     String(stage),
+    milestoneIcon: null,
+    issue:         `Shipment ${shipment.jobNumber ?? shipment.id} — current stage "${stage}", pickup status "${pickup}".`,
+    delay:         shipment.delayDays ? `${shipment.delayDays} day${shipment.delayDays !== 1 ? 's' : ''}` : null,
+    status:        'Get Action',
+  }
+}
+
 export default function AllShipmentsPage() {
   const router = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
   const [shipments, setShipments] = useState<Shipment[]>([])
+
+  // Stage options derived from the loaded data — dropdown always matches
+  // what actually exists in the DB. Memoized: rebuilt only when data changes.
+  const filterGroups = useMemo(() => [
+    { label: 'By Department',    key: 'transportMode', options: buildModeOptions(shipments) },
+    { label: 'By Current Stage', key: 'currentStage',  options: buildStageOptions(shipments) },
+  ], [shipments])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>(DEFAULT_FILTERS)
   const [searchQuery, setSearchQuery] = useState('')
   const [stats, setStats] = useState<ShipmentStats>({ total: 0, pending: 0, delivered: 0, delayed: 0 })
+  const [emailData, setEmailData] = useState<AlertData | null>(null)
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null)
   const [view, setView] = useState<ShipmentView>('table')
 
@@ -130,7 +146,7 @@ export default function AllShipmentsPage() {
       <button
         onClick={(e) => {
           e.stopPropagation()
-          router.push(`/admin/shipments/${shipment.id}/action`)
+          setEmailData(buildEmail(shipment))
         }}
         className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700"
       >
@@ -208,7 +224,7 @@ export default function AllShipmentsPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-y border-gray-100 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <tr className="border-y border-gray-200 bg-gray-50 text-[11px] font-semibold [&>th]:font-semibold text-gray-500 uppercase tracking-[0.06em]">
                   <th className="text-left px-5 py-3">Shipment ID</th>
                   <th className="text-left px-5 py-3">Consignee</th>
                   <th className="text-left px-5 py-3">Current Stage</th>
@@ -217,7 +233,7 @@ export default function AllShipmentsPage() {
                   <th className="text-left px-5 py-3">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-100">
                 {paginated.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-5 py-10 text-center text-sm text-gray-400">
@@ -238,7 +254,7 @@ export default function AllShipmentsPage() {
                           <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
                         )}
                         <div>
-                          <p className="text-sm font-medium text-gray-900">#{shipment.cargowiseId}</p>
+                          <p className="text-sm font-mono font-bold text-gray-900">{shipment.cargowiseId}</p>
                           {shipment.branch && (
                             <p className="text-xs text-gray-400 mt-0.5">Branch: {shipment.branch}</p>
                           )}
@@ -336,6 +352,12 @@ export default function AllShipmentsPage() {
         isOpen={!!selectedShipment}
         onClose={() => setSelectedShipment(null)}
         shipment={selectedShipment}
+      />
+
+      <EmailComposeModal
+        isOpen={!!emailData}
+        onClose={() => setEmailData(null)}
+        alertData={emailData}
       />
     </div>
   )
