@@ -3,6 +3,7 @@ from services.supabase_service import get_supabase
 from datetime import datetime
 import traceback
 from utils.audit_logger import log_audit_action
+from utils.access_logger import log_access_event
 from utils.auth_helper import get_current_user  # Used to get the user who is doing the edit
 
 bp = Blueprint('user_edit', __name__, url_prefix='/api/users')
@@ -84,7 +85,7 @@ def update_user(user_id):
         if update_data:
             update_data['updated_at'] = datetime.now().isoformat()
             supabase.table('profiles').update(update_data).eq('id', user_id).execute()
-            
+
             # --- ADD THIS: LOG TO AUDIT TRAIL ---
             if requester_id:
                 # action_type_id=2 -> UPDATE, entity_type_id=2 -> User Profile
@@ -94,9 +95,11 @@ def update_user(user_id):
                     action_type_id=2,
                     entity_type_id=2,
                     entity_id=user_id,
-                    new_value=update_data, 
+                    new_value=update_data,
                     description=f"Updated user profile for ID: {user_id}"
                 )
+
+            log_access_event('Update', status='Success', email_attempted=data.get('email'), user_id=user_id)
 
         return jsonify({'message': 'User updated successfully'}), 200
 
@@ -171,7 +174,11 @@ def delete_user(user_id):
             )
         except Exception as audit_err:
             print(f"Warning - Could not log to audit trail: {str(audit_err)}")
-        
+
+        # No user_id here — the profile row was just deleted, and access_logs.user_id
+        # references profiles(id), so email_attempted is the only reliable identifier left.
+        log_access_event('Delete', status='Success', email_attempted=target_email)
+
         return jsonify({
             'message': 'User deleted successfully',
             'deleted_user': {

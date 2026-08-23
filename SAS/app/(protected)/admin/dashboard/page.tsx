@@ -1,10 +1,12 @@
 "use client";
+import { useState, useEffect } from 'react';
 import AdminHeader from '@/components/AdminUser/AdminHeader';
 import DashboardMetricCards from '@/components/AdminUser/DashboardMetricCards';
 import AlertFeedTable from '@/components/shared/AlertFeedTable';
 import PinnedTableStatCards from '@/components/shared/PinnedTableStatCard';
 import ProgressLogs from '@/components/AdminUser/ProgressLogs';
 import SystemTechnicalLogs from '@/components/AdminUser/SystemTechnicalLogs';
+import ShipmentFeed, { type ShipmentFeedItem } from '@/components/AdminUser/ShipmentFeed';
 import '@/styles/AdminStyles/AdminLayout.css';
 
 import SyncSummaryCard from '@/components/AdminUser/SyncSummaryCard';

@@ -1,5 +1,7 @@
 from flask import Blueprint, request, jsonify
 from services.supabase_client import supabase
+from utils.audit_logger import log_audit_action
+from utils.auth_helper import get_current_user
 
 shipments_bp = Blueprint('shipments', __name__)
 
@@ -409,6 +411,19 @@ def assign_template(shipment_id, template_id):
             })
 
         supabase.table('shipment_milestones').insert(rows).execute()
+
+        requester_id, _ = get_current_user()
+        if requester_id:
+            # action_type_id=2 -> UPDATE, entity_type_id=1 -> Shipment
+            # (matches public.action_types / public.entity_types)
+            log_audit_action(
+                user_id=requester_id,
+                action_type_id=2,
+                entity_type_id=1,
+                entity_id=shipment_id,
+                description=f"Assigned template {template_id} to shipment {shipment_id}",
+            )
+
         return jsonify({"message": "Template assigned successfully"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

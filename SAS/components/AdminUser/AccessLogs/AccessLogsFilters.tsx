@@ -55,12 +55,9 @@ export default function AccessLogsFilters({
             <option value="all">All Actions</option>
             <option value="login">Login</option>
             <option value="logout">Logout</option>
-            <option value="view">View</option>
             <option value="create">Create</option>
             <option value="update">Update</option>
             <option value="delete">Delete</option>
-            <option value="export">Export</option>
-            <option value="modify">Modify</option>
           </select>
         </div>
 

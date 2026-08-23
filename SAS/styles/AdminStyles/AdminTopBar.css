@@ -11,9 +11,7 @@
   top:              0;
   z-index:          102;
   height:           57px;
-  background:       rgba(255, 255, 255, 0.92);
-  backdrop-filter:  blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background:       #FFFFFF;
   border-bottom:    1px solid #E2E8F0;
   box-shadow:       0 1px 3px rgba(15, 23, 42, 0.04),
                     0 0 0 1px rgba(15, 23, 42, 0.02);
@@ -21,7 +19,7 @@
 }
 
 html.dark .admin-topbar {
-  background:    rgba(15, 23, 42, 0.92);
+  background:    #0F172A;
   border-bottom: 1px solid #1E293B;
   box-shadow:    0 1px 3px rgba(0, 0, 0, 0.2),
                  0 0 0 1px rgba(255, 255, 255, 0.03);

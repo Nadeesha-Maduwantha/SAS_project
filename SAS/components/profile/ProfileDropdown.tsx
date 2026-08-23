@@ -67,7 +67,19 @@ export default function ProfileDropdown() {
     fetchProfile();
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      try {
+        await fetch('http://localhost:5000/api/auth/logout', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch (err) {
+        console.error('Logout request failed:', err);
+      }
+    }
+
     localStorage.removeItem('access_token');
     localStorage.removeItem('user_role');
     document.cookie = 'access_token=; path=/; max-age=0';

@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify
 from services.supabase_service import get_supabase
 from services.security_settings_service import get_login_security_settings
 from utils.auth_helper import require_auth, get_current_user
+from utils.access_logger import log_access_event
 from datetime import datetime, timedelta, timezone
 import os
 
@@ -246,6 +247,20 @@ def login():
 def logout():
     try:
         supabase = get_supabase()
+
+        # Identify the caller (if a valid token is present) so the logout
+        # can be recorded in access_logs, same as Login.
+        user_id, _ = get_current_user()
+        if user_id:
+            email = None
+            try:
+                profile = supabase.table('profiles').select('email').eq('id', user_id).execute()
+                if profile.data:
+                    email = profile.data[0].get('email')
+            except Exception:
+                pass
+            log_access_event('Logout', status='Success', email_attempted=email, user_id=user_id)
+
         supabase.auth.sign_out()
         return jsonify({'message': 'Logout successful'}), 200
 

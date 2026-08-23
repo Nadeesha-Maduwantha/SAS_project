@@ -9,6 +9,7 @@ sync_settings.mismatch_alert_email (read by field_registry.notify_admins).
 from flask import Blueprint, request, jsonify
 from services.supabase_client import supabase
 from utils.auth_helper import require_auth, get_current_user
+from utils.audit_logger import log_audit_action
 
 system_settings_bp = Blueprint('system_settings', __name__)
 
@@ -49,7 +50,7 @@ def get_mismatch_setting():
 @require_auth
 def set_mismatch_setting():
     try:
-        _, role = get_current_user()
+        requester_id, role = get_current_user()
         if not _is_admin(role):
             return jsonify({'error': 'Admin access required'}), 403
 
@@ -65,6 +66,17 @@ def set_mismatch_setting():
             supabase.table('sync_settings').update(payload).eq('id', row['id']).execute()
         else:
             supabase.table('sync_settings').insert(payload).execute()
+
+        # action_type_id=2 -> UPDATE, entity_type_id=5 -> System
+        # (matches public.action_types / public.entity_types)
+        log_audit_action(
+            user_id=requester_id,
+            action_type_id=2,
+            entity_type_id=5,
+            entity_id='mismatch_alert_email',
+            new_value=payload,
+            description='Updated milestone field-mismatch alert setting',
+        )
 
         return jsonify({'message': 'Saved', 'mismatch_alert_email': email}), 200
     except Exception as e:
@@ -141,7 +153,7 @@ def send_test_email():
 @require_auth
 def set_field_watch_setting():
     try:
-        _, role = get_current_user()
+        requester_id, role = get_current_user()
         if not _is_admin(role):
             return jsonify({'error': 'Admin access required'}), 403
 
@@ -157,6 +169,17 @@ def set_field_watch_setting():
             supabase.table('sync_settings').update(payload).eq('id', row['id']).execute()
         else:
             supabase.table('sync_settings').insert(payload).execute()
+
+        # action_type_id=2 -> UPDATE, entity_type_id=5 -> System
+        # (matches public.action_types / public.entity_types)
+        log_audit_action(
+            user_id=requester_id,
+            action_type_id=2,
+            entity_type_id=5,
+            entity_id='field_watch_alert_email',
+            new_value=payload,
+            description='Updated field-watch alert setting',
+        )
 
         return jsonify({'message': 'Saved', 'field_watch_alert_email': email}), 200
     except Exception as e:
