@@ -31,6 +31,10 @@ CREATE TABLE IF NOT EXISTS alert_fire_log (
     UNIQUE (shipment_milestone_id, rule_index, occurrence)
 );
 
+-- Keep upgrades safe when the table was created by an earlier version.
+ALTER TABLE alert_fire_log
+  ADD COLUMN IF NOT EXISTS condition text;
+
 CREATE INDEX IF NOT EXISTS alert_fire_log_milestone_idx
   ON alert_fire_log (shipment_milestone_id);
 CREATE INDEX IF NOT EXISTS alert_fire_log_shipment_idx
