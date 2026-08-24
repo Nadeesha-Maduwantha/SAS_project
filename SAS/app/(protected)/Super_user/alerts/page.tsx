@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
     AlertCircle, Clock, CheckCircle2, Search, Eye, Mail,
-    MoreHorizontal, Anchor, Truck, Warehouse, Plane, Navigation,
+    Anchor, Truck, Warehouse, Plane, Navigation,
     LayoutList, LayoutGrid, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import AlertDetailsModal, { AlertData } from '@/components/AlertDetailsModal';
@@ -367,7 +367,6 @@ export default function AlertDashboardPage() {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 <ActionBtn icon={<Eye size={14} />}  title="View"  onClick={() => openDetails(alert)} />
                                                 <ActionBtn icon={<Mail size={14} />} title="Email" onClick={() => openCompose(toAlertData(alert))} />
-                                                <ActionBtn icon={<MoreHorizontal size={14} />} title="More" />
                                             </div>
                                         </td>
                                     </tr>
@@ -393,7 +392,7 @@ export default function AlertDashboardPage() {
                                 <div style={{ marginTop: '12px', fontSize: '12.5px', color: '#6b7280', lineHeight: 1.5 }}>{alert.issue}</div>
                                 <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <StatusBadge status={alert.status} />
-                                    <span style={{ fontWeight: 700, fontSize: '13px', color: alert.delayColor }}>⏱ {alert.delay}</span>
+                                    <span style={{ fontWeight: 700, fontSize: '13px', color: alert.delayColor }}>{alert.delay}</span>
                                 </div>
                             </div>
                         ))}

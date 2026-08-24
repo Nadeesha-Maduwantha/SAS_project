@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
     AlertCircle, Clock, CheckCircle2, Search, Eye, Mail,
-    MoreHorizontal, Anchor, Truck, Warehouse, Plane, Navigation,
+    Anchor, Truck, Warehouse, Plane, Navigation,
     LayoutList, LayoutGrid, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import AlertDetailsModal, { AlertData } from '@/components/AlertDetailsModal';
@@ -195,7 +195,6 @@ export default function AlertDashboardPage() {
     const [priorityFilter, setPriorityFilter] = useState<string>('All Priorities');
     const [statusFilter, setStatusFilter] = useState<string>('All Statuses');
     const [search, setSearch] = useState<string>('');
-    const [selected, setSelected] = useState<string[]>([]);
     const [alerts, setAlerts] = useState<Alert[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -242,10 +241,6 @@ export default function AlertDashboardPage() {
             a.milestone.toLowerCase().includes(search.toLowerCase());
         return matchPriority && matchStatus && matchSearch;
     });
-
-    const toggleRow = (id: string) => {
-        setSelected((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
-    };
 
     const highPriority = alerts.filter(a => a.priority === 'Critical').length;
     const pending      = alerts.filter(a => a.status === 'Get Action').length;
@@ -337,7 +332,6 @@ export default function AlertDashboardPage() {
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                                 <tr style={{ background: '#f9fafb', borderBottom: '1px solid #f0f0f0' }}>
-                                    <th style={thStyle}><input type="checkbox" /></th>
                                     <th style={thStyle}>SHIPMENT ID</th>
                                     <th style={thStyle}>ASSIGNED TO</th>
                                     <th style={thStyle}>PRIORITY</th>
@@ -351,14 +345,11 @@ export default function AlertDashboardPage() {
                             <tbody>
                                 {filtered.map((alert, idx) => (
                                     <tr key={alert.id}
-                                        style={{ borderBottom: idx < filtered.length - 1 ? '1px solid #f5f5f5' : 'none', background: selected.includes(alert.id) ? '#f0f4ff' : 'white', transition: 'background 0.15s', cursor: 'pointer' }}
+                                        style={{ borderBottom: idx < filtered.length - 1 ? '1px solid #f5f5f5' : 'none', background: 'white', transition: 'background 0.15s', cursor: 'pointer' }}
                                         onClick={() => openDetails(alert)}
-                                        onMouseEnter={(e) => { if (!selected.includes(alert.id)) e.currentTarget.style.background = '#fafbff'; }}
-                                        onMouseLeave={(e) => { if (!selected.includes(alert.id)) e.currentTarget.style.background = 'white'; }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.background = '#fafbff'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}
                                     >
-                                        <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                                            <input type="checkbox" checked={selected.includes(alert.id)} onChange={() => toggleRow(alert.id)} />
-                                        </td>
                                         <td style={{ ...tdStyle, fontWeight: 600, fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>{alert.shipment_id}</td>
                                         <td style={tdStyle}><ClientAvatar initial={alert.clientInitial} color={alert.clientColor} name={alert.client} /></td>
                                         <td style={tdStyle}><PriorityBadge level={alert.priority} /></td>
@@ -376,7 +367,6 @@ export default function AlertDashboardPage() {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 <ActionBtn icon={<Eye size={14} />}  title="View"  onClick={() => openDetails(alert)} />
                                                 <ActionBtn icon={<Mail size={14} />} title="Email" onClick={() => openCompose(toAlertData(alert))} />
-                                                <ActionBtn icon={<MoreHorizontal size={14} />} title="More" />
                                             </div>
                                         </td>
                                     </tr>
@@ -402,7 +392,11 @@ export default function AlertDashboardPage() {
                                 <div style={{ marginTop: '12px', fontSize: '12.5px', color: '#6b7280', lineHeight: 1.5 }}>{alert.issue}</div>
                                 <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <StatusBadge status={alert.status} />
-                                    <span style={{ fontWeight: 700, fontSize: '13px', color: alert.delayColor }}>⏱ {alert.delay}</span>
+                                    <span style={{ fontWeight: 700, fontSize: '13px', color: alert.delayColor }}>{alert.delay}</span>
+                                </div>
+                                <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '6px', borderTop: '1px solid #f0f0f0', paddingTop: '12px' }} onClick={(e) => e.stopPropagation()}>
+                                    <ActionBtn icon={<Eye size={14} />}  title="View"  onClick={() => openDetails(alert)} />
+                                    <ActionBtn icon={<Mail size={14} />} title="Email" onClick={() => openCompose(toAlertData(alert))} />
                                 </div>
                             </div>
                         ))}

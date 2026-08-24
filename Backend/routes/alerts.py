@@ -1,15 +1,29 @@
 from flask import Blueprint, jsonify, request
-from services.supabase_client import supabase
+from services.supabase_service import get_supabase
 from datetime import datetime, timezone
+import time
 
 alerts_bp = Blueprint('alerts', __name__)
 
 ALLOWED_STATUS = {'Get Action', 'Action Taken', 'Resolved'}
+def _get_shipments(supabase, shipment_ids, fields):
+    for attempt in range(2):
+        try:
+            query_client = get_supabase() if attempt else supabase
+            response = query_client.table('shipments').select(fields).execute()
+            break
+        except Exception:
+            if attempt == 1:
+                raise
+            time.sleep(0.2)
+    wanted = set(shipment_ids)
+    return [shipment for shipment in (response.data or []) if shipment.get('id') in wanted]
 
 
 @alerts_bp.route('/api/alerts', methods=['GET'])
 def get_alerts():
     try:
+        supabase = get_supabase()
         sales_email = (request.args.get('email') or '').strip().lower()
 
         response = (
@@ -25,14 +39,9 @@ def get_alerts():
         shipment_ids = list({r['shipment_id'] for r in rows if r.get('shipment_id')})
         sales_email_by_shipment = {}
         if shipment_ids:
-            shipments_res = (
-                supabase.table('shipments')
-                .select('id, sales_user_email')
-                .in_('id', shipment_ids)
-                .execute()
-            )
             sales_email_by_shipment = {
-                s['id']: (s.get('sales_user_email') or '') for s in (shipments_res.data or [])
+                s['id']: (s.get('sales_user_email') or '')
+                for s in _get_shipments(supabase, shipment_ids, 'id, sales_user_email')
             }
 
         for r in rows:
@@ -49,6 +58,7 @@ def get_alerts():
 @alerts_bp.route('/api/alerts/<shipment_id>/status', methods=['PATCH'])
 def update_alert_status(shipment_id):
     try:
+        supabase = get_supabase()
         payload = request.get_json(silent=True) or {}
         new_status = payload.get('status')
 
@@ -69,6 +79,7 @@ def update_alert_status(shipment_id):
 @alerts_bp.route('/api/alerts/active', methods=['GET'])
 def get_active_alerts():
     try:
+        supabase = get_supabase()
         # Step 1: Get all overdue milestones
         milestones_res = (
             supabase.table('shipment_milestones')
@@ -90,15 +101,12 @@ def get_active_alerts():
         shipment_ids = list({m['shipment_id'] for m in milestones})
  
         # Step 3: Fetch shipment info for those IDs
-        shipments_res = (
-            supabase.table('shipments')
-            .select('id, job_number, consignee_name, consignee_email, transport_mode')
-            .in_('id', shipment_ids)
-            .execute()
-        )
- 
         shipment_map = {
-            s['id']: s for s in (shipments_res.data or [])
+            s['id']: s for s in _get_shipments(
+                supabase,
+                shipment_ids,
+                'id, job_number, consignee_name, consignee_email, transport_mode',
+            )
         }
  
         # Step 4: Calculate overdue_days and group by shipment
