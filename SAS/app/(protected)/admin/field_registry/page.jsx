@@ -15,7 +15,7 @@ import { AlertTriangle, Check, RefreshCw, Plus, X, ChevronRight } from "lucide-r
 import { T, solidBtn, outlineBtn } from "@/styles/tokens";
 import { humanizeError } from "@/lib/humanizeError";
 
-const API = "http://localhost:5000";
+const API = "http://127.0.0.1:5001";
 
 function authHeaders() {
   const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : "";

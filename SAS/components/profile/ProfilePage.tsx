@@ -60,7 +60,7 @@ export default function ProfilePage({ user }: ProfilePageProps) {
   const handleProfileUpdate = async (updatedData: Partial<UserProfile>) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch('http://localhost:5000/api/profile', {
+      const response = await fetch('http://127.0.0.1:5001/api/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -112,7 +112,7 @@ export default function ProfilePage({ user }: ProfilePageProps) {
   const handlePasswordChange = async (data: PasswordChange) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch('http://localhost:5000/api/change-password', {
+      const response = await fetch('http://127.0.0.1:5001/api/change-password', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

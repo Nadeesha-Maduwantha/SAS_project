@@ -3,8 +3,8 @@
 import React, { useState, useMemo, useEffect } from "react";
 import AuditTrailStats from "@/components/AdminUser/AuditTrail/AuditTrailStats";
 import AuditTrailFilters from "@/components/AdminUser/AuditTrail/AuditTrailFilters";
-import AdminLeftNavBar from '@/components/AdminUser/AdminLeftNavBar';
 import AuditTrailTable from "@/components/AdminUser/AuditTrail/AuditTrailTable";
+import ProgressLogs from '@/components/AdminUser/ProgressLogs';
 import { AuditTrailEvent, AuditFilters, AuditTrailStatsData } from "@/types/audit-trail";
 
 export default function AuditTrailPage() {
@@ -23,7 +23,7 @@ export default function AuditTrailPage() {
       try {
         setIsLoading(true);
         // Replace with your actual backend URL if different
-        const response = await fetch('http://localhost:5000/api/audit-trail/');
+        const response = await fetch('http://127.0.0.1:5001/api/audit-trail/');
         
         if (!response.ok) {
           throw new Error('Failed to fetch audit logs');
@@ -162,6 +162,10 @@ export default function AuditTrailPage() {
           <div className="text-center py-10 text-gray-500">Loading audit trail...</div>
         ) : (
           <>
+            <div className="mb-6">
+              <ProgressLogs />
+            </div>
+
             {/* Stats */}
             <AuditTrailStats stats={filteredStats} />
 

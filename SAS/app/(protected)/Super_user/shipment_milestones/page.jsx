@@ -68,8 +68,8 @@ export default function ShipmentMilestonesPage() {
       try {
         setError(null);
         const url = shipmentId
-          ? `http://localhost:5000/api/shipments/${shipmentId}`
-          : `http://localhost:5000/api/shipments/job/${jobNumber}`;
+          ? `http://127.0.0.1:5001/api/shipments/${shipmentId}`
+          : `http://127.0.0.1:5001/api/shipments/job/${jobNumber}`;
 
         const response = await fetch(url);
         const result   = await response.json();

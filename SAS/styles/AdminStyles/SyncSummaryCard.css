@@ -102,7 +102,15 @@
 }
 
 .sync-warning {
-  @apply text-xs font-bold text-amber-600;
+  @apply flex items-center gap-1.5 text-xs font-bold text-amber-600;
+}
+
+.sync-warning__icon {
+  @apply w-4 h-4;
+}
+
+.sync-error {
+  @apply rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs font-bold text-red-700;
 }
 
 .sync-view {

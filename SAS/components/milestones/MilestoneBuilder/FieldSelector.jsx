@@ -135,7 +135,7 @@ function loadFieldDefinitions() {
   if (_defsCache) return Promise.resolve(_defsCache);
   if (_defsPromise) return _defsPromise;
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
-  _defsPromise = fetch('http://localhost:5000/api/field-definitions', {
+  _defsPromise = fetch('http://127.0.0.1:5001/api/field-definitions', {
     headers: { Authorization: `Bearer ${token}` },
   })
     .then(r => (r.ok ? r.json() : { data: [] }))

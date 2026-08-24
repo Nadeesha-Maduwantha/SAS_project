@@ -53,7 +53,7 @@ export default function MilestoneTemplatesPage() {
   const [assignTarget, setAssignTarget] = useState(null); // { id, name } | null
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/templates")
+    fetch("http://127.0.0.1:5001/api/templates")
       .then(r => r.json())
       .then(result => setTemplates(result.data ?? []))
       .catch(() => setTemplates([]))

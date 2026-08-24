@@ -39,6 +39,8 @@ from routes.dashboard import dashboard_bp
 
 # NOTE: Add this import if the blueprint exists in your routes folder
 # from routes.cargowise_sync import cargowise_sync_bp
+from routes.dashboard import dashboard_bp
+from routes.notes import notes_bp
 
 
 def run_sync_job():
@@ -265,12 +267,16 @@ app.register_blueprint(milestones_bp)
 app.register_blueprint(shipments_bp)
 app.register_blueprint(sync_bp)
 app.register_blueprint(alerts_bp)
+
+app.register_blueprint(notes_bp)
+
 app.register_blueprint(milestone_library_bp)
 app.register_blueprint(field_map_bp)
 app.register_blueprint(system_settings_bp)
 app.register_blueprint(field_definitions_bp)
 
 app.register_blueprint(alert_engine_bp)
+app.register_blueprint(dashboard_bp)
 
 def health_check():
     return {"status": "Backend is running"}, 200
@@ -417,5 +423,25 @@ app.config['SCHEDULER'] = scheduler
 app.config['RUN_SYNC_JOB'] = run_sync_job
 
 
-if __name__ == "__main__":
-    app.run(debug=True, port=5000, use_reloader=False)
+def find_available_port(start_port: int, max_attempts: int = 20) -> int:
+    import socket
+
+    configured_port = int(os.getenv('PORT', str(start_port)))
+    ports_to_try = [configured_port] + list(range(configured_port + 1, configured_port + max_attempts + 1))
+
+    for port in ports_to_try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                sock.bind(('127.0.0.1', port))
+                return port
+            except OSError:
+                continue
+
+    raise RuntimeError(f'No free port found starting from {configured_port} within {max_attempts} attempts.')
+
+
+if __name__ == '__main__':
+    port = find_available_port(5001)
+    print(f'Starting Flask app on port {port}')
+    app.run(debug=True, host='0.0.0.0', port=port, use_reloader=False)

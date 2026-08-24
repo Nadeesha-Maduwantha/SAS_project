@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+// Same design tokens the admin and super user dashboards use.
+import '@/styles/AdminStyles/theme.css';
 import OperationLeftNavBar from '@/components/OperationUser/OperationLeftNavBar';
 import RouterLoadingOverlay from '@/components/shared/RouterLoadingOverlay';
 import { NavProvider } from '@/contexts/NavContext';

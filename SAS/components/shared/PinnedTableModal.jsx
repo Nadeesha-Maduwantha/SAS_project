@@ -11,7 +11,7 @@ import { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { CustomTableView } from '@/components/shared/CustomTablesPage';
 
-const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5001';
 
 function authHeaders() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
