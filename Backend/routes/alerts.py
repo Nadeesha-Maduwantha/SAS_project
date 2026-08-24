@@ -25,6 +25,7 @@ def get_alerts():
     try:
         supabase = get_supabase()
         sales_email = (request.args.get('email') or '').strip().lower()
+        assigned_email = (request.args.get('assigned_email') or '').strip().lower()
 
         response = (
             supabase.table('shipment_milestones')
@@ -49,6 +50,9 @@ def get_alerts():
 
         if sales_email:
             rows = [r for r in rows if (r.get('sales_user_email') or '').strip().lower() == sales_email]
+
+        if assigned_email:
+            rows = [r for r in rows if (r.get('assigned_email') or '').strip().lower() == assigned_email]
 
         return jsonify({'data': rows}), 200
     except Exception as e:

@@ -219,7 +219,11 @@ export default function AlertDashboardPage() {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(`${BACKEND_BASE_URL}/api/alerts`);
+            const userEmail = (localStorage.getItem('user_email') || '').trim();
+            const url = userEmail
+                ? `${BACKEND_BASE_URL}/api/alerts?assigned_email=${encodeURIComponent(userEmail)}`
+                : `${BACKEND_BASE_URL}/api/alerts`;
+            const response = await fetch(url);
             const payload = await parseApiResponse(response);
             if (!response.ok) {
                 throw new Error(payload?.error || 'Failed to load alerts');
