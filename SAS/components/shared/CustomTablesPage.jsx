@@ -7,7 +7,7 @@ import {
   CheckCircle2, Loader2, Ship, MapPin, FolderOpen,
 } from 'lucide-react';
 
-const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5001';
+const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
 const TRANSPORT_MODES = ['AIR', 'SEA', 'ROAD'];
 const PICKUP_STATUSES = ['Future', 'Delayed', 'Overdue', 'Completed'];
 const ALERT_STATUSES  = ['pending', 'overdue', 'completed', 'Get Action', 'Action Taken', 'Resolved'];

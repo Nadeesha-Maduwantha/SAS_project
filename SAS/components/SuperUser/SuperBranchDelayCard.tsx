@@ -16,7 +16,7 @@ import '@/styles/AdminStyles/AdminDashboardAnalytics.css';
 const API =
   process.env.NEXT_PUBLIC_API_URL ??
   process.env.NEXT_PUBLIC_BACKEND_URL ??
-  'http://127.0.0.1:5001';
+  'http://127.0.0.1:5000';
 
 // Below this many shipments a percentage is noise — one late shipment out
 // of one reads as 100%. Those bars are muted so they don't dominate.

@@ -15,7 +15,7 @@ type AdminMetrics = {
   user_roles?: Record<string, number>;
 };
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5001';
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5000';
 
 function formatNumber(value: number) {
   return Number.isFinite(value) ? value.toLocaleString() : '0';

@@ -9,7 +9,7 @@ import {
 
 // Constants
 // reads from environment variable.
-const FLASK_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5001'
+const FLASK_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5000'
 
 const HISTORY_PAGE_SIZE = 10
 const ERRORS_PAGE_SIZE  = 5

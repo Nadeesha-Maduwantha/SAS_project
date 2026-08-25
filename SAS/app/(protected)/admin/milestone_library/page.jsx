@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 import { T, solidBtn, outlineBtn } from "@/styles/tokens";
 import { getFieldLabel } from "@/components/milestones/MilestoneBuilder/FieldSelector";
 
-const API = "http://127.0.0.1:5001";
+const API = "http://127.0.0.1:5000";
 
 // ── auth header helper (matches the rest of the app) ──────────────
 function authHeaders() {

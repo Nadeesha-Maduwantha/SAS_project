@@ -14,7 +14,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Maximize2, RefreshCw, Loader2 } from 'lucide-react';
 import PinnedTableModal from '@/components/shared/PinnedTableModal';
 
-const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5001';
+const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
 
 function authHeaders(): Record<string, string> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';

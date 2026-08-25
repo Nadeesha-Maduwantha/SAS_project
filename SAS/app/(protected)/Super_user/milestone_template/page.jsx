@@ -93,7 +93,7 @@ export default function MilestoneTemplatePage() {
     (async () => {
       try {
         setError(null);
-        const res    = await fetch(`http://127.0.0.1:5001/api/templates/${templateId}`);
+        const res    = await fetch(`http://127.0.0.1:5000/api/templates/${templateId}`);
         const result = await res.json();
         if (res.ok) setTmpl(result.data);
         else        setError(result.error || "Failed to load template");
@@ -120,7 +120,7 @@ export default function MilestoneTemplatePage() {
     if (!tmpl) return;
     setSaving(true);
     try {
-      const res = await fetch(`http://127.0.0.1:5001/api/templates/${tmpl.id}`, {
+      const res = await fetch(`http://127.0.0.1:5000/api/templates/${tmpl.id}`, {
         method:  "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -142,7 +142,7 @@ export default function MilestoneTemplatePage() {
   const handleSaveAsCopy = async (name) => {
     setSaving(true);
     try {
-      const res    = await fetch(`http://127.0.0.1:5001/api/templates/${tmpl.id}/copy`, {
+      const res    = await fetch(`http://127.0.0.1:5000/api/templates/${tmpl.id}/copy`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
       });
@@ -169,7 +169,7 @@ export default function MilestoneTemplatePage() {
 
   const handleDelete = async () => {
     try {
-      const res = await fetch(`http://127.0.0.1:5001/api/templates/${tmpl.id}`, { method: "DELETE" });
+      const res = await fetch(`http://127.0.0.1:5000/api/templates/${tmpl.id}`, { method: "DELETE" });
       if (res.ok) { setShowDelete(false); router.push("/Super_user/milestone_templates_list"); }
       else { const d = await res.json(); alert(d.error || "Failed to delete"); }
     } catch {

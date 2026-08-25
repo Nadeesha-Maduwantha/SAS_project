@@ -13,7 +13,7 @@
 //  AirPlay (403) instead of Flask. 127.0.0.1 forces IPv4.
 // =============================================================
 
-const DEFAULT_API_BASE = 'http://127.0.0.1:5001';
+const DEFAULT_API_BASE = 'http://127.0.0.1:5000';
 
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ??
