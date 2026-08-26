@@ -12,7 +12,7 @@ interface AccessLogsTableProps {
 }
 
 // Formats an ISO timestamp as e.g. "2026-5-4 4.46p.m"
-function formatTimestamp(ts: string): string {
+export function formatTimestamp(ts: string): string {
   const d = new Date(ts);
   if (isNaN(d.getTime())) return ts;
   const ampm = d.getHours() >= 12 ? "p.m" : "a.m";
