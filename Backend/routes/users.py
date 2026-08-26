@@ -21,6 +21,16 @@ def create_user():
         if not data.get('email') or not data.get('password'):
             return jsonify({'error': 'Email and password are required'}), 400
 
+        # A Super User may only create Sales/Operation accounts — Admin and
+        # Super User accounts stay Admin-only. Requesters with no identifiable
+        # role (e.g. no/invalid token) aren't super users, so they aren't
+        # restricted by this check specifically.
+        requester_id, requester_role = get_current_user()
+        if (requester_role or '').lower() == 'superuser':
+            allowed_roles = {'salesuser', 'operationuser'}
+            if (data.get('role') or '').lower() not in allowed_roles:
+                return jsonify({'error': 'Super Users can only create Sales User or Operation User accounts'}), 403
+
         supabase = get_supabase()
 
         print("=== STEP 1: Creating auth user ===")
@@ -64,7 +74,6 @@ def create_user():
         print("=== STEP 4: Success ===")
         log_access_event('Create', status='Success', email_attempted=email, user_id=user_id)
 
-        requester_id, _ = get_current_user()
         if requester_id:
             # action_type_id=1 -> CREATE, entity_type_id=2 -> User Profile
             # (matches public.action_types / public.entity_types)

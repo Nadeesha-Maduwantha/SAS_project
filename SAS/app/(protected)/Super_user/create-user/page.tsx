@@ -3,6 +3,7 @@ import SuperLeftNavBar from '@/components/SuperUser/SuperLeftNavBar'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
+import AppDialog, { AppDialogState } from '@/components/shared/AppDialog'
 
 interface FormData {
   email: string
@@ -23,6 +24,7 @@ export default function CreateUserPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [dialog, setDialog] = useState<AppDialogState | null>(null)
   const [formData, setFormData] = useState<FormData>({
     email: '',
     password: '',
@@ -36,11 +38,7 @@ export default function CreateUserPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-      ...(name === 'role' && value !== 'superuser' && { department: '' }),
-    }))
+    setFormData(prev => ({ ...prev, [name]: value }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,9 +47,13 @@ export default function CreateUserPage() {
     setError(null)
 
     try {
+      const token = localStorage.getItem('access_token')
       const response = await fetch('http://127.0.0.1:5000/api/users/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(formData),
       })
 
@@ -61,7 +63,11 @@ export default function CreateUserPage() {
       }
 
       // Show success message
-      alert("User created successfully!");
+      setDialog({
+        variant: 'success',
+        title: 'User created',
+        message: 'User created successfully!',
+      })
 
       // Optional: Reset the form so they can create another user
       setFormData({
@@ -71,16 +77,13 @@ export default function CreateUserPage() {
         age: 0,
         ethnicity: '',
         department: '',
-        role: 'user',
+        role: '',
         status: 'active',
         phone: '',
         joinDate: '',
         employeeId: '',
         address: '',
       });
-
-      // Redirect to admin/users
-      router.push('/admin/users')
 
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'An error occurred'
@@ -94,8 +97,6 @@ export default function CreateUserPage() {
   const handleCancel = () => {
     router.back()
   }
-
-  const isSuperUser = formData.role === 'superuser'
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
@@ -206,30 +207,26 @@ export default function CreateUserPage() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select Role</option>
-                <option value="admin">Admin</option>
-                <option value="superuser">Super User</option>
-                <option value="supervisor">Supervisor</option>
-                <option value="staff">Staff</option>
+                <option value="salesuser">Sales User</option>
+                <option value="operationuser">Operation User</option>
               </select>
             </div>
           </div>
 
-          {isSuperUser && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Assigned Department</label>
-              <select
-                name="department"
-                value={formData.department}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select Department</option>
-                <option value="sales">Sales</option>
-                <option value="operations">Operations</option>
-              </select>
-            </div>
-          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
+            <select
+              name="department"
+              value={formData.department}
+              onChange={handleInputChange}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select Department</option>
+              <option value="sea">Sea</option>
+              <option value="air">Air</option>
+            </select>
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Residential Address</label>
@@ -262,6 +259,8 @@ export default function CreateUserPage() {
           </button>
         </div>
       </form>
+
+      <AppDialog dialog={dialog} onClose={() => setDialog(null)} />
     </div>
   )
 }

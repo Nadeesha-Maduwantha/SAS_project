@@ -70,6 +70,7 @@ export default function CreateUserPage() {
     setError(null)
 
     try {
+      const token = localStorage.getItem('access_token')
       const response = await fetch('http://127.0.0.1:5000/api/users/create', {
         method: 'POST',
         headers: {
@@ -101,7 +102,8 @@ export default function CreateUserPage() {
 
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'An error occurred'
-      console.log('Error details:', errorMsg)  
+      console.log('Error details:', errorMsg)
+      setError(errorMsg)
     } finally {
       setLoading(false)
     }
