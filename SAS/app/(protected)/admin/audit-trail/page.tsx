@@ -4,7 +4,6 @@ import React, { useState, useMemo, useEffect } from "react";
 import AuditTrailStats from "@/components/AdminUser/AuditTrail/AuditTrailStats";
 import AuditTrailFilters from "@/components/AdminUser/AuditTrail/AuditTrailFilters";
 import AuditTrailTable from "@/components/AdminUser/AuditTrail/AuditTrailTable";
-import ProgressLogs from '@/components/AdminUser/ProgressLogs';
 import { AuditTrailEvent, AuditFilters, AuditTrailStatsData } from "@/types/audit-trail";
 
 export default function AuditTrailPage() {
@@ -162,10 +161,6 @@ export default function AuditTrailPage() {
           <div className="text-center py-10 text-gray-500">Loading audit trail...</div>
         ) : (
           <>
-            <div className="mb-6">
-              <ProgressLogs />
-            </div>
-
             {/* Stats */}
             <AuditTrailStats stats={filteredStats} />
 
