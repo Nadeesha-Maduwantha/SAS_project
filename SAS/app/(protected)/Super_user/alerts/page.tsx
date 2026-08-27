@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import AlertDetailsModal, { AlertData } from '@/components/AlertDetailsModal';
 import EmailComposeModal from '@/components/EmailComposeModal';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 const FLASK_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
 
@@ -195,7 +196,7 @@ export default function AlertDashboardPage() {
     const [alerts, setAlerts] = useState<Alert[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-    const { email } = useAuth();
+    const { email, department } = useAuth();
 
     // ── Modal state ──────────────────────────────────────────────
     const [detailsOpen, setDetailsOpen]   = useState(false);
@@ -217,7 +218,10 @@ export default function AlertDashboardPage() {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(`${BACKEND_BASE_URL}/api/alerts`);
+            const url = department
+                ? `${BACKEND_BASE_URL}/api/alerts?department=${encodeURIComponent(department)}`
+                : `${BACKEND_BASE_URL}/api/alerts`;
+            const response = await fetch(url);
             const payload = await parseApiResponse(response);
             if (!response.ok) {
                 throw new Error(payload?.error || 'Failed to load alerts');
@@ -229,7 +233,7 @@ export default function AlertDashboardPage() {
         setLoading(false);
     };
 
-    useEffect(() => { fetchAlerts(); }, [email]);
+    useEffect(() => { fetchAlerts(); }, [email, department]);
 
     const filtered = alerts.filter((a) => {
         const matchPriority = priorityFilter === 'All Priorities' || a.priority === priorityFilter;

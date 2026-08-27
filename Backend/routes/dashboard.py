@@ -15,6 +15,12 @@ def _format_log_time(value):
         return datetime.now().strftime('%H:%M:%S')
 
 
+def _pickup_status(shipment):
+    milestones = shipment.get('milestones') or {}
+    cargo_pickup = milestones.get('cargo_pickup') or {}
+    return cargo_pickup.get('pickup_date_status')
+
+
 # ADMIN METRICS
 @dashboard_bp.route('/api/dashboard/admin/metrics', methods=['GET'])
 def admin_metrics():
@@ -140,21 +146,27 @@ def admin_shipment_feed():
             .select(
                 'id, cargowise_id, branch, gb_code, gc_code, '
                 'llm_identified_type, '
-                'transport_mode, pickup_date_status, created_at, job_last_edit_time'
+                'transport_mode, milestones, created_at, job_last_edit_time'
             )
             .order('job_last_edit_time', desc=True)
         )
 
-        #  Optional filter (for your "Filter" button)
+        # Pickup status is stored inside the milestones JSON, not as a flat
+        # shipments column.
         status = request.args.get('status')
-        if status:
-            query = query.eq('pickup_date_status', status)
-
         response = query.limit(5).execute()
+
+        shipments = response.data or []
+        if status:
+            status = status.strip().lower()
+            shipments = [
+                shipment for shipment in shipments
+                if (_pickup_status(shipment) or '').strip().lower() == status
+            ]
 
         result = []
 
-        for s in response.data:
+        for s in shipments:
             result.append({
                 "id": s["id"],
                 "cargo_id": s.get("cargowise_id"),
@@ -164,7 +176,7 @@ def admin_shipment_feed():
                 #  stage from AI
                 "stage": s.get("llm_identified_type"),
                 "transport_mode": s.get("transport_mode"),
-                "pickup_status": s.get("pickup_date_status")
+                "pickup_status": _pickup_status(s)
             })
 
         return jsonify({"data": result}), 200
@@ -306,21 +318,22 @@ def operation_shipment():
             .select(
                 'id, cargowise_id, branch, gb_code, gc_code, '
                 'llm_identified_type, '
-                'transport_mode, pickup_date_status, created_at, job_last_edit_time'
+                'transport_mode, milestones, created_at, job_last_edit_time'
             )
             .order('job_last_edit_time', desc=True)
         )
 
         #  Optional filter (for your "Filter" button)
         status = request.args.get('status')
-        if status:
-            query = query.eq('pickup_date_status', status)
-
         response = query.limit(5).execute()
+        shipments = response.data or []
+        if status:
+            status = status.strip().lower()
+            shipments = [s for s in shipments if (_pickup_status(s) or '').strip().lower() == status]
 
         result = []
 
-        for s in response.data:
+        for s in shipments:
             result.append({
                 "cargo_id": s.get("cargowise_id"),
                 #  lane logic
@@ -328,7 +341,7 @@ def operation_shipment():
                 #  stage from AI
                 "stage": s.get("llm_identified_type"),
                 "transport_mode": s.get("transport_mode"),
-                "pickup_status": s.get("pickup_date_status")
+                "pickup_status": _pickup_status(s)
             })
 
         return jsonify({"data": result}), 200
@@ -345,21 +358,22 @@ def sales_shipment():
             .select(
                 'id, cargowise_id, branch, gb_code, gc_code, '
                 'llm_identified_type, '
-                'transport_mode, pickup_date_status, created_at, job_last_edit_time'
+                'transport_mode, milestones, created_at, job_last_edit_time'
             )
             .order('job_last_edit_time', desc=True)
         )
 
         #  Optional filter (for your "Filter" button)
         status = request.args.get('status')
-        if status:
-            query = query.eq('pickup_date_status', status)
-
         response = query.limit(5).execute()
+        shipments = response.data or []
+        if status:
+            status = status.strip().lower()
+            shipments = [s for s in shipments if (_pickup_status(s) or '').strip().lower() == status]
 
         result = []
 
-        for s in response.data:
+        for s in shipments:
             result.append({
                 "cargo_id": s.get("cargowise_id"),
                 #  lane logic
@@ -367,7 +381,7 @@ def sales_shipment():
                 #  stage from AI
                 "stage": s.get("llm_identified_type"),
                 "transport_mode": s.get("transport_mode"),
-                "pickup_status": s.get("pickup_date_status")
+                "pickup_status": _pickup_status(s)
             })
 
         return jsonify({"data": result}), 200

@@ -1,51 +1,3 @@
-from flask import Blueprint, request, jsonify
-from services.supabase_client import supabase
-
-alerts_bp = Blueprint('alerts', __name__)
-
-
-@alerts_bp.route('/api/alerts', methods=['GET'])
-def get_alerts():
-    email = (request.args.get('email') or '').strip().lower()
-    if not email:
-        return jsonify({"error": "email is required"}), 400
-
-    try:
-        profile_resp = (
-            supabase.table('profiles').select('id, role, department')
-            .ilike('email', email)
-            .execute()
-        )
-        if not profile_resp.data:
-            return jsonify({"error": "No profile found for this email"}), 404
-        profile = profile_resp.data[0]
-        role = (profile.get('role') or '').lower()
-
-        if role == 'admin':
-            # Admins see every alert, matched or not.
-            resp = supabase.table('alerts').select('*').order('created_at', desc=True).execute()
-        elif role == 'superuser':
-            # Super users see every alert for shipments in their own department,
-            # regardless of who (if anyone) it's assigned to.
-            resp = (
-                supabase.table('alerts')
-                .select('*, shipments!inner(transport_mode)')
-                .eq('shipments.transport_mode', profile.get('department'))
-                .order('created_at', desc=True)
-                .execute()
-            )
-        else:
-            # Sales / operation users see only alerts assigned directly to them.
-            resp = (
-                supabase.table('alerts').select('*')
-                .eq('assigned_profile_id', profile['id'])
-                .order('created_at', desc=True)
-                .execute()
-            )
-
-        return jsonify({"data": resp.data or []}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 from flask import Blueprint, jsonify, request
 from services.supabase_service import get_supabase
 from datetime import datetime, timezone
@@ -89,6 +41,7 @@ def get_alerts():
         supabase = get_supabase()
         sales_email = (request.args.get('email') or '').strip().lower()
         assigned_email = (request.args.get('assigned_email') or '').strip().lower()
+        department = (request.args.get('department') or '').strip().upper()
 
         response = (
             supabase.table('shipment_milestones')
@@ -98,24 +51,30 @@ def get_alerts():
         )
         rows = response.data or []
 
-        # Attach each row's shipment-level sales_user_email so a sales user
-        # can be shown only the alerts for shipments assigned to them.
+        # Attach each row's shipment-level sales_user_email and transport_mode so a
+        # sales user can be shown only alerts for shipments assigned to them, and a
+        # super user only alerts for shipments in their own department.
         shipment_ids = list({r['shipment_id'] for r in rows if r.get('shipment_id')})
-        sales_email_by_shipment = {}
+        shipment_by_id = {}
         if shipment_ids:
-            sales_email_by_shipment = {
-                s['id']: (s.get('sales_user_email') or '')
-                for s in _get_shipments(supabase, shipment_ids, 'id, sales_user_email')
+            shipment_by_id = {
+                s['id']: s
+                for s in _get_shipments(supabase, shipment_ids, 'id, sales_user_email, transport_mode')
             }
 
         for r in rows:
-            r['sales_user_email'] = sales_email_by_shipment.get(r['shipment_id'], '')
+            shipment = shipment_by_id.get(r['shipment_id'], {})
+            r['sales_user_email'] = shipment.get('sales_user_email') or ''
+            r['transport_mode'] = shipment.get('transport_mode') or ''
 
         if sales_email:
             rows = [r for r in rows if (r.get('sales_user_email') or '').strip().lower() == sales_email]
 
         if assigned_email:
             rows = [r for r in rows if (r.get('assigned_email') or '').strip().lower() == assigned_email]
+
+        if department:
+            rows = [r for r in rows if (r.get('transport_mode') or '').strip().upper() == department]
 
         return jsonify({'data': rows}), 200
     except Exception as e:
