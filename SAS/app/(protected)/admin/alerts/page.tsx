@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import AlertDetailsModal, { AlertData } from '@/components/AlertDetailsModal';
 import EmailComposeModal from '@/components/EmailComposeModal';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 const FLASK_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
 
