@@ -40,6 +40,7 @@ from routes.dashboard import dashboard_bp
 # NOTE: Add this import if the blueprint exists in your routes folder
 # from routes.cargowise_sync import cargowise_sync_bp
 from routes.notes import notes_bp
+from routes.notifications import notifications_bp
 
 
 def run_sync_job():
@@ -268,6 +269,7 @@ app.register_blueprint(sync_bp)
 app.register_blueprint(alerts_bp)
 
 app.register_blueprint(notes_bp)
+app.register_blueprint(notifications_bp)
 
 app.register_blueprint(milestone_library_bp)
 app.register_blueprint(field_map_bp)

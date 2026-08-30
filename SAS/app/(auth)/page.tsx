@@ -12,8 +12,27 @@ export default function LoginPage() {
   const [loading,        setLoading]        = useState(false);
   const [error,          setError]          = useState('');
 
+  const [stage,         setStage]         = useState<'credentials' | 'otp'>('credentials');
+  const [otpCode,       setOtpCode]       = useState('');
+  const [otpSubmitting, setOtpSubmitting] = useState(false);
+
   const isValidEmail = (email: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const finishLogin = (data: any) => {
+    const role = data.user.role?.toLowerCase().trim() || 'super_user';
+    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem('user_role', role);
+    localStorage.setItem('user_email', data.user.email || '');
+    localStorage.setItem('user_department', data.user.department || '');
+    document.cookie = `access_token=${data.access_token}; path=/; max-age=86400`;
+    document.cookie = `user_role=${role}; path=/; max-age=86400`;
+
+    if      (role.includes('admin'))     router.push('/admin/dashboard');
+    else if (role.includes('operation')) router.push('/operation_user/dashboard');
+    else if (role.includes('sales'))     router.push('/sales_user/dashboard');
+    else if (role.includes('super'))     router.push('/Super_user/dashboard');
+  };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -34,19 +53,11 @@ export default function LoginPage() {
       });
       const data = await response.json();
 
-      if (response.ok && data.user) {
-        const role = data.user.role?.toLowerCase().trim() || 'super_user';
-        localStorage.setItem('access_token', data.access_token);
-        localStorage.setItem('user_role', role);
-        localStorage.setItem('user_email', data.user.email || '');
-        localStorage.setItem('user_department', data.user.department || '');
-        document.cookie = `access_token=${data.access_token}; path=/; max-age=86400`;
-        document.cookie = `user_role=${role}; path=/; max-age=86400`;
-
-        if      (role.includes('admin'))     router.push('/admin/dashboard');
-        else if (role.includes('operation')) router.push('/operation_user/dashboard');
-        else if (role.includes('sales'))     router.push('/sales_user/dashboard');
-        else if (role.includes('super'))     router.push('/Super_user/dashboard');
+      if (response.ok && data.twoFactorRequired) {
+        setStage('otp');
+        setError('');
+      } else if (response.ok && data.user) {
+        finishLogin(data);
       } else {
         setError(data.error || 'Login failed. Please verify credentials.');
       }
@@ -55,6 +66,32 @@ export default function LoginPage() {
       setError('Connection failed. Please ensure the backend is running.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setOtpSubmitting(true);
+    setError('');
+
+    try {
+      const response = await fetch('http://127.0.0.1:5000/api/auth/verify-otp', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email, code: otpCode }),
+      });
+      const data = await response.json();
+
+      if (response.ok && data.user) {
+        finishLogin(data);
+      } else {
+        setError(data.error || 'Invalid code. Please try again.');
+      }
+    } catch (err) {
+      console.error('OTP verify error:', err);
+      setError('Connection failed. Please ensure the backend is running.');
+    } finally {
+      setOtpSubmitting(false);
     }
   };
 
@@ -144,6 +181,8 @@ export default function LoginPage() {
            style={{ background: '#F8FAFC' }}>
         <div className="w-full max-w-md">
 
+          {stage === 'credentials' && (
+          <>
           {/* Header */}
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
@@ -232,6 +271,77 @@ export default function LoginPage() {
             </button>
 
           </form>
+          </>
+          )}
+
+          {stage === 'otp' && (
+          <>
+          {/* Header */}
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Check Your Email</h2>
+            <p className="text-sm text-gray-500">
+              We emailed a 6-digit code to <span className="font-medium text-gray-700">{email}</span>. Enter it below to finish signing in.
+            </p>
+          </div>
+
+          <form onSubmit={handleVerifyOtp} className="space-y-5">
+
+            {/* Code */}
+            <div>
+              <label htmlFor="otp" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Verification Code
+              </label>
+              <input
+                type="text"
+                id="otp"
+                inputMode="numeric"
+                maxLength={6}
+                value={otpCode}
+                onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="123456"
+                required
+                autoFocus
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all tracking-widest text-center text-lg"
+              />
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div className="text-red-500 text-sm text-center font-medium bg-red-50 py-2 rounded-md" data-testid="otp-error">
+                {error}
+              </div>
+            )}
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={otpSubmitting || otpCode.length !== 6}
+              className={`w-full text-white py-3 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                otpSubmitting || otpCode.length !== 6 ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              {otpSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                  </svg>
+                  Verifying…
+                </span>
+              ) : 'Verify Code'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setStage('credentials'); setOtpCode(''); setError(''); }}
+              className="w-full text-sm text-gray-500 hover:text-gray-700 text-center"
+            >
+              Back to login
+            </button>
+
+          </form>
+          </>
+          )}
         </div>
       </div>
 
