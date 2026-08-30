@@ -5,11 +5,11 @@
 //  Path: components/shared/ShipmentFeedTable.tsx
 //
 //  Dashboard preview of the shipments page table — same columns,
-//  same data source, just the first few rows.
+//  same data source, same ordering, just the first few rows.
 //
-//  It calls getShipmentsByOperationUser() like the full page does,
-//  so when the staff-code filter is switched on in the service layer
-//  this feed narrows down with it and needs no change here.
+//  Filtered to the signed-in user by email: getShipmentsByOperationUser()
+//  resolves it against shipment_milestones.assigned_email, which is where
+//  an operation user's ownership actually lives.
 // =============================================================
 
 import { useEffect, useState } from 'react';
@@ -48,18 +48,32 @@ export default function ShipmentFeedTable({
   viewAllHref?: string;
 }) {
   const router = useRouter();
-  const { staffCode } = useAuth();
+  const { email } = useAuth();
 
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    if (!email) {
+      setLoading(false);
+      return;
+    }
 
-    getShipmentsByOperationUser(staffCode)
+    let cancelled = false;
+    setLoading(true);
+
+    getShipmentsByOperationUser(email)
       .then(data => {
-        if (!cancelled) setShipments((data ?? []).slice(0, maxRows));
+        // Same ordering as the full shipments page: nearest pickup date first,
+        // shipments with no date last. Slice after sorting, so these really are
+        // the next 5 rather than the first 5 the API happened to return.
+        const sorted = [...(data ?? [])].sort((a, b) => {
+          if (!a.llmCargoPickupDate) return 1;
+          if (!b.llmCargoPickupDate) return -1;
+          return new Date(a.llmCargoPickupDate).getTime() - new Date(b.llmCargoPickupDate).getTime();
+        });
+        if (!cancelled) setShipments(sorted.slice(0, maxRows));
       })
       .catch(err => {
         console.error('Failed to load shipment feed:', err);
@@ -70,7 +84,7 @@ export default function ShipmentFeedTable({
       });
 
     return () => { cancelled = true; };
-  }, [staffCode, maxRows]);
+  }, [email, maxRows]);
 
   return (
     <div className="feed-card">

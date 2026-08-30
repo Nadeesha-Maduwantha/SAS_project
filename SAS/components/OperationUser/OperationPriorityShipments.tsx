@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import '@/styles/OperationStyles/OperationPriorityShipments.css';
+import { apiUrl } from '@/lib/api';
 
 type Shipment = {
   cargo_id: string;
@@ -16,7 +17,7 @@ export default function OperationPriorityShipments() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/dashboard/operation/shipment")
+    fetch(apiUrl("/api/dashboard/operation/shipment"))
       .then((res) => res.json())
       .then((data) => {
         setRows(data.data);

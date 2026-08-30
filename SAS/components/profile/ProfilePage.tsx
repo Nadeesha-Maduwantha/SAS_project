@@ -5,6 +5,7 @@ import ProfileCard from "./ProfileCard";
 import PersonalInformation from "./PersonalInformation";
 import SecuritySettings from "./SecuritySettings";
 import { PasswordChange } from "@/types/profile";
+import { apiUrl } from "@/lib/api";
 
 interface UserProfile {
   fullName: string;
@@ -60,7 +61,7 @@ export default function ProfilePage({ user }: ProfilePageProps) {
   const handleProfileUpdate = async (updatedData: Partial<UserProfile>) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch('http://127.0.0.1:5000/api/profile', {
+      const response = await fetch(apiUrl('/api/profile'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -90,7 +91,7 @@ export default function ProfilePage({ user }: ProfilePageProps) {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch('http://localhost:5000/api/profile/avatar', {
+    const response = await fetch(apiUrl('/api/profile/avatar'), {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,

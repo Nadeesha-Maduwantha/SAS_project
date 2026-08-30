@@ -4,20 +4,40 @@
 //  UserDashboardMetricCards.tsx
 //  Path: components/shared/UserDashboardMetricCards.tsx
 //
-//  Stat cards for Sales + Operations dashboards.
-//  For now shows all shipment stats.
-//  TODO: filter by assigned user once auth wiring is complete.
+//  Stat cards for Sales + Operations dashboards, scoped to the signed-in user.
+//
+//  The two roles own shipments differently:
+//    operation user — assigned to individual milestones (assigned_email)
+//    sales user     — owns the shipment itself (sales_user_email)
+//  so the query param depends on the role, not just the email.
 // =============================================================
 
 import { useState, useEffect } from 'react';
 import { Package, AlertTriangle } from 'lucide-react';
 import DonutChart, { DonutLegendRow } from '@/components/shared/DonutChart';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { normalizeRole } from '@/lib/roles';
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
 
 function authHeaders() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
   return { Authorization: `Bearer ${token}` };
+}
+
+/**
+ * Query string that narrows an endpoint to this user. Empty for any other
+ * role, which leaves the endpoint unfiltered.
+ *
+ * `salesParam` differs per endpoint — /api/shipments/stats calls it
+ * sales_user_email, /api/alerts just calls it email.
+ */
+function ownershipQuery(role: string, email: string, salesParam: string): string {
+  if (!email) return '';
+  const key = normalizeRole(role);
+  if (key === 'operationuser') return `?assigned_email=${encodeURIComponent(email)}`;
+  if (key === 'salesuser')     return `?${salesParam}=${encodeURIComponent(email)}`;
+  return '';
 }
 
 function SpinDot() {
@@ -32,16 +52,18 @@ function SpinDot() {
 
 // ── My Shipments card ──────────────────────────────────────────────────────────
 function MyShipmentsCard() {
+  const { email, role } = useAuth();
   const [stats,   setStats]   = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API}/api/shipments/stats`, { headers: authHeaders() })
+    const query = ownershipQuery(role, email, 'sales_user_email');
+    fetch(`${API}/api/shipments/stats${query}`, { headers: authHeaders() })
       .then(r => r.json())
       .then(d => setStats(d.data))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [role, email]);
 
   const total     = stats?.total     ?? 0;
   const completed = stats?.delivered ?? 0;
@@ -89,11 +111,13 @@ function MyShipmentsCard() {
 // Pending Review and Resolved — reading the same /api/alerts rows so the
 // dashboard and that page can never disagree.
 function MyAlertsCard() {
+  const { email, role } = useAuth();
   const [stats,   setStats]   = useState<{ high: number; pending: number; resolved: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API}/api/alerts`, { headers: authHeaders() })
+    const query = ownershipQuery(role, email, 'email');
+    fetch(`${API}/api/alerts${query}`, { headers: authHeaders() })
       .then(r => r.json())
       .then(d => {
         const rows: any[] = d.data || [];
@@ -105,7 +129,7 @@ function MyAlertsCard() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [role, email]);
 
   const high = stats?.high ?? 0;
 

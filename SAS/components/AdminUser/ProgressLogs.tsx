@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { formatTimestamp } from '@/components/AdminUser/AccessLogs/AccessLogsTable';
+import { formatRoleLabel } from '@/lib/roles';
 import '@/styles/AdminStyles/ProgressLogs.css';
 
-type Row = { time: string; user: string; action: string; location: string };
+type Row = { time: string; user: string; role: string; action: string };
 
 const fallbackRows: Row[] = [
-  { time: '14:22:15', user: 'sarah.j', action: 'MILESTONE UPDATE', resource: '#DGL-82910' },
-  { time: '14:20:02', user: 'mike.c', action: 'DOC UPLOAD', resource: 'INV-8902' },
-  { time: '14:18:55', user: 'admin_root', action: 'CONFIG CHANGE', resource: 'AUTH_SECRET' },
+  { time: '2026-8-28 3.28p.m', user: 'sarah.j',    role: 'Sales User',     action: 'MILESTONE UPDATE' },
+  { time: '2026-8-28 3.27p.m', user: 'mike.c',     role: 'Operation User', action: 'DOC UPLOAD' },
+  { time: '2026-8-28 3.03p.m', user: 'admin_root', role: 'Admin',          action: 'CONFIG CHANGE' },
 ];
 
 export default function ProgressLogs() {
@@ -34,19 +36,19 @@ export default function ProgressLogs() {
 
         if (latest.length > 0) {
           const mapped: Row[] = latest.map((entry: any) => {
-            const userName = typeof entry.user === 'object' ? (entry.user?.name ?? 'System') : (entry.user ?? 'System');
+            const isUserObject = typeof entry.user === 'object' && entry.user !== null;
+            const userName = isUserObject ? (entry.user?.name ?? 'System') : (entry.user ?? 'System');
             const userValue = String(userName).trim() || 'System';
+            const rawRole = isUserObject ? (entry.user?.role ?? '') : '';
             const action = String(entry.action ?? 'UPDATE').toUpperCase();
-            const resource = String(entry.resource ?? entry.module ?? entry.details ?? 'System');
 
             const timestamp = typeof entry.timestamp === 'string' ? entry.timestamp : '';
-            const time = timestamp.includes(' ') ? timestamp.split(' ').slice(-1)[0] : timestamp;
 
             return {
-              time: time || '00:00:00',
+              time: timestamp ? formatTimestamp(timestamp) : '—',
               user: userValue,
+              role: rawRole ? formatRoleLabel(String(rawRole)) : '—',
               action,
-              resource,
             };
           });
 
@@ -81,8 +83,8 @@ export default function ProgressLogs() {
             <tr>
               <th>Timestamp</th>
               <th>User</th>
+              <th>Role</th>
               <th>Action Type</th>
-              <th>Location</th>
             </tr>
           </thead>
           <tbody>
@@ -90,10 +92,10 @@ export default function ProgressLogs() {
               <tr key={`${r.time}-${r.user}-${i}`}>
                 <td className="logs-muted">{r.time}</td>
                 <td className="logs-strong">{r.user}</td>
+                <td className="logs-muted">{r.role}</td>
                 <td>
                   <span className="logs-pill">{r.action}</span>
                 </td>
-                <td className="logs-muted">{r.location}</td>
               </tr>
             ))}
           </tbody>

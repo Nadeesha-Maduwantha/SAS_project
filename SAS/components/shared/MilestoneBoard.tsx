@@ -17,6 +17,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_BASE } from '@/lib/api';
 
 // ── status → colour ────────────────────────────────────────────────────────────
 type Tone = { label: string; bg: string; color: string; border: string; dot: string };
@@ -56,7 +57,7 @@ const SearchIcon = () => (
 
 // ── types ────────────────────────────────────────────────────────────────────────
 interface Props {
-  apiBase?:     string;   // default http://localhost:5000
+  apiBase?:     string;   // default API_BASE from lib/api
   detailBase?:  string;   // e.g. /admin/milestone_detail  → `${detailBase}?id=<shipmentId>`
   canByMember?: boolean;  // admin + super users only
 }
@@ -75,7 +76,7 @@ function StatusPill({ m }: { m: any }) {
 
 // ── main ─────────────────────────────────────────────────────────────────────────
 export default function MilestoneBoard({
-  apiBase = 'http://localhost:5000',
+  apiBase = API_BASE,
   detailBase,
   canByMember = false,
 }: Props) {
