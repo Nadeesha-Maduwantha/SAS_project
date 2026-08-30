@@ -34,6 +34,7 @@ from routes.system_settings import system_settings_bp
 from routes.field_definitions import field_definitions_bp
 from routes.field_watch import field_watch_bp
 from routes.alert_engine_routes import alert_engine_bp
+from routes.sales_digest_routes import sales_digest_bp
 
 from routes.dashboard import dashboard_bp
 
@@ -233,6 +234,17 @@ def run_alert_engine_job():
         print(f"[alert_engine] ERROR: {e}")
 
 
+def run_sales_digest_job():
+    try:
+        from services.sales_digest import run_sales_digest
+        result = run_sales_digest()
+        print(f"[sales_digest] overdue_emails={result.get('overdue_emails')} "
+              f"reminder_emails={result.get('reminder_emails')} "
+              f"errors={len(result.get('errors', []))}")
+    except Exception as e:
+        print(f"[sales_digest] ERROR: {e}")
+
+
 # ── App setup ────────────────────────────────────────────────────────────────
 
 class CustomJSONProvider(DefaultJSONProvider):
@@ -277,6 +289,7 @@ app.register_blueprint(system_settings_bp)
 app.register_blueprint(field_definitions_bp)
 
 app.register_blueprint(alert_engine_bp)
+app.register_blueprint(sales_digest_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(field_watch_bp)
 
@@ -357,6 +370,14 @@ scheduler.add_job(
     run_alert_engine_job,
     CronTrigger(minute=5, timezone='Asia/Colombo'),
     id='alert_engine_run',
+    replace_existing=True,
+)
+
+# Sales-user digest emails (overdue + upcoming) at 8:00 AM Sri Lanka time
+scheduler.add_job(
+    run_sales_digest_job,
+    CronTrigger(hour=8, minute=0, timezone='Asia/Colombo'),
+    id='sales_digest_run',
     replace_existing=True,
 )
 
