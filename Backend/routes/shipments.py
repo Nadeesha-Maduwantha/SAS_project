@@ -57,11 +57,6 @@ def is_delivered(shipment: dict) -> bool:
 
 @shipments_bp.route('/api/shipments', methods=['GET'])
 def get_all_shipments():
-    """
-    Returns all shipments. Supports optional query params:
-      ?created_by_staff_code=<code>  — filter by the operation user who created it
-      ?sales_user_staff_code=<code>  — filter by the sales user assigned to it
-    """
     try:
         query = supabase.table('shipments').select('*').order('created_at', desc=True)
 
@@ -72,6 +67,23 @@ def get_all_shipments():
         sales_code = request.args.get('sales_user_staff_code')
         if sales_code:
             query = query.eq('sales_user_staff_code', sales_code)
+
+        sales_email = request.args.get('sales_user_email')
+        if sales_email:
+            query = query.ilike('sales_user_email', sales_email)
+
+        assigned_email = request.args.get('assigned_email')
+        if assigned_email:
+            ms_response = (
+                supabase.table('shipment_milestones')
+                .select('shipment_id')
+                .ilike('assigned_email', assigned_email)
+                .execute()
+            )
+            shipment_ids = list({m['shipment_id'] for m in (ms_response.data or [])})
+            if not shipment_ids:
+                return jsonify({"data": []}), 200
+            query = query.in_('id', shipment_ids)
 
         response = query.execute()
         return jsonify({"data": response.data}), 200
