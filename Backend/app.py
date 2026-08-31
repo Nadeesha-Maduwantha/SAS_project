@@ -1,10 +1,15 @@
 import os
+import time
+from datetime import datetime, timezone
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from dotenv import load_dotenv
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask.json.provider import DefaultJSONProvider
-from dotenv import load_dotenv
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
+
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 # Auth routes
 from routes.auth import bp as auth_bp
@@ -12,10 +17,10 @@ from routes.users import bp as users_bp
 from routes.user_edit import bp as user_edit_bp
 from routes.audit_trail import bp as audit_trail_bp
 from routes.access_logs import access_logs_bp
-from routes.profile import bp as profile_bp # <-- Add this import
-from routes.change_password import bp as change_password_bp # <-- Add this import
+from routes.profile import bp as profile_bp
+from routes.change_password import bp as change_password_bp
+from routes.security_settings import security_settings_bp
 from routes.custom_tables import custom_tables_bp
-
 
 # Shipment routes
 from routes.templates import templates_bp
@@ -28,8 +33,15 @@ from routes.field_map import field_map_bp
 from routes.system_settings import system_settings_bp
 from routes.field_definitions import field_definitions_bp
 from routes.field_watch import field_watch_bp
+from routes.alert_engine_routes import alert_engine_bp
+from routes.sales_digest_routes import sales_digest_bp
 
-load_dotenv()
+from routes.dashboard import dashboard_bp
+
+# NOTE: Add this import if the blueprint exists in your routes folder
+# from routes.cargowise_sync import cargowise_sync_bp
+from routes.notes import notes_bp
+
 
 def run_sync_job():
     try:
@@ -54,7 +66,7 @@ def run_sync_job():
         errors = 0
         error_list = []
         field_map = load_field_map()
-        unknown_fields = set()   # Door 3 — API fields nobody has claimed
+        unknown_fields = set()
 
         for item in raw_data:
             job_number = item.get('job_number')
@@ -99,8 +111,6 @@ def run_sync_job():
                     'house_bill_number': item.get('house_bill_number'),
                     'milestones': build_milestones(item, field_map),
                     'raw_json': item,
-                    # Postgres does not touch updated_at on its own, and the
-                    # upsert does not either — so the sync sets it explicitly.
                     'updated_at': datetime.now(timezone.utc).isoformat(),
                     'js_pk': item.get('js_pk'),
                     'note_number': item.get('note_number'),
@@ -142,12 +152,11 @@ def run_sync_job():
                 )
             print(f'Saved {len(error_list)} errors')
 
-        # Notify administrators of the outcome, according to the preferences on
-        # the Alert Settings panel. Never allowed to fail the sync.
+        # Notify administrators of the outcome. Never allowed to fail the sync.
         notify_sync_outcome(status, updated, error_list, duration)
 
-        # Door 3 — report API fields that are neither mapped to a column nor
-        # registered to a milestone. Reported once per field. Non-fatal.
+        # Report API fields that are neither mapped to a column nor registered
+        # to a milestone. Reported once per field. Non-fatal.
         try:
             from services.supabase_service import get_flagged_new_fields, NEW_FIELD_MARKER
             new_fields = sorted(unknown_fields - get_flagged_new_fields())
@@ -168,8 +177,8 @@ def run_sync_job():
         except Exception as e:
             print(f'unknown field detection failed (non-fatal): {e}')
 
-        # Field-name mismatch check right after fresh data lands (Ronaka's
-        # detector — idempotent, dedup-safe). Never allowed to fail the sync.
+        # Field-name mismatch check right after fresh data lands.
+        # Idempotent, dedup-safe. Never allowed to fail the sync.
         try:
             from services.field_registry import detect_and_notify
             detect_and_notify()
@@ -182,6 +191,61 @@ def run_sync_job():
         print(f'SCHEDULER ERROR: {e}')
         import traceback
         traceback.print_exc()
+
+
+# ── Scheduler helper jobs ────────────────────────────────────────────────────
+
+def run_field_mismatch_check():
+    try:
+        from services.field_registry import detect_and_notify
+        result = detect_and_notify()
+        print(f"[field_mismatch] current={len(result.get('current', []))} "
+              f"new={len(result.get('new', []))} notified={result.get('notified')}")
+    except Exception as e:
+        print(f"[field_mismatch] ERROR: {e}")
+
+
+def run_status_recompute():
+    try:
+        from services.status_recompute import recompute_milestone_status
+        recompute_milestone_status()
+    except Exception as e:
+        print(f"[status_recompute] ERROR: {e}")
+
+
+def run_field_watch():
+    try:
+        from services.field_watch import scan_field_alerts
+        scan_field_alerts()
+    except Exception as e:
+        print(f"[field_watch] ERROR: {e}")
+
+
+def run_alert_engine_job():
+    try:
+        from services.alert_engine import run_alert_engine
+        result = run_alert_engine()
+        print(f"[alert_engine] evaluated={result.get('evaluated')} "
+              f"outstanding={result.get('outstanding')} sent={result.get('sent')} "
+              f"skipped={result.get('skipped')} stopped={result.get('stopped')} "
+              f"errors={len(result.get('errors', []))}")
+    except Exception as e:
+        print(f"[alert_engine] ERROR: {e}")
+
+
+def run_sales_digest_job():
+    try:
+        from services.sales_digest import run_sales_digest
+        result = run_sales_digest()
+        print(f"[sales_digest] overdue_emails={result.get('overdue_emails')} "
+              f"reminder_emails={result.get('reminder_emails')} "
+              f"errors={len(result.get('errors', []))}")
+    except Exception as e:
+        print(f"[sales_digest] ERROR: {e}")
+
+
+# ── App setup ────────────────────────────────────────────────────────────────
+
 class CustomJSONProvider(DefaultJSONProvider):
     def default(self, obj):
         try:
@@ -196,50 +260,67 @@ app.json = CustomJSONProvider(app)
 
 CORS(app)
 
-app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 
-# Register blueprints
-app.register_blueprint(auth_bp,          name='auth_routes')
-app.register_blueprint(profile_bp,       name='profile_routes') 
-app.register_blueprint(users_bp,         name='user_creation_routes')
-app.register_blueprint(user_edit_bp,     name='user_edit_routes')
-app.register_blueprint(audit_trail_bp, name='audit_trail_routes')
-app.register_blueprint(access_logs_bp, url_prefix='/api/access-logs')
+# ── Register blueprints ──────────────────────────────────────────────────────
+
+app.register_blueprint(auth_bp, name="auth_routes")
+app.register_blueprint(profile_bp, name="profile_routes")
+app.register_blueprint(users_bp, name="user_creation_routes")
+app.register_blueprint(user_edit_bp, name="user_edit_routes")
+app.register_blueprint(audit_trail_bp, name="audit_trail_routes")
+app.register_blueprint(access_logs_bp, url_prefix="/api/access-logs")
+app.register_blueprint(change_password_bp, name="change_password_routes")
+app.register_blueprint(security_settings_bp)
+app.register_blueprint(custom_tables_bp)
 app.register_blueprint(templates_bp)
 app.register_blueprint(milestones_bp)
 app.register_blueprint(shipments_bp)
-app.register_blueprint(change_password_bp, name='change_password_routes') 
-
-app.register_blueprint(custom_tables_bp)
-
 app.register_blueprint(sync_bp)
-
 app.register_blueprint(alerts_bp)
 
+app.register_blueprint(notes_bp)
+
 app.register_blueprint(milestone_library_bp)
-
 app.register_blueprint(field_map_bp)
-
 app.register_blueprint(system_settings_bp)
-
 app.register_blueprint(field_definitions_bp)
 
+app.register_blueprint(alert_engine_bp)
+app.register_blueprint(sales_digest_bp)
+app.register_blueprint(dashboard_bp)
 app.register_blueprint(field_watch_bp)
 
+@app.route("/health")
 def health_check():
-    return {'status': 'Backend is running'}, 200
+    return {"status": "Backend is running"}, 200
+
+# Uncomment this once the route file exists:
+# app.register_blueprint(cargowise_sync_bp, name="cargowise_sync_routes")
 
 
-@app.route('/')
+# ── Routes ───────────────────────────────────────────────────────────────────
+
+@app.route("/")
 def health():
     return {"status": "Flask is running"}, 200
 
-# Start scheduler
+
+@app.route('/debug/routes')
+def list_routes():
+    return jsonify([str(r) for r in app.url_map.iter_rules()])
+
+
+# ── Scheduler (single instance) ──────────────────────────────────────────────
+
 scheduler = BackgroundScheduler()
+
+# Fixed sync: 12AM, 6AM, 12PM, 6PM Sri Lanka time
 scheduler.add_job(
     run_sync_job,
     CronTrigger(hour='0,6,12,18', minute=0, timezone='Asia/Colombo'),
-    id='fixed_sync'
+    id='fixed_sync',
+    replace_existing=True,
 )
 
 # Load all custom schedules from the database — one job per row, so several
@@ -258,21 +339,7 @@ try:
 except Exception as e:
     print(f'Could not load custom schedules: {e}')
 
-scheduler.start()
-print('Scheduler started — fixed sync at 6AM, 12PM, 6PM, 12AM Sri Lanka time')
-
-
-# Automatic milestone field-naming mismatch detection. Runs hourly; emails the
-# designated admin (sync_settings.mismatch_alert_email) only about NEW mismatches.
-def run_field_mismatch_check():
-    try:
-        from services.field_registry import detect_and_notify
-        result = detect_and_notify()
-        print(f"[field_mismatch] current={len(result.get('current', []))} "
-              f"new={len(result.get('new', []))} notified={result.get('notified')}")
-    except Exception as e:
-        print(f"[field_mismatch] ERROR: {e}")
-
+# Hourly field-mismatch check (runs at :15)
 scheduler.add_job(
     run_field_mismatch_check,
     CronTrigger(minute=15, timezone='Asia/Colombo'),
@@ -280,15 +347,7 @@ scheduler.add_job(
     replace_existing=True,
 )
 
-# Stand-in for the alert engine's status pass: recompute completed/overdue/pending
-# on assigned milestones so the dashboard + alert feed stay current. No emails.
-def run_status_recompute():
-    try:
-        from services.status_recompute import recompute_milestone_status
-        recompute_milestone_status()
-    except Exception as e:
-        print(f"[status_recompute] ERROR: {e}")
-
+# Milestone status recompute every 30 minutes
 scheduler.add_job(
     run_status_recompute,
     CronTrigger(minute='*/30', timezone='Asia/Colombo'),
@@ -296,31 +355,56 @@ scheduler.add_job(
     replace_existing=True,
 )
 
-# Field Integrity / Registry Watch — its own module: detects expected data fields
-# that are delayed / possibly renamed and emails its own admin (settings). Runs a
-# few minutes after the status pass so due dates are fresh.
-def run_field_watch():
-    try:
-        from services.field_watch import scan_field_alerts
-        scan_field_alerts()
-    except Exception as e:
-        print(f"[field_watch] ERROR: {e}")
-
+# Field watch at :05 and :35
 scheduler.add_job(
     run_field_watch,
     CronTrigger(minute='5,35', timezone='Asia/Colombo'),
     id='field_watch_scan',
     replace_existing=True,
 )
+
+# Alert engine at :05 every hour
+scheduler.add_job(
+    run_alert_engine_job,
+    CronTrigger(minute=5, timezone='Asia/Colombo'),
+    id='alert_engine_run',
+    replace_existing=True,
+)
+
+# Sales-user digest emails (overdue + upcoming) at 8:00 AM Sri Lanka time
+scheduler.add_job(
+    run_sales_digest_job,
+    CronTrigger(hour=8, minute=0, timezone='Asia/Colombo'),
+    id='sales_digest_run',
+    replace_existing=True,
+)
+
+scheduler.start()
+print('Scheduler started — fixed sync at 12AM, 6AM, 12PM, 6PM Sri Lanka time')
+
 app.config['SCHEDULER'] = scheduler
 app.config['RUN_SYNC_JOB'] = run_sync_job
 
 
-@app.route('/debug/routes')
-def list_routes():
-    return jsonify([str(r) for r in app.url_map.iter_rules()])
+def find_available_port(start_port: int, max_attempts: int = 20) -> int:
+    import socket
 
+    configured_port = int(os.getenv('PORT', str(start_port)))
+    ports_to_try = [configured_port] + list(range(configured_port + 1, configured_port + max_attempts + 1))
+
+    for port in ports_to_try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                sock.bind(('127.0.0.1', port))
+                return port
+            except OSError:
+                continue
+
+    raise RuntimeError(f'No free port found starting from {configured_port} within {max_attempts} attempts.')
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000, use_reloader=False)
+    port = find_available_port(5000)
+    print(f'Starting Flask app on port {port}')
+    app.run(debug=True, host='0.0.0.0', port=port, use_reloader=False)

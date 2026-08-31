@@ -1,250 +1,168 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
 import '@/styles/AdminStyles/ShipmentFeed.css';
 
-type ShipmentStatus =
+// ========================================
+// TYPES (KEEP SAME)
+// ========================================
+
+type ShipmentStage =
   | 'In Transit'
   | 'Customs Hold'
   | 'Arrived at Port'
   | 'Processing'
-  | 'Delivered';
+  | 'Delivery';
 
-type ShipmentDept = 'Air Freight' | 'Sea Freight' | 'Road Freight';
+type TransportMode = 'Air' | 'Sea';
+
+type PickupStatus = 'Delayed' | 'On Time' | 'Pending' | 'Completed';
 
 type ShipmentRow = {
   id: string;
+  branch: string;
+  lane: string;
   origin: string;
   dest: string;
-  dept: ShipmentDept;
-  status: ShipmentStatus;
-  lead: string;
+  stage: ShipmentStage;
+  // stageDetails: string;
+  transportMode: TransportMode;
+  pickupStatus: PickupStatus;
 };
 
-const rows: ShipmentRow[] = [
-  { id: '#DGL-82910', origin: 'Colombo (CMB)', dest: 'Singapore (SIN)', dept: 'Sea Freight', status: 'In Transit', lead: 'S. Perera' },
-  { id: '#DGL-82911', origin: 'Dubai (DXB)', dest: 'London (LHR)', dept: 'Air Freight', status: 'Customs Hold', lead: 'M. Ahmed' },
-  { id: '#DGL-82912', origin: 'Chennai (MAA)', dest: 'Hamburg (HAM)', dept: 'Road Freight', status: 'Arrived at Port', lead: 'K. Kumar' },
-  { id: '#DGL-82913', origin: 'Shanghai (PVG)', dest: 'Los Angeles (LAX)', dept: 'Sea Freight', status: 'Processing', lead: 'T. Silva' },
-  { id: '#DGL-82914', origin: 'Bangkok (BKK)', dest: 'Frankfurt (FRA)', dept: 'Air Freight', status: 'Delivered', lead: 'N. Fernando' },
-  { id: '#DGL-82915', origin: 'Mumbai (BOM)', dest: 'Dubai (DXB)', dept: 'Road Freight', status: 'In Transit', lead: 'R. Khan' },
-  { id: '#DGL-82916', origin: 'Jakarta (CGK)', dest: 'Tokyo (NRT)', dept: 'Sea Freight', status: 'Customs Hold', lead: 'A. Wijesinghe' },
-  { id: '#DGL-82917', origin: 'Doha (DOH)', dest: 'Paris (CDG)', dept: 'Air Freight', status: 'Processing', lead: 'L. Smith' },
-  { id: '#DGL-82918', origin: 'Karachi (KHI)', dest: 'Colombo (CMB)', dept: 'Road Freight', status: 'Delivered', lead: 'P. Jayawardena' },
-  { id: '#DGL-82919', origin: 'Busan (PUS)', dest: 'Rotterdam (RTM)', dept: 'Sea Freight', status: 'Arrived at Port', lead: 'D. Tanaka' },
-];
+export type ShipmentFeedItem = {
+  id: string;
+  cargo_id: string | null;
+  branch: string | null;
+  lane: string | null;
+  stage: ShipmentStage | string | null;
+  transport_mode: TransportMode | string | null;
+  pickup_status: PickupStatus | string | null;
+};
 
-const statusClass: Record<ShipmentStatus, string> = {
+// ========================================
+// STATUS STYLING (KEEP SAME)
+// ========================================
+
+const stageClass: Record<ShipmentStage, string> = {
   'In Transit': 'status--green',
   'Customs Hold': 'status--amber',
   'Arrived at Port': 'status--blue',
   Processing: 'status--purple',
-  Delivered: 'status--gray',
+  Delivery: 'status--gray',
 };
 
-type FilterType = 'department' | 'status';
+const pickupStatusClass: Record<PickupStatus, string> = {
+  Delayed: 'status--amber',
+  'On Time': 'status--green',
+  Pending: 'status--blue',
+  Completed: 'status--gray',
+};
 
-export default function ShipmentFeed() {
+const normalizeStage = (stage: ShipmentFeedItem['stage']): ShipmentStage => {
+  if (stage && stage in stageClass) return stage as ShipmentStage;
+  return 'Processing';
+};
+
+const normalizeTransportMode = (
+  mode: ShipmentFeedItem['transport_mode']
+): TransportMode => {
+  return String(mode).toLowerCase() === 'air' ? 'Air' : 'Sea';
+};
+
+const normalizePickupStatus = (
+  status: ShipmentFeedItem['pickup_status']
+): PickupStatus => {
+  if (status && status in pickupStatusClass) return status as PickupStatus;
+  return 'Pending';
+};
+
+// ========================================
+// COMPONENT (UPDATED ONLY HERE)
+// ========================================
+
+export default function ShipmentFeed({ data }: { data: ShipmentFeedItem[] }) {
+  const router = useRouter();
   const [openFilter, setOpenFilter] = useState(false);
-  const [showAll, setShowAll] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [transportModeFilter, setTransportModeFilter] = useState<string>('All');
 
-  const [filterType, setFilterType] = useState<FilterType>('department');
-  const [deptValue, setDeptValue] = useState<string>('All');
-  const [statusValue, setStatusValue] = useState<string>('All');
+  // 🔥 CONVERT BACKEND DATA → YOUR UI FORMAT
+  const rows: ShipmentRow[] = useMemo(() => {
+    if (!data) return [];
 
-  const isFiltering = deptValue !== 'All' || statusValue !== 'All';
+    return data.map((item) => ({
+      id: `#${item.cargo_id}`,
+      branch: item.branch || '',
+      origin: item.lane?.split('→')[0]?.trim() || '',
+      dest: item.lane?.split('→')[1]?.trim() || '',
+      lane: item.lane || '',
+      stage: normalizeStage(item.stage),
+      // stageDetails: item.description,
+      transportMode: normalizeTransportMode(item.transport_mode),
+      pickupStatus: normalizePickupStatus(item.pickup_status),
+    }));
+  }, [data]);
+
+  // ========================================
+  // FILTER LOGIC (UNCHANGED)
+  // ========================================
 
   const filteredRows = useMemo(() => {
-    return rows.filter((r) => {
-      if (filterType === 'department') {
-        return deptValue === 'All' ? true : r.dept === deptValue;
-      }
-      return statusValue === 'All' ? true : r.status === statusValue;
-    });
-  }, [filterType, deptValue, statusValue]);
+  return rows.filter((r) => {
+    if (transportModeFilter === 'All') return true;
 
-  const displayedRows =
-    isFiltering || showAll
-      ? filteredRows
-      : filteredRows.slice(0, 5);
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id)
-        ? prev.filter((item) => item !== id)
-        : [...prev, id]
+    return (
+      r.transportMode?.toLowerCase().trim() ===
+      transportModeFilter.toLowerCase().trim()
     );
-  };
+  });
+}, [rows, transportModeFilter]);
+  const displayedRows = filteredRows.slice(0, 5);
 
   const clearFilter = () => {
-    setDeptValue('All');
-    setStatusValue('All');
+    setTransportModeFilter('All');
     setOpenFilter(false);
-    setShowAll(false);
   };
-
-  // ✅ SMART EXPORT
-  const exportToCSV = () => {
-    let dataToExport: ShipmentRow[] = [];
-
-    if (selectedIds.length > 0) {
-      dataToExport = rows.filter((r) =>
-        selectedIds.includes(r.id)
-      );
-    } else if (isFiltering) {
-      dataToExport = filteredRows;
-    } else {
-      dataToExport = rows;
-    }
-
-    const headers = [
-      'Shipment ID',
-      'Origin',
-      'Destination',
-      'Department',
-      'Status',
-      'Current Lead',
-    ];
-
-    const csvRows = [
-      headers.join(','),
-      ...dataToExport.map((row) =>
-        [
-          row.id,
-          row.origin,
-          row.dest,
-          row.dept,
-          row.status,
-          row.lead,
-        ].join(',')
-      ),
-    ];
-
-    const blob = new Blob([csvRows.join('\n')], {
-      type: 'text/csv;charset=utf-8;',
-    });
-
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `shipments_${new Date()
-      .toISOString()
-      .slice(0, 10)}.csv`;
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  
+  // ========================================
+  // UI (UNCHANGED)
+  // ========================================
 
   return (
     <div className="shipment-card">
       <div className="shipment-card__head">
         <div className="shipment-card__titleRow">
-          <div className="shipment-card__title">
-            Admin Shipment Feed
-          </div>
+          <div className="shipment-card__title">Shipment Feed</div>
         </div>
 
         <div className="shipment-card__actions">
           {openFilter && (
-  <div className="shipment-filterPop">
-    <div className="shipment-filterPop__top">
-      <div className="shipment-filterPop__title">Filter by</div>
-      <button
-        className="shipment-filterPop__clear"
-        onClick={clearFilter}
-        type="button"
-      >
-        Clear
-      </button>
-    </div>
+            <div className="shipment-filterPop">
+              <div className="shipment-filterPop__top">
+                <div className="shipment-filterPop__title">Filter by</div>
+                <button onClick={clearFilter}>Clear</button>
+              </div>
 
-    <div className="shipment-filterPop__chips">
-      <button
-        type="button"
-        className={`shipment-filterChip ${
-          filterType === 'department' ? 'active' : ''
-        }`}
-        onClick={() => {
-          setFilterType('department');
-          setStatusValue('All');
-        }}
-      >
-        Department
-      </button>
+              <div className="shipment-filterPop__group">
+                <label>Transport Mode</label>
+                <select
+                  value={transportModeFilter}
+                  onChange={(e) => setTransportModeFilter(e.target.value)}
+                >
+                  <option>All</option>
+                  <option>Air</option>
+                  <option>Sea</option>
+                </select>
+              </div>
 
-      <button
-        type="button"
-        className={`shipment-filterChip ${
-          filterType === 'status' ? 'active' : ''
-        }`}
-        onClick={() => {
-          setFilterType('status');
-          setDeptValue('All');
-        }}
-      >
-        Current Status
-      </button>
-    </div>
+              <button onClick={() => setOpenFilter(false)}>Done</button>
+            </div>
+          )}
 
-    {filterType === 'department' ? (
-      <div className="shipment-filterPop__group">
-        <label>Department</label>
-        <select
-          value={deptValue}
-          onChange={(e) => setDeptValue(e.target.value)}
-        >
-          <option>All</option>
-          <option>Air Freight</option>
-          <option>Sea Freight</option>
-          <option>Road Freight</option>
-        </select>
-      </div>
-    ) : (
-      <div className="shipment-filterPop__group">
-        <label>Status</label>
-        <select
-          value={statusValue}
-          onChange={(e) => setStatusValue(e.target.value)}
-        >
-          <option>All</option>
-          <option>In Transit</option>
-          <option>Customs Hold</option>
-          <option>Arrived at Port</option>
-          <option>Processing</option>
-          <option>Delivered</option>
-        </select>
-      </div>
-    )}
-
-    <button
-      className="shipment-filterPop__done"
-      onClick={() => setOpenFilter(false)}
-      type="button"
-    >
-      Done
-    </button>
-  </div>
-)}
-          <button
-  className="shipment-btn shipment-btn--ghost"
-  onClick={() => setOpenFilter((prev) => !prev)}
-  type="button"
->
-  Filter
-</button>
-
-          <button
-            className="shipment-btn shipment-btn--primary"
-            onClick={exportToCSV}
-          >
-            {selectedIds.length > 0
-              ? `Export Selected (${selectedIds.length})`
-              : isFiltering
-              ? `Export Filtered (${filteredRows.length})`
-              : 'Export All'}
+          <button onClick={() => setOpenFilter((prev) => !prev)}>
+            Filter
           </button>
         </div>
       </div>
@@ -253,71 +171,70 @@ export default function ShipmentFeed() {
         <table className="shipment-table">
           <thead>
             <tr>
-              <th></th>
-              <th>Shipment ID</th>
-              <th>Origin / Dest</th>
-              <th>Department</th>
-              <th>Status</th>
-              <th>Current Lead</th>
+              <th>Cargowise ID</th>
+              <th>Shipment Lane</th>
+              <th>Current Stage</th>
+              <th>Transport Mode</th>
+              <th>Pickup Status</th>
+              <th>View Details</th>
             </tr>
           </thead>
+
           <tbody>
-            {displayedRows.map((r) => (
-              <tr key={r.id}>
-                <td>
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.includes(r.id)}
-                    onChange={() => toggleSelect(r.id)}
-                  />
-                </td>
-                <td className="shipment-id">{r.id}</td>
-                <td>
-                  <div className="shipment-od__main">
-                    {r.origin}
-                  </div>
-                  <div className="shipment-od__sub">
-                    <ArrowRight className="shipment-od__icon" />
-                    {r.dest}
-                  </div>
-                </td>
-                <td className="shipment-muted">
-                  {r.dept}
-                </td>
-                <td>
-                  <span
-                    className={`status-pill ${statusClass[r.status]}`}
-                  >
-                    {r.status}
-                  </span>
-                </td>
-                <td className="shipment-muted">
-                  {r.lead}
-                </td>
+            {displayedRows.length > 0 ? (
+              displayedRows.map((r, i) => (
+                <tr key={i}>
+                  <td>
+                    <div className="shipment-id">{r.id}</div>
+                    <div className="shipment-od__sub">
+                      Branch: {r.branch}
+                    </div>
+                  </td>
+
+                  <td>
+                    <div className="shipment-od__main">{r.origin}</div>
+                    <div className="shipment-od__sub">
+                      <ArrowRight className="shipment-od__icon" />
+                      {r.dest}
+                    </div>
+                  </td>
+
+                  <td>
+                    <span className={`status-pill ${stageClass[r.stage]}`}>
+                      {r.stage}
+                    </span>
+                    {/* <div className="shipment-od__sub">
+                      {r.stageDetails}
+                    </div> */}
+                  </td>
+
+                  <td className="shipment-muted">{r.transportMode}</td>
+
+                  <td>
+                    <span
+                      className={`status-pill ${pickupStatusClass[r.pickupStatus]}`}
+                    >
+                      {r.pickupStatus}
+                    </span>
+                  </td>
+
+                  <td>
+                      
+                    <button className="shipment-viewAll" onClick={() => router.push(`/admin/shipments/${r.id.replace('#', '')}?from=/admin/dashboard`)}
+                   >
+                      View Details
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={6}>No data available</td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
-
-      {!isFiltering && filteredRows.length > 5 && (
-        <div className="shipment-card__footer">
-          <button
-            className="shipment-viewAll"
-            onClick={() => setShowAll((p) => !p)}
-          >
-            {showAll ? 'Show Less' : 'View All'}
-          </button>
-        </div>
-      )}
-
-      {isFiltering && (
-        <div className="shipment-card__footer">
-          <button className="shipment-viewAll">
-            View {filteredRows.length} Shipments
-          </button>
-        </div>
-      )}
     </div>
   );
 }

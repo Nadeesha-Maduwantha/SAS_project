@@ -11,6 +11,16 @@ interface AccessLogsTableProps {
   onPageChange: (page: number) => void;
 }
 
+// Formats an ISO timestamp as e.g. "2026-5-4 4.46p.m"
+export function formatTimestamp(ts: string): string {
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return ts;
+  const ampm = d.getHours() >= 12 ? "p.m" : "a.m";
+  const hours = d.getHours() % 12 || 12;
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()} ${hours}.${minutes}${ampm}`;
+}
+
 const AccessLogsTable: React.FC<AccessLogsTableProps> = ({
   logs,
   currentPage,
@@ -49,10 +59,10 @@ const AccessLogsTable: React.FC<AccessLogsTableProps> = ({
                     : "bg-gray-50 hover:bg-gray-100"
                 }`}
               >
-                <td className="px-4 py-3 text-gray-700 align-middle whitespace-nowrap">{log.timestamp}</td>
+                <td className="px-4 py-3 text-gray-700 align-middle whitespace-nowrap">{formatTimestamp(log.timestamp)}</td>
                 <td className="px-4 py-3 align-middle">
-                  <p className="font-medium text-gray-800 text-sm">{log.user.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{log.user.email}</p>
+                  <div className="text-sm font-medium text-gray-900">{log.user.name}</div>
+                  <div className="text-sm text-gray-500 mt-0.5">{log.user.role || 'Unknown'}</div>
                 </td>
                 <td className="px-4 py-3 text-gray-700 align-middle">{log.action}</td>
                 <td className="px-4 py-3 text-gray-700 align-middle">{log.ipAddress}</td>

@@ -34,13 +34,12 @@ export default function AuditTrailFilters({
             value={filters.module}
             onChange={handleModuleChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            data-testid="filter-module"
           >
             <option value="all">All Modules</option>
+            <option value="Shipment">Shipment</option>
+            <option value="User Profile">User Profile</option>
             <option value="Security Settings">Security Settings</option>
-            <option value="User Management">User Management</option>
-            <option value="Shipment Management">Shipment Management</option>
-            <option value="Alert Management">Alert Management</option>
-            <option value="Department Management">Department Management</option>
             <option value="System">System</option>
           </select>
         </div>
@@ -54,10 +53,10 @@ export default function AuditTrailFilters({
             value={filters.severity}
             onChange={handleSeverityChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            data-testid="filter-severity"
           >
             <option value="all">All Severity</option>
             <option value="Info">Info</option>
-            <option value="Warning">Warning</option>
             <option value="Critical">Critical</option>
           </select>
         </div>
@@ -71,6 +70,7 @@ export default function AuditTrailFilters({
             value={filters.dateRange}
             onChange={handleDateRangeChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            data-testid="filter-daterange"
           >
             <option value="today">Today</option>
             <option value="Last 7 Days">Last 7 Days</option>

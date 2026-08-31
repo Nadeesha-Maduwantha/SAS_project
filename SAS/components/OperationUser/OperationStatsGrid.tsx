@@ -1,38 +1,35 @@
 import OperationStatCard from '@/components/OperationUser/OperationStatCard';
-import { ClipboardList, Truck, Anchor, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, Truck, Users, AlertTriangle } from 'lucide-react';
 import '@/styles/OperationStyles/OperationStatsGrid.css';
 
 export default function OperationStatsGrid() {
   return (
     <div className="op-stats">
+      
       <OperationStatCard
-        title="Processing"
+        icon={<Truck className="super-stat__icon super-stat__icon--blue" />}
+        title="Department Shipments"
         value="24"
-        //meta="+12%"
-        //tone="blue"
-        icon={<ClipboardList className="op-stat__icon op-stat__icon--blue" />}
       />
+
+      {/* <OperationStatCard
+        icon={<Users className="super-stat__icon super-stat__icon--purple" />}
+        title="Team Members"
+        value="5"
+      /> */}
+
       <OperationStatCard
-        title="In Transit"
-        value="142"
-        //meta="Active"
-        //tone="purple"
-        icon={<Truck className="op-stat__icon op-stat__icon--purple" />}
+        icon={<AlertTriangle className="super-stat__icon super-stat__icon--red" />}
+        title="Overdue Shipments"
+        value="5"
       />
+
       <OperationStatCard
-        title="Arrived at Port"
-        value="18"
-        //meta="Last 24h"
-        //tone="green"
-        icon={<Anchor className="op-stat__icon op-stat__icon--green" />}
+        icon={<CheckCircle2 className="super-stat__icon super-stat__icon--green" />}
+        title="Critical Milestones"
+        value="10"
       />
-      <OperationStatCard
-        title="Delayed"
-        value="3"
-        //meta="Action Req."
-        //tone="red"
-        icon={<AlertTriangle className="op-stat__icon op-stat__icon--red" />}
-      />
+
     </div>
   );
 }

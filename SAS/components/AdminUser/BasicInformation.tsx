@@ -6,7 +6,7 @@ interface BasicInformationProps {
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
 }
 
-const departments = ['Sales', 'Operations'];
+const departments = ['Sea', 'Air'];
 const roles = ['Custom Configuration', 'Admin', 'Super User', 'Operation User','Sales User'];
 
 const BasicInformation: React.FC<BasicInformationProps> = ({ formData, onChange }) => {
@@ -83,19 +83,6 @@ const BasicInformation: React.FC<BasicInformationProps> = ({ formData, onChange 
         <p className="text-xs text-gray-400 mt-1">
           Selecting a preset role will auto-populate permissions on the right.
         </p>
-      </div>
-
-      {/* Account Status */}
-      <div className="bg-blue-50 rounded-lg p-4 flex gap-3 items-start mt-2">
-        <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs flex-shrink-0">
-          i
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-gray-800">Account Status</p>
-          <p className="text-xs text-gray-500 mt-1">
-            This user is currently Active. Last login was 2 hours ago from IP 192.168.1.45.
-          </p>
-        </div>
       </div>
     </div>
   );

@@ -80,7 +80,7 @@ export default function SalesUserShipmentsPage() {
   // NOTE: Company has not provided sales user staff codes yet, so
   // getShipmentsBySalesUser() currently returns all shipments from Flask.
   // Once sales user data is available, Flask will filter by staffCode.
-  const { staffCode, name } = useAuth()
+  const { email, name } = useAuth()
 
   const [currentPage, setCurrentPage]    = useState(1)
   const [shipments, setShipments]        = useState<Shipment[]>([])
@@ -91,12 +91,12 @@ export default function SalesUserShipmentsPage() {
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null)
   const [view, setView] = useState<ShipmentView>('table')
 
-  // To Fetching shipments, we use useEffect to call getShipmentsBySalesUser with the staffCode from auth.
+  // To Fetching shipments, we use useEffect to call getShipmentsBySalesUser with the email from auth.
   useEffect(() => {
     async function fetchData() {
       try {
         setLoading(true)
-        const data = await getShipmentsBySalesUser(staffCode)
+        const data = await getShipmentsBySalesUser(email)
         setShipments(data)
       } catch (err) {
         // FIXED: error was swallowed — now logged for debugging
@@ -107,7 +107,7 @@ export default function SalesUserShipmentsPage() {
       }
     }
     fetchData()
-  }, [staffCode]) // re-fetches if staffCode changes when real auth is connected
+  }, [email]) // re-fetches if email changes when real auth is connected
 
   // Stats
   // isDelayedShipment() imported from constants — single source of

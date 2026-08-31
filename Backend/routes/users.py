@@ -2,7 +2,9 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 import traceback
 from services.supabase_service import get_supabase
+from utils.access_logger import log_access_event
 from utils.audit_logger import log_audit_action
+from utils.auth_helper import get_current_user
 
 print("=== USERS.PY MODULE LOADED ===")  # ← TOP OF FILE outside function
 
@@ -18,6 +20,16 @@ def create_user():
 
         if not data.get('email') or not data.get('password'):
             return jsonify({'error': 'Email and password are required'}), 400
+
+        # A Super User may only create Sales/Operation accounts — Admin and
+        # Super User accounts stay Admin-only. Requesters with no identifiable
+        # role (e.g. no/invalid token) aren't super users, so they aren't
+        # restricted by this check specifically.
+        requester_id, requester_role = get_current_user()
+        if (requester_role or '').lower() == 'superuser':
+            allowed_roles = {'salesuser', 'operationuser'}
+            if (data.get('role') or '').lower() not in allowed_roles:
+                return jsonify({'error': 'Super Users can only create Sales User or Operation User accounts'}), 403
 
         supabase = get_supabase()
 
@@ -60,6 +72,20 @@ def create_user():
             return jsonify({'error': f'Profile Insert failed: {str(table_err)}'}), 400
 
         print("=== STEP 4: Success ===")
+        log_access_event('Create', status='Success', email_attempted=email, user_id=user_id)
+
+        if requester_id:
+            # action_type_id=1 -> CREATE, entity_type_id=2 -> User Profile
+            # (matches public.action_types / public.entity_types)
+            log_audit_action(
+                user_id=requester_id,
+                action_type_id=1,
+                entity_type_id=2,
+                entity_id=user_id,
+                new_value=user_data,
+                description=f"Created user {email}",
+            )
+
         return jsonify({
             'message': 'User created successfully',
             'user_id': user_id,
@@ -79,33 +105,6 @@ def create_user():
             
         return jsonify({'error': error_message}), 400
 
-@bp.route('/<user_id>', methods=['DELETE'])
-def delete_user(user_id):
-    try:
-        supabase = get_supabase()
-        
-        # ... your code to actually delete the user ...
-        # e.g., response = supabase.table('users').delete().eq('id', user_id).execute()
-        
-        # 2. LOG THE ACTION
-        # Assuming you know who is doing the deleting (e.g., the currently logged-in Admin's ID)
-        admin_id = "uuid-of-the-logged-in-admin" # You'd get this from your auth middleware/token
-        
-        # Action types and entity types should match the IDs in your database setup!
-        ACTION_DELETE = 3       # Example: 3 = Delete
-        ENTITY_USER = 1         # Example: 1 = User module
-        
-        log_audit_action(
-            user_id=admin_id,
-            action_type_id=ACTION_DELETE,
-            entity_type_id=ENTITY_USER,
-            entity_id=user_id,
-            old_value=None,
-            new_value=None,
-            description=f"Deleted user account with ID: {user_id}"
-        )
-        
-        return jsonify({'message': 'User deleted successfully'}), 200
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+# Note: DELETE /<user_id> is handled by routes/user_edit.py (the real
+# implementation — deletes from Supabase Auth + profiles, logs correctly).
+# A dead-stub duplicate of this route used to live here, shadowing it.

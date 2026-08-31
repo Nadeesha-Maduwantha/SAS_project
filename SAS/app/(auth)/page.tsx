@@ -2,6 +2,7 @@
 
 import { useState, FormEvent, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,7 +27,7 @@ export default function LoginPage() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch('http://127.0.0.1:5000/api/auth/login', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ email, password }),
@@ -36,7 +37,9 @@ export default function LoginPage() {
       if (response.ok && data.user) {
         const role = data.user.role?.toLowerCase().trim() || 'super_user';
         localStorage.setItem('access_token', data.access_token);
-        localStorage.setItem('user_role',    role);
+        localStorage.setItem('user_role', role);
+        localStorage.setItem('user_email', data.user.email || '');
+        localStorage.setItem('user_department', data.user.department || '');
         document.cookie = `access_token=${data.access_token}; path=/; max-age=86400`;
         document.cookie = `user_role=${role}; path=/; max-age=86400`;
 
@@ -157,13 +160,13 @@ export default function LoginPage() {
                 Work Email
               </label>
               <input
-                type="email" id="email"
-                value={email} onChange={handleEmailChange}
-                placeholder="name@company.com" required
-                className="w-full px-4 py-3 border rounded-lg text-sm outline-none transition-all
-                           border-gray-200 bg-white text-gray-900
-                           focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                           placeholder:text-gray-400"
+                type="email"
+                id="email"
+                value={email}
+                onChange={handleEmailChange}
+                placeholder="name@company.com"
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
               />
             </div>
 
@@ -173,9 +176,9 @@ export default function LoginPage() {
                 <label htmlFor="password" className="block text-sm font-semibold text-gray-700">
                   Password
                 </label>
-                <a href="#" className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                <Link href="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700">
                   Forgot password?
-                </a>
+                </Link>
               </div>
               <input
                 type="password" id="password"
@@ -190,8 +193,7 @@ export default function LoginPage() {
 
             {/* Error */}
             {error && (
-              <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 border border-red-200 px-4 py-2.5 rounded-lg">
-                <span className="w-4 h-4 flex-shrink-0">⚠</span>
+              <div className="text-red-500 text-sm text-center font-medium bg-red-50 py-2 rounded-md" data-testid="login-error">
                 {error}
               </div>
             )}
@@ -213,12 +215,10 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || !isValidEmail(email)}
-              className={`w-full py-3 rounded-lg text-sm font-semibold text-white transition-all
-                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                ${loading || !isValidEmail(email)
-                  ? 'bg-blue-300 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 shadow-sm hover:shadow-md'
-                }`}
+              data-testid="login-submit-btn"
+              className={`w-full text-white py-3 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+              }`}
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">

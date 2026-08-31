@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export function middleware(request: NextRequest) {
+  // TEMPORARY: middleware disabled. Remove this return to re-enable auth checks.
+  return NextResponse.next();
+
+  const pathname = request.nextUrl.pathname;
+
+  // TEMPORARY: bypass auth for edit-user testing
+  if (pathname.startsWith('/sales_user/edit-user')) {
+    return NextResponse.next();
+  }
+
   const token = request.cookies.get('access_token')?.value;
   const userRole = request.cookies.get('user_role')?.value;
-  const pathname = request.nextUrl.pathname;
 
   // Not authenticated - redirect to login
   if (!token) {
@@ -28,5 +37,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/operation_user/:path*', '/sales_user/:path*', '/super-user/:path*']
+  // TEMPORARY: Empty matcher disables middleware for all routes so you can test anything
+  matcher: []
 };

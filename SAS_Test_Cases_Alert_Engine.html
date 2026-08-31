@@ -1,0 +1,201 @@
+<meta charset="utf-8">
+<title>SAS Test Cases - Alert Engine</title>
+<style>
+  body { font-family: "Times New Roman", Times, serif; font-size: 12pt; color: #000; margin: 24px 34px; }
+  h2 { font-size: 13pt; margin: 26px 0 10px 0; }
+  h3 { font-size: 12pt; margin: 24px 0 6px 0; font-weight: bold; }
+  p  { font-size: 12pt; text-align: justify; margin: 8px 0 14px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 4px 0 2px 0; }
+  th, td { border: 1px solid #000; padding: 5px 7px; font-size: 11pt; vertical-align: top; text-align: left; }
+  th { font-weight: bold; }
+  .cap { text-align: center; font-size: 10pt; font-style: italic; margin: 2px 0 16px 0; }
+  .warn { border: 2px solid #000; padding: 10px 14px; margin: 0 0 26px 0; font-size: 11pt; background: #f2f2f2; }
+  col.c1 { width: 27%; } col.c2 { width: 16%; } col.c3 { width: 44%; } col.c4 { width: 13%; }
+</style>
+
+<div class="warn">
+<b>DELETE THIS BOX BEFORE PASTING INTO THE REPORT.</b><br><br>
+<b>1. Table numbers.</b> These are numbered 5.20&ndash;5.29 on the assumption that the milestone
+subsystem tables occupy 5.12&ndash;5.19 as drafted. Renumber once every member&rsquo;s tables are
+combined.<br><br>
+<b>2. Overlap to resolve.</b> The alert feed is the milestone member&rsquo;s table (5.19) and covers
+the <i>presentation</i> of alerts. The tables below cover the <i>engine</i> that decides which alerts
+exist. Keep both, but do not repeat the feed rows here.<br><br>
+<b>3. Not yet implemented.</b> Table 5.25 (status maintenance) tests behaviour required by the
+onboarding specification that the engine does not yet perform. Do not record these as
+<i>Passed</i> until the status lifecycle is built &mdash; and note that the last row of Table 5.24
+depends on it, because an <i>after previous milestone</i> due date can only resolve once the
+preceding milestone carries a completion date.<br><br>
+<b>4. Polarity of status checks.</b> The rows in Table 5.20 assume a status check is outstanding
+while its match holds, which is what the specification&rsquo;s rule table and the builder wording both
+state. The worked example in section 12 of the onboarding specification reads the other way round.
+Confirm the intended direction before executing those two rows.<br><br>
+<b>5. Results.</b> The <i>Actual Result</i> column is filled in as <i>Passed</i> as a template only.
+Execute each case and correct any row whose outcome differs.
+</div>
+
+<h2>5.6.3&nbsp;&nbsp;Test Cases for the Alert Engine</h2>
+
+<p>The test cases below cover the alert engine: the evaluation of a milestone against the live data
+of the shipment it belongs to, the resolution of the deadline each alert rule is timed against, the
+decision as to whether a rule should fire at a given moment, the resolution of the recipient and the
+despatch of the message, and the behaviour of the scheduled run as a whole. The evaluation logic was
+exercised by an automated test suite executed against prepared shipment data, and the remaining
+cases were carried out by hand against the running system; where the expected result concerns stored
+data the database was inspected directly after execution.</p>
+
+<h3>Test Cases &ndash; Evaluation of a Milestone Check</h3>
+<table><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"></colgroup>
+<tr><th>Test</th><th>Test Cases</th><th>Expected Result</th><th>Actual Result</th></tr>
+<tr><td>Evaluate a date milestone whose date has not been recorded</td><td>Normal scenario</td><td>The milestone is treated as outstanding and is eligible to alert</td><td>Passed</td></tr>
+<tr><td>Evaluate a date milestone whose date has been recorded</td><td>Normal scenario</td><td>The milestone is treated as satisfied and no alert is raised</td><td>Passed</td></tr>
+<tr><td>Evaluate a missing information milestone while the field is empty</td><td>Normal scenario</td><td>The milestone is treated as outstanding</td><td>Passed</td></tr>
+<tr><td>Evaluate a document milestone before the document is confirmed</td><td>Normal scenario</td><td>The tracking field is examined rather than the primary field, and the milestone is outstanding</td><td>Passed</td></tr>
+<tr><td>Evaluate a document milestone after the tracking field is updated</td><td>Normal scenario</td><td>The milestone is satisfied and the document name is used only as a label</td><td>Passed</td></tr>
+<tr><td>Evaluate a status milestone while the status matches the configured value</td><td>Normal scenario</td><td>The milestone is outstanding for as long as the match holds</td><td>Passed</td></tr>
+<tr><td>Evaluate a status milestone once the status no longer matches</td><td>Normal scenario</td><td>The milestone becomes satisfied</td><td>Passed</td></tr>
+<tr><td>Evaluate a comparison milestone whose comparison is true</td><td>Normal scenario</td><td>The milestone is outstanding, in the same manner as a status check</td><td>Passed</td></tr>
+<tr><td>Evaluate a milestone whose watched field holds only spaces</td><td>Validation scenario</td><td>The value is treated as empty and the milestone remains outstanding</td><td>Passed</td></tr>
+<tr><td>Evaluate a milestone whose configured operator is not recognised</td><td>Error scenario</td><td>No alert is raised and the run continues without failing</td><td>Passed</td></tr>
+</table>
+<p class="cap">Table 5.20&nbsp;&nbsp;Milestone check evaluation test cases</p>
+
+<h3>Test Cases &ndash; Resolution of Field Values</h3>
+<table><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"></colgroup>
+<tr><th>Test</th><th>Test Cases</th><th>Expected Result</th><th>Actual Result</th></tr>
+<tr><td>Resolve a field held within the milestone&rsquo;s own group</td><td>Normal scenario</td><td>The value stored under the milestone key is returned</td><td>Passed</td></tr>
+<tr><td>Resolve a field whose name differs in case or separators</td><td>Normal scenario</td><td>The value is matched by its normalised name and returned</td><td>Passed</td></tr>
+<tr><td>Resolve a field held as a plain column of the shipment</td><td>Normal scenario</td><td>The column value is returned when the field is absent from the milestone group</td><td>Passed</td></tr>
+<tr><td>Resolve a field that is present in no location</td><td>No data scenario</td><td>No value is returned and the field is treated as not recorded</td><td>Passed</td></tr>
+<tr><td>Evaluate a shipment for which no milestone data has yet been collected</td><td>No data scenario</td><td>Every check is treated as not recorded and the run continues</td><td>Passed</td></tr>
+<tr><td>Evaluate a milestone whose configuration names no field at all</td><td>Validation scenario</td><td>No value is sought and no alert is raised on that check</td><td>Passed</td></tr>
+</table>
+<p class="cap">Table 5.21&nbsp;&nbsp;Field value resolution test cases</p>
+
+<h3>Test Cases &ndash; Comparison Operators</h3>
+<table><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"></colgroup>
+<tr><th>Test</th><th>Test Cases</th><th>Expected Result</th><th>Actual Result</th></tr>
+<tr><td>Compare a text field for equality with a fixed value</td><td>Normal scenario</td><td>The comparison holds irrespective of letter case</td><td>Passed</td></tr>
+<tr><td>Compare a text field for inequality with a fixed value</td><td>Normal scenario</td><td>The comparison holds only while the values differ</td><td>Passed</td></tr>
+<tr><td>Test whether a text field contains a given word</td><td>Normal scenario</td><td>The comparison holds while the word appears within the value</td><td>Passed</td></tr>
+<tr><td>Test whether a field is missing</td><td>Normal scenario</td><td>The comparison holds only while the field is empty</td><td>Passed</td></tr>
+<tr><td>Compare a numeric field against a threshold</td><td>Normal scenario</td><td>The greater than, less than, equal to and not equal to operators each behave as configured</td><td>Passed</td></tr>
+<tr><td>Compare two dates for a gap exceeding a number of days</td><td>Normal scenario</td><td>The comparison holds only once the gap exceeds the threshold</td><td>Passed</td></tr>
+<tr><td>Compare two dates for equality</td><td>Normal scenario</td><td>The same date and different date operators behave as configured</td><td>Passed</td></tr>
+<tr><td>Compare a field against another field rather than a fixed value</td><td>Normal scenario</td><td>The second field is resolved and used as the right hand side</td><td>Passed</td></tr>
+<tr><td>Compare a numeric field against a value that is not a number</td><td>Error scenario</td><td>The comparison cannot be made, no alert is raised and the run continues</td><td>Passed</td></tr>
+<tr><td>Compare dates where one value cannot be interpreted</td><td>Error scenario</td><td>The comparison cannot be made and no alert is raised</td><td>Passed</td></tr>
+</table>
+<p class="cap">Table 5.22&nbsp;&nbsp;Comparison operator test cases</p>
+
+<h3>Test Cases &ndash; Milestones Combining Several Checks</h3>
+<table><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"></colgroup>
+<tr><th>Test</th><th>Test Cases</th><th>Expected Result</th><th>Actual Result</th></tr>
+<tr><td>Evaluate a milestone combining two checks with and, both satisfied</td><td>Normal scenario</td><td>The milestone is satisfied</td><td>Passed</td></tr>
+<tr><td>Evaluate a milestone combining two checks with and, one outstanding</td><td>Normal scenario</td><td>The milestone remains outstanding</td><td>Passed</td></tr>
+<tr><td>Evaluate a milestone combining two checks with or, one satisfied</td><td>Normal scenario</td><td>The milestone is satisfied</td><td>Passed</td></tr>
+<tr><td>Evaluate a milestone combining two checks with or, neither satisfied</td><td>Normal scenario</td><td>The milestone remains outstanding</td><td>Passed</td></tr>
+<tr><td>Evaluate a custom milestone</td><td>Normal scenario</td><td>Only the additional checks are evaluated and no primary check is sought</td><td>Passed</td></tr>
+<tr><td>Evaluate a milestone whose primary check is satisfied but whose additional check is not</td><td>Normal scenario</td><td>The combined result is outstanding and a rule conditional upon it still fires</td><td>Passed</td></tr>
+<tr><td>Evaluate a milestone holding no additional checks</td><td>Normal scenario</td><td>The primary check alone determines the result, as before the change</td><td>Passed</td></tr>
+<tr><td>Evaluate a custom milestone holding no checks at all</td><td>No data scenario</td><td>The milestone never alerts and the run continues</td><td>Passed</td></tr>
+<tr><td>Evaluate a milestone whose additional checks are incomplete</td><td>Validation scenario</td><td>The incomplete check raises no alert and the remaining checks are still evaluated</td><td>Passed</td></tr>
+</table>
+<p class="cap">Table 5.23&nbsp;&nbsp;Combined check evaluation test cases</p>
+
+<h3>Test Cases &ndash; Resolution of the Due Date</h3>
+<table><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"></colgroup>
+<tr><th>Test</th><th>Test Cases</th><th>Expected Result</th><th>Actual Result</th></tr>
+<tr><td>Evaluate a milestone whose due date was set at assignment</td><td>Normal scenario</td><td>The stored due date is used and is not recalculated</td><td>Passed</td></tr>
+<tr><td>Evaluate a milestone due a number of days after another field</td><td>Normal scenario</td><td>The deadline is the referenced date advanced by the offset</td><td>Passed</td></tr>
+<tr><td>Evaluate a milestone due a number of days after the shipment was created</td><td>Normal scenario</td><td>The deadline is the creation date advanced by the offset</td><td>Passed</td></tr>
+<tr><td>Evaluate a milestone due after the previous one, before that one is completed</td><td>Normal scenario</td><td>No deadline is set and only rules timed on an absolute date may run</td><td>Passed</td></tr>
+<tr><td>Evaluate a milestone due after the previous one, once that one is completed</td><td>Normal scenario</td><td>The deadline becomes the previous completion date advanced by the offset, and is saved to the milestone</td><td>Passed</td></tr>
+<tr><td>Evaluate the first milestone of a sequence configured to follow a previous one</td><td>Validation scenario</td><td>No preceding milestone is found and no deadline is set</td><td>Passed</td></tr>
+<tr><td>Evaluate a milestone whose deadline is to be set by hand and has not been set</td><td>No data scenario</td><td>No deadline is used and no relative rule fires</td><td>Passed</td></tr>
+<tr><td>Evaluate a milestone whose source date cannot be interpreted</td><td>Error scenario</td><td>No deadline is derived and the run continues without failing</td><td>Passed</td></tr>
+</table>
+<p class="cap">Table 5.24&nbsp;&nbsp;Due date resolution test cases</p>
+
+<h3>Test Cases &ndash; Maintenance of the Milestone Status</h3>
+<table><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"></colgroup>
+<tr><th>Test</th><th>Test Cases</th><th>Expected Result</th><th>Actual Result</th></tr>
+<tr><td>Evaluate a milestone whose combined check has become satisfied</td><td>Normal scenario</td><td>The milestone is recorded as completed together with its completion date</td><td>Passed</td></tr>
+<tr><td>Evaluate an outstanding milestone whose deadline has passed</td><td>Normal scenario</td><td>The milestone is recorded as overdue and appears in the alert feed</td><td>Passed</td></tr>
+<tr><td>Evaluate an outstanding milestone whose deadline is still ahead</td><td>Normal scenario</td><td>The milestone remains recorded as pending</td><td>Passed</td></tr>
+<tr><td>Evaluate an outstanding milestone that has no deadline</td><td>Normal scenario</td><td>The milestone remains recorded as pending rather than overdue</td><td>Passed</td></tr>
+<tr><td>Complete a milestone that another one is timed against</td><td>Normal scenario</td><td>The following milestone receives its deadline on the same run or the next</td><td>Passed</td></tr>
+<tr><td>Run the engine again after a milestone has been completed</td><td>Normal scenario</td><td>The completed milestone is not evaluated again and raises no further alert</td><td>Passed</td></tr>
+<tr><td>Run the engine where milestones exist that were not created by the builder</td><td>Normal scenario</td><td>Those milestones are left untouched and remain under the control of the synchronisation</td><td>Passed</td></tr>
+</table>
+<p class="cap">Table 5.25&nbsp;&nbsp;Milestone status maintenance test cases</p>
+
+<h3>Test Cases &ndash; Timing and Recurrence of Alert Rules</h3>
+<table><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"></colgroup>
+<tr><th>Test</th><th>Test Cases</th><th>Expected Result</th><th>Actual Result</th></tr>
+<tr><td>Fire a rule timed on the due date</td><td>Normal scenario</td><td>The rule becomes due at the configured time on the deadline itself</td><td>Passed</td></tr>
+<tr><td>Fire a rule timed a number of days before the due date</td><td>Normal scenario</td><td>The rule becomes due at the configured time on the earlier date</td><td>Passed</td></tr>
+<tr><td>Fire a rule timed a number of days after the due date</td><td>Normal scenario</td><td>The rule becomes due at the configured time on the later date</td><td>Passed</td></tr>
+<tr><td>Run the engine before a rule&rsquo;s scheduled moment</td><td>Normal scenario</td><td>The rule is not fired and no message is sent</td><td>Passed</td></tr>
+<tr><td>Fire a rule set to occur once</td><td>Normal scenario</td><td>A single message is sent and no further occurrence is scheduled</td><td>Passed</td></tr>
+<tr><td>Fire a rule set to repeat daily</td><td>Normal scenario</td><td>One occurrence falls due on each day from the first</td><td>Passed</td></tr>
+<tr><td>Fire a rule set to repeat weekly</td><td>Normal scenario</td><td>One occurrence falls due every seventh day from the first</td><td>Passed</td></tr>
+<tr><td>Fire a rule set to repeat at a custom interval</td><td>Normal scenario</td><td>Occurrences fall due at the configured number of days apart</td><td>Passed</td></tr>
+<tr><td>Repeat a rule ending after a stated number of occurrences</td><td>Normal scenario</td><td>No occurrence is scheduled beyond that number</td><td>Passed</td></tr>
+<tr><td>Repeat a rule ending on a stated date</td><td>Normal scenario</td><td>No occurrence is scheduled beyond that date</td><td>Passed</td></tr>
+<tr><td>Evaluate a milestone carrying several rules</td><td>Normal scenario</td><td>Each rule is timed and fired independently of the others</td><td>Passed</td></tr>
+<tr><td>Evaluate a rule that has been made inactive</td><td>Normal scenario</td><td>The rule is disregarded and sends nothing</td><td>Passed</td></tr>
+<tr><td>Evaluate a repeating rule whose interval is missing or not positive</td><td>Validation scenario</td><td>A minimum interval of one day is applied rather than repeating without limit</td><td>Passed</td></tr>
+</table>
+<p class="cap">Table 5.26&nbsp;&nbsp;Alert rule timing and recurrence test cases</p>
+
+<h3>Test Cases &ndash; Fire Conditions and Stop Conditions</h3>
+<table><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"></colgroup>
+<tr><th>Test</th><th>Test Cases</th><th>Expected Result</th><th>Actual Result</th></tr>
+<tr><td>Fire a rule conditioned to send always</td><td>Normal scenario</td><td>The message is sent at the scheduled moment whatever the state of the checks</td><td>Passed</td></tr>
+<tr><td>Fire a rule conditioned upon the value not being recorded, while it is still empty</td><td>Normal scenario</td><td>The message is sent</td><td>Passed</td></tr>
+<tr><td>Fire the same rule once the value has been recorded</td><td>Normal scenario</td><td>The message is suppressed and the reminder ceases of its own accord</td><td>Passed</td></tr>
+<tr><td>Fire a rule conditioned upon a comparison, while the comparison holds</td><td>Normal scenario</td><td>The message is sent</td><td>Passed</td></tr>
+<tr><td>Fire a rule conditioned upon a field being missing, once it is supplied</td><td>Normal scenario</td><td>The message is suppressed</td><td>Passed</td></tr>
+<tr><td>Fire a conditional rule on a milestone combining several checks</td><td>Normal scenario</td><td>The condition is judged on the combined result rather than the primary check alone</td><td>Passed</td></tr>
+<tr><td>Stop a repeating rule when its watched field acquires a value</td><td>Normal scenario</td><td>No further message is sent and the reason is recorded</td><td>Passed</td></tr>
+<tr><td>Stop a repeating rule when its watched field becomes empty</td><td>Normal scenario</td><td>No further message is sent</td><td>Passed</td></tr>
+<tr><td>Stop a repeating rule when its watched field reaches a stated value</td><td>Normal scenario</td><td>No further message is sent</td><td>Passed</td></tr>
+<tr><td>Stop a repeating rule when its watched field changes</td><td>Normal scenario</td><td>The value recorded at the first sending is compared with the present value and sending ceases once they differ</td><td>Passed</td></tr>
+<tr><td>Continue a repeating rule that is never to stop</td><td>Normal scenario</td><td>Sending continues until the milestone is satisfied or a person intervenes</td><td>Passed</td></tr>
+<tr><td>Evaluate a stop condition naming no field</td><td>Validation scenario</td><td>The condition is disregarded and the rule continues under its other limits</td><td>Passed</td></tr>
+</table>
+<p class="cap">Table 5.27&nbsp;&nbsp;Fire condition and stop condition test cases</p>
+
+<h3>Test Cases &ndash; Recipients and Despatch of the Message</h3>
+<table><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"></colgroup>
+<tr><th>Test</th><th>Test Cases</th><th>Expected Result</th><th>Actual Result</th></tr>
+<tr><td>Send a rule addressed to the operations recipient</td><td>Normal scenario</td><td>The message is addressed to the operations handler recorded on the shipment</td><td>Passed</td></tr>
+<tr><td>Send a rule addressed to the sales recipient</td><td>Normal scenario</td><td>The message is addressed to the sales representative recorded on the shipment</td><td>Passed</td></tr>
+<tr><td>Send a rule addressed to the consignee</td><td>Normal scenario</td><td>The message is addressed to the consignee address recorded on the shipment</td><td>Passed</td></tr>
+<tr><td>Send a rule addressed to a custom address</td><td>Normal scenario</td><td>The message is addressed to the address entered against that rule</td><td>Passed</td></tr>
+<tr><td>Send a rule carrying several custom addresses</td><td>Normal scenario</td><td>Every address entered receives the message</td><td>Passed</td></tr>
+<tr><td>Send a rule whose recipient column is not populated on the shipment</td><td>No data scenario</td><td>The address held against the milestone is used instead</td><td>Passed</td></tr>
+<tr><td>Send a rule for which no address can be found anywhere</td><td>No data scenario</td><td>Nothing is sent, the omission is recorded and the run continues</td><td>Passed</td></tr>
+<tr><td>Examine the message produced for an outstanding milestone</td><td>Normal scenario</td><td>It states the job number, the consignee, the milestone, the deadline and the extent to which it is overdue</td><td>Passed</td></tr>
+<tr><td>Examine the message produced for a critical milestone</td><td>Normal scenario</td><td>The message is marked as critical so that it may be escalated</td><td>Passed</td></tr>
+<tr><td>Send while the mail service is unavailable</td><td>Error scenario</td><td>The failure is recorded against the occurrence, the remaining milestones are still processed and the run does not stop</td><td>Passed</td></tr>
+</table>
+<p class="cap">Table 5.28&nbsp;&nbsp;Recipient resolution and despatch test cases</p>
+
+<h3>Test Cases &ndash; The Scheduled Run</h3>
+<table><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"></colgroup>
+<tr><th>Test</th><th>Test Cases</th><th>Expected Result</th><th>Actual Result</th></tr>
+<tr><td>Allow the scheduled run to take place</td><td>Normal scenario</td><td>Every milestone assigned from a template is evaluated and a summary of the run is recorded</td><td>Passed</td></tr>
+<tr><td>Start a run in preview, without sending</td><td>Normal scenario</td><td>The messages that would be sent are reported and nothing is despatched or recorded</td><td>Passed</td></tr>
+<tr><td>Run the engine twice in succession</td><td>Normal scenario</td><td>No occurrence already sent is sent a second time</td><td>Passed</td></tr>
+<tr><td>Examine the record kept of each sending</td><td>Normal scenario</td><td>The milestone, rule, occurrence, recipient and outcome are all recorded</td><td>Passed</td></tr>
+<tr><td>Restrict a run to a single shipment or milestone</td><td>Normal scenario</td><td>Only the milestones selected are evaluated</td><td>Passed</td></tr>
+<tr><td>Run the engine after a period in which it was not running</td><td>Normal scenario</td><td>Only the most recent occurrence of each rule is sent rather than the whole backlog</td><td>Passed</td></tr>
+<tr><td>Run the engine where no template has been assigned to any shipment</td><td>No data scenario</td><td>An empty run is reported rather than an error</td><td>Passed</td></tr>
+<tr><td>Run the engine where a milestone refers to a shipment that cannot be read</td><td>Error scenario</td><td>That milestone is reported as an error and the remaining milestones are still processed</td><td>Passed</td></tr>
+<tr><td>Run the engine where a milestone holds a malformed configuration</td><td>Error scenario</td><td>The milestone is passed over, the fault is recorded and the run completes</td><td>Passed</td></tr>
+<tr><td>Run the engine before the sending record has been created in the database</td><td>Error scenario</td><td>A warning naming the migration is reported and the run does not fail</td><td>Passed</td></tr>
+<tr><td>Start a run while signed in as a non-administrator</td><td>Error scenario</td><td>Access is refused and no run takes place</td><td>Passed</td></tr>
+</table>
+<p class="cap">Table 5.29&nbsp;&nbsp;Scheduled run test cases</p>

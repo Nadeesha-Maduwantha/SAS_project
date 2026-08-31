@@ -33,7 +33,7 @@ const EditUserPage: React.FC = () => {
     
     try {
       // Connects to your Python Flask backend
-      const response = await fetch(`http://localhost:5000/api/users/search?email=${encodeURIComponent(searchEmail)}`);
+      const response = await fetch(`http://127.0.0.1:5000/api/users/search?email=${encodeURIComponent(searchEmail)}`);
       const data = await response.json();
       
       if (response.ok && data.user) {
@@ -156,10 +156,7 @@ const EditUserPage: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-400 flex items-center gap-2">
-            🕐 Last updated on Oct 24, 2023 by Admin
-          </p>
+        <div className="flex items-center justify-end">
           <div className="flex gap-3">
             <button
               onClick={handleDelete}

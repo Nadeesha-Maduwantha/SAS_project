@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
+
+const departmentRoles = ['salesuser', 'operationuser', 'superuser']
 
 interface FormData {
   email: string
@@ -13,12 +15,17 @@ interface FormData {
   role: string
   department: string
   address: string
+  status?: string
+  phone?: string
+  joinDate?: string
+  employeeId?: string
 }
 
 export default function CreateUserPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showSuccess, setShowSuccess] = useState(false)
   const [formData, setFormData] = useState<FormData>({
     email: '',
     password: '',
@@ -30,12 +37,30 @@ export default function CreateUserPage() {
     address: '',
   })
 
+  // Browser autofill/history suggestions can set the input's value without
+  // firing React's onChange (the native setter bypasses React's change
+  // tracking), leaving formData.address stale even though the field looks
+  // filled. A native 'input' listener catches those cases too.
+  const addressRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const el = addressRef.current
+    if (!el) return
+
+    const syncAddress = () => {
+      setFormData(prev => (prev.address === el.value ? prev : { ...prev, address: el.value }))
+    }
+
+    el.addEventListener('input', syncAddress)
+    return () => el.removeEventListener('input', syncAddress)
+  }, [])
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
       [name]: value,
-      ...(name === 'role' && value !== 'superuser' && { department: '' }),
+      ...(name === 'role' && !departmentRoles.includes(value) && { department: '' }),
     }))
   }
 
@@ -45,9 +70,13 @@ export default function CreateUserPage() {
     setError(null)
 
     try {
-      const response = await fetch('http://localhost:5000/api/users/create', {
+      const token = localStorage.getItem('access_token')
+      const response = await fetch('http://127.0.0.1:5000/api/users/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(formData),
       })
 
@@ -57,8 +86,8 @@ export default function CreateUserPage() {
       }
 
       // Show success message
-      alert("User created successfully!");
-      
+      setShowSuccess(true);
+
       // Reset the form so they can create another user.
       // Must match the FormData shape exactly — omitting a field (e.g. age,
       // ethnicity) makes its input flip from controlled to uncontrolled.
@@ -75,7 +104,8 @@ export default function CreateUserPage() {
 
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'An error occurred'
-      console.log('Error details:', errorMsg)  
+      console.log('Error details:', errorMsg)
+      setError(errorMsg)
     } finally {
       setLoading(false)
     }
@@ -85,10 +115,10 @@ export default function CreateUserPage() {
     router.back()
   }
 
-  const isSuperUser = formData.role === 'superuser'
+  const showDepartment = departmentRoles.includes(formData.role)
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div className="p-6 max-w-2xl mx-auto">
       <div className="flex items-center gap-2 mb-6">
         <button onClick={handleCancel} className="p-1 hover:bg-gray-100 rounded">
           <ArrowLeft className="w-5 h-5 text-gray-600" />
@@ -204,9 +234,9 @@ export default function CreateUserPage() {
             </div>
           </div>
 
-          {isSuperUser && (
+          {showDepartment && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Assigned Department</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Department</label>
               <select
                 name="department"
                 value={formData.department}
@@ -215,8 +245,8 @@ export default function CreateUserPage() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select Department</option>
-                <option value="sales">Sales</option>
-                <option value="operations">Operations</option>
+                <option value="sea">Sea</option>
+                <option value="air">Air</option>
               </select>
             </div>
           )}
@@ -224,11 +254,13 @@ export default function CreateUserPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Residential Address</label>
             <input
+              ref={addressRef}
               type="text"
               name="address"
               value={formData.address}
               onChange={handleInputChange}
               placeholder="Enter full street address, city, and zip code..."
+              autoComplete="on"
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -252,6 +284,27 @@ export default function CreateUserPage() {
           </button>
         </div>
       </form>
+
+      {showSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 text-center shadow-xl">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <h3 className="text-base font-semibold text-gray-900">User created successfully!</h3>
+            <p className="mt-1 text-sm text-gray-500">The new team member has been registered in the system.</p>
+            <button
+              type="button"
+              onClick={() => setShowSuccess(false)}
+              className="mt-5 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

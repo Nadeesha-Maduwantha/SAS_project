@@ -9,12 +9,10 @@
 // =============================================================
 
 import { useState, useEffect } from 'react';
-import {
-  Plane, Anchor, AlertCircle, Package,
-  TrendingUp, AlertTriangle, CheckCircle2,
-} from 'lucide-react';
+import { Plane, Anchor, AlertCircle, Package, CheckCircle2 } from 'lucide-react';
+import DonutChart, { DonutLegendRow } from '@/components/shared/DonutChart';
 
-const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
 
 function authHeaders() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
@@ -37,24 +35,6 @@ function Loading() {
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0' }}>
       <SpinDot />
       <span style={{ fontSize: 12, color: '#9CA3AF' }}>Loading…</span>
-    </div>
-  );
-}
-
-// ── Stat row ───────────────────────────────────────────────────────────────────
-function StatRow({
-  icon, label, value, valueColor = '#111827',
-}: {
-  icon: React.ReactNode; label: string; value: number | string; valueColor?: string;
-}) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 0' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6B7280' }}>
-        {icon} {label}
-      </div>
-      <span style={{ fontSize: 13, fontWeight: 700, color: valueColor, fontVariantNumeric: 'tabular-nums' }}>
-        {value}
-      </span>
     </div>
   );
 }
@@ -152,6 +132,16 @@ function DeptCard({ mode }: { mode: 'AIR' | 'SEA' }) {
   const isAir  = mode === 'AIR';
   const accent = isAir ? '#3B82F6' : '#6366F1';
 
+  const ongoing   = stats?.on_time         ?? 0;
+  const overdue   = stats?.delayed         ?? 0;
+  const completed = stats?.delivered_today ?? 0;
+
+  const slices = [
+    { label: 'Ongoing',   value: ongoing,   color: accent    },
+    { label: 'Overdue',   value: overdue,   color: '#EF4444' },
+    { label: 'Completed', value: completed, color: '#10B981' },
+  ];
+
   return (
     <CardShell
       icon={isAir ? <Plane size={14} color={accent} /> : <Anchor size={14} color={accent} />}
@@ -160,11 +150,18 @@ function DeptCard({ mode }: { mode: 'AIR' | 'SEA' }) {
       title={isAir ? 'Air Freight' : 'Sea Freight'}
     >
       {loading ? <Loading /> : (
-        <>
-          <StatRow icon={<TrendingUp    size={11} />} label="Ongoing"   value={stats?.on_time         ?? 0} />
-          <StatRow icon={<AlertTriangle size={11} />} label="Overdue"   value={stats?.delayed         ?? 0} valueColor="#B91C1C" />
-          <StatRow icon={<CheckCircle2  size={11} />} label="Completed" value={stats?.delivered_today ?? 0} valueColor="#065F46" />
-        </>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <DonutChart
+            slices={slices}
+            centerValue={ongoing + overdue + completed}
+            centerLabel="total"
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {slices.map(s => (
+              <DonutLegendRow key={s.label} color={s.color} label={s.label} value={s.value} />
+            ))}
+          </div>
+        </div>
       )}
     </CardShell>
   );
@@ -262,6 +259,18 @@ function ShipmentSummaryCard() {
       .finally(() => setLoading(false));
   }, []);
 
+  const total     = stats?.total     ?? 0;
+  const completed = stats?.delivered ?? 0;
+  const delayed   = stats?.delayed   ?? 0;
+  // Whatever is neither finished nor flagged late is still moving.
+  const active    = Math.max(0, total - completed - delayed);
+
+  const slices = [
+    { label: 'Completed', value: completed, color: '#10B981' },
+    { label: 'Active',    value: active,    color: '#3B82F6' },
+    { label: 'Delayed',   value: delayed,   color: '#EF4444' },
+  ];
+
   return (
     <CardShell
       icon={<Package size={14} color="#10B981" />}
@@ -270,18 +279,14 @@ function ShipmentSummaryCard() {
       title="Shipment Summary"
     >
       {loading ? <Loading /> : (
-        <>
-          {/* Big completed number */}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 6 }}>
-            <span style={{ fontSize: 26, fontWeight: 800, color: '#065F46', lineHeight: 1, letterSpacing: '-0.02em' }}>
-              {stats?.delivered ?? 0}
-            </span>
-            <span style={{ fontSize: 11, color: '#9CA3AF' }}>completed</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <DonutChart slices={slices} centerValue={total} centerLabel="total" />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {slices.map(s => (
+              <DonutLegendRow key={s.label} color={s.color} label={s.label} value={s.value} />
+            ))}
           </div>
-
-          <StatRow icon={<Package       size={11} />} label="Total"   value={stats?.total   ?? 0} />
-          <StatRow icon={<AlertTriangle size={11} />} label="Delayed" value={stats?.delayed ?? 0} valueColor="#B91C1C" />
-        </>
+        </div>
       )}
     </CardShell>
   );

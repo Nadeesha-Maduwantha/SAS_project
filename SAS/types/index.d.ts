@@ -51,7 +51,7 @@ export interface UserFormData {
   unlockAccount: boolean;
 }
 
-// ─── Profile Types ───────────────────────────────────────────
+//  Profile Types 
 export interface UserProfile {
   id: string;
   fullName: string;

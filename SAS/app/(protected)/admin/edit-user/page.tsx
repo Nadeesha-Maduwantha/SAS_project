@@ -6,6 +6,7 @@ import AccountManagement from '@/components/AdminUser/AccountManagement';
 import { UserFormData } from '@/types';
 import AdminTopBar from '@/components/AdminUser/AdminTopBar';
 import AdminLeftNavBar from '@/components/AdminUser/AdminLeftNavBar';
+import AppDialog, { AppDialogState } from '@/components/shared/AppDialog';
 
 const EditUserPage: React.FC = () => {
   // --- New state for search ---
@@ -13,6 +14,7 @@ const EditUserPage: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [dialog, setDialog] = useState<AppDialogState | null>(null);
 
   const [formData, setFormData] = useState<UserFormData & { id?: string }>({
     id: '',
@@ -37,7 +39,7 @@ const EditUserPage: React.FC = () => {
       const token = localStorage.getItem('access_token');
       
       // Connects to your Python Flask backend
-      const response = await fetch(`http://localhost:5000/api/users/search?email=${encodeURIComponent(searchEmail)}`, {
+      const response = await fetch(`http://127.0.0.1:5000/api/users/search?email=${encodeURIComponent(searchEmail)}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -93,13 +95,13 @@ const EditUserPage: React.FC = () => {
 
   const handleSave = async () => {
     if (!formData.id) {
-      alert('Please search and select a user first');
+      setDialog({ variant: 'error', title: 'No user selected', message: 'Please search and select a user first.' });
       return;
     }
 
     try {
       const token = localStorage.getItem('access_token');
-      
+
       const response = await fetch(`http://localhost:5000/api/users/${formData.id}`, {
         method: 'PUT',
         headers: {
@@ -119,38 +121,34 @@ const EditUserPage: React.FC = () => {
       const data = await response.json();
 
       if (response.ok) {
-        alert('✓ User updated successfully');
+        setDialog({ variant: 'success', title: 'User updated', message: 'User updated successfully.' });
       } else {
-        alert(`❌ Error: ${data.error || 'Failed to save user'}`);
+        setDialog({ variant: 'error', title: 'Update failed', message: data.error || 'Failed to save user.' });
       }
     } catch (error) {
       console.error('Save error:', error);
-      alert(`❌ Network error: ${error instanceof Error ? error.message : 'Failed to save user'}`);
+      setDialog({
+        variant: 'error',
+        title: 'Network error',
+        message: error instanceof Error ? error.message : 'Failed to save user.',
+      });
     }
   };
 
-  const handleDelete = async () => {
-    if (!formData.id || !formData.email) {
-      alert('Please search and select a user first');
-      return;
-    }
-
-    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      return;
-    }
-
+  const performDelete = async () => {
+    setDialog(null);
     setIsDeleting(true);
 
     try {
       const token = localStorage.getItem('access_token');
-      
+
       if (!token) {
-        alert('❌ You are not authenticated. Please log in again.');
+        setDialog({ variant: 'error', title: 'Not authenticated', message: 'Please log in again.' });
         setIsDeleting(false);
         return;
       }
 
-      const response = await fetch(`http://localhost:5000/api/users/${formData.id}`, {
+      const response = await fetch(`http://127.0.0.1:5000/api/users/${formData.id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -161,7 +159,7 @@ const EditUserPage: React.FC = () => {
       const data = await response.json();
 
       if (response.ok) {
-        alert(`✓ User "${formData.email}" deleted successfully`);
+        setDialog({ variant: 'success', title: 'User deleted', message: `User "${formData.email}" deleted successfully.` });
         // Reset form after successful deletion
         setFormData({
           id: '',
@@ -178,23 +176,42 @@ const EditUserPage: React.FC = () => {
       } else {
         // Handle specific error responses
         const errorMessage = data.details || data.error || 'Failed to delete user';
-        
+
         if (response.status === 401) {
-          alert(`❌ Unauthorized: ${errorMessage}\nPlease log in again.`);
+          setDialog({ variant: 'error', title: 'Unauthorized', message: `${errorMessage}\nPlease log in again.` });
         } else if (response.status === 403) {
-          alert(`❌ Permission Denied: ${errorMessage}\n\nOnly Admin users can delete other users.`);
+          setDialog({ variant: 'error', title: 'Permission denied', message: `${errorMessage}\n\nOnly Admin users can delete other users.` });
         } else if (response.status === 404) {
-          alert(`❌ User Not Found: ${errorMessage}`);
+          setDialog({ variant: 'error', title: 'User not found', message: errorMessage });
         } else {
-          alert(`❌ Error: ${errorMessage}`);
+          setDialog({ variant: 'error', title: 'Delete failed', message: errorMessage });
         }
       }
     } catch (error) {
       console.error('Delete error:', error);
-      alert(`❌ Network error: ${error instanceof Error ? error.message : 'Failed to delete user'}`);
+      setDialog({
+        variant: 'error',
+        title: 'Network error',
+        message: error instanceof Error ? error.message : 'Failed to delete user.',
+      });
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleDelete = () => {
+    if (!formData.id || !formData.email) {
+      setDialog({ variant: 'error', title: 'No user selected', message: 'Please search and select a user first.' });
+      return;
+    }
+
+    setDialog({
+      variant: 'confirm',
+      title: 'Delete user?',
+      message: 'Are you sure you want to delete this user? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      onConfirm: performDelete,
+    });
   };
 
   const handleCancel = () => {
@@ -272,10 +289,7 @@ const EditUserPage: React.FC = () => {
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-400 flex items-center gap-2">
-            🕐 Last updated on Oct 24, 2023 by Admin
-          </p>
+        <div className="flex items-center justify-end">
           <div className="flex gap-3">
             <button
               onClick={handleDelete}
@@ -309,6 +323,8 @@ const EditUserPage: React.FC = () => {
         </div>
 
       </div>
+
+      <AppDialog dialog={dialog} onClose={() => setDialog(null)} />
     </div>
   );
 };

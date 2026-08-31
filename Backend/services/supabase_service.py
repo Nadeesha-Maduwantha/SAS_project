@@ -1,31 +1,31 @@
-import os
-from supabase import create_client, Client
-from dotenv import load_dotenv
+# Use the shared LAZY client so importing this module never opens a connection
+# (and never crashes at import time if env vars aren't loaded yet). It connects
+# on first actual use instead.
+from services.supabase_client import supabase
 
-load_dotenv()
 
-def get_supabase() -> Client:
-    url: str = os.environ.get("SUPABASE_URL")
-    key: str = os.environ.get("SUPABASE_KEY")
-    
-    if not url or not key:
-        raise ValueError("Missing Supabase URL or Key in environment variables.")
-    
-    print(f"Connecting to Supabase: {url}")
-    return create_client(url, key)
+def get_supabase():
+    """Back-compat for callers that expect a get_supabase() factory.
+    Returns the shared lazy client."""
+    return supabase
 
-supabase = get_supabase()
 
 def get_all_shipments():
     response = supabase.table('shipments').select('*').execute()
     return response.data
 
 def get_shipment_milestones(shipment_id):
-    response = supabase.table('shipment_milestones') \
-        .select('*') \
-        .eq('shipment_id', shipment_id) \
-        .order('sequence_order') \
+    supabase = get_supabase()  
+
+    response = (
+        supabase.table('shipment_milestones')
+        .select('*')
+        .eq('shipment_id', shipment_id)
+        .order('sequence_order')
         .execute()
+    )
+
+    return response.data if response.data else []
     return response.data if response.data else []
 
 def upsert_shipment(shipment_data):

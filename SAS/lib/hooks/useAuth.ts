@@ -16,14 +16,32 @@ export interface AuthUser {
   role: 'admin' | 'super_user' | 'operation_user' | 'sales_user'
 }
 
+const FALLBACK: AuthUser = {
+  staffCode: 'STAFF001',
+  name: 'Test User',
+  email: 'test@dartglobal.com',
+  department: 'SEA',
+  role: 'super_user',
+}
+
 export function useAuth(): AuthUser {
-  // TODO: replace this return with real session data when auth is ready
-  
+  if (typeof window === 'undefined') {
+    return FALLBACK
+  }
+
+  const email = localStorage.getItem('user_email')
+  const role = localStorage.getItem('user_role')
+  const department = localStorage.getItem('user_department')
+
+  if (!email || !role) {
+    return FALLBACK
+  }
+
   return {
-    staffCode: 'STAFF001',
-    name:      'Test User',
-    email:     'operation@gmail.com',  // ← must match real data to see scoped views
-    department: 'SEA',                  // ← 'AIR' or 'SEA' for super-user testing
-    role:      'operation_user',
+    staffCode: FALLBACK.staffCode,
+    name: FALLBACK.name,
+    email,
+    department: department || FALLBACK.department,
+    role: role as AuthUser['role'],
   }
 }

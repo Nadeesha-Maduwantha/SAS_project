@@ -1,5 +1,7 @@
 from flask import Blueprint, request, jsonify
 from services.supabase_client import supabase
+from utils.audit_logger import log_audit_action
+from utils.auth_helper import get_current_user
 
 shipments_bp = Blueprint('shipments', __name__)
 
@@ -17,6 +19,16 @@ def get_milestone_value(shipment: dict, milestone: str, key: str):
     return ((shipment.get('milestones') or {}).get(milestone) or {}).get(key)
 
 
+def pickup_status(shipment: dict) -> str:
+    """
+    Normalized cargo_pickup status, lowercased and trimmed.
+    The synced data carries mixed casing for the same state ('Delayed' vs
+    'delayed'), so every comparison must go through here rather than
+    matching the raw value.
+    """
+    return (get_milestone_value(shipment, 'cargo_pickup', 'pickup_date_status') or '').strip().lower()
+
+
 def is_delayed(shipment: dict) -> bool:
     """
     Single source of truth for delayed shipment logic.
@@ -24,10 +36,16 @@ def is_delayed(shipment: dict) -> bool:
       - the cargo_pickup milestone status is 'Delayed', AND
       - it has not already been delivered
     """
-    return (
-        get_milestone_value(shipment, 'cargo_pickup', 'pickup_date_status') == 'Delayed' and
-        'delivered' not in (shipment.get('llm_identified_type') or '').lower()
-    )
+    return pickup_status(shipment) == 'delayed' and not is_delivered(shipment)
+
+
+def is_on_time(shipment: dict) -> bool:
+    """
+    Single source of truth for on-time shipment logic.
+    A shipment is on time when the cargo_pickup milestone reports 'On Time'
+    and it has not already been delivered.
+    """
+    return pickup_status(shipment) == 'on time' and not is_delivered(shipment)
 
 
 def is_delivered(shipment: dict) -> bool:
@@ -39,11 +57,6 @@ def is_delivered(shipment: dict) -> bool:
 
 @shipments_bp.route('/api/shipments', methods=['GET'])
 def get_all_shipments():
-    """
-    Returns all shipments. Supports optional query params:
-      ?created_by_staff_code=<code>  — filter by the operation user who created it
-      ?sales_user_staff_code=<code>  — filter by the sales user assigned to it
-    """
     try:
         query = supabase.table('shipments').select('*').order('created_at', desc=True)
 
@@ -54,6 +67,23 @@ def get_all_shipments():
         sales_code = request.args.get('sales_user_staff_code')
         if sales_code:
             query = query.eq('sales_user_staff_code', sales_code)
+
+        sales_email = request.args.get('sales_user_email')
+        if sales_email:
+            query = query.ilike('sales_user_email', sales_email)
+
+        assigned_email = request.args.get('assigned_email')
+        if assigned_email:
+            ms_response = (
+                supabase.table('shipment_milestones')
+                .select('shipment_id')
+                .ilike('assigned_email', assigned_email)
+                .execute()
+            )
+            shipment_ids = list({m['shipment_id'] for m in (ms_response.data or [])})
+            if not shipment_ids:
+                return jsonify({"data": []}), 200
+            query = query.in_('id', shipment_ids)
 
         response = query.execute()
         return jsonify({"data": response.data}), 200
@@ -71,7 +101,7 @@ def get_delayed_shipments():
         response = (
             supabase.table('shipments')
             .select('*')
-            .eq('milestones->cargo_pickup->>pickup_date_status', 'Delayed')
+            .ilike('milestones->cargo_pickup->>pickup_date_status', 'delayed')
             .order('created_at', desc=True)
             .execute()
         )
@@ -164,7 +194,7 @@ def get_delayed_stats():
         response = (
             supabase.table('shipments')
             .select('milestones, llm_identified_type, llm_note, st_note_text, llm_cargo_pickup_date')
-            .eq('milestones->cargo_pickup->>pickup_date_status', 'Delayed')
+            .ilike('milestones->cargo_pickup->>pickup_date_status', 'delayed')
             .execute()
         )
         shipments = [s for s in (response.data or []) if is_delayed(s)]
@@ -226,10 +256,7 @@ def get_department_stats(mode):
         risk_keywords = {'risk', 'delay', 'issue', 'problem', 'urgent'}
 
         stats = {
-            'on_time': sum(
-                1 for s in shipments
-                if get_milestone_value(s, 'cargo_pickup', 'pickup_date_status') == 'Future' and not is_delivered(s)
-            ),
+            'on_time': sum(1 for s in shipments if is_on_time(s)),
             'delayed': sum(1 for s in shipments if is_delayed(s)),
             'at_risk': sum(
                 1 for s in shipments
@@ -238,6 +265,55 @@ def get_department_stats(mode):
             'delivered_today': sum(1 for s in shipments if is_delivered(s)),
         }
         return jsonify({"data": stats}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@shipments_bp.route('/api/shipments/stats/branch', methods=['GET'])
+def get_branch_stats():
+    """
+    Delay breakdown per branch, sorted worst-first by delay rate.
+
+    Returns one row per branch:
+      branch  — branch code, or 'Unknown' when the shipment has none
+      total   — shipments belonging to that branch
+      delayed — of those, how many are currently delayed
+      rate    — delayed / total as a percentage, rounded
+
+    Branches with no delays are still returned so the caller can show
+    the full picture rather than only the bad ones.
+    """
+    try:
+        response = (
+            supabase.table('shipments')
+            .select('branch, milestones, llm_identified_type')
+            .execute()
+        )
+        shipments = response.data or []
+
+        totals: dict[str, int] = {}
+        delayed: dict[str, int] = {}
+
+        for s in shipments:
+            branch = (s.get('branch') or '').strip() or 'Unknown'
+            totals[branch] = totals.get(branch, 0) + 1
+            if is_delayed(s):
+                delayed[branch] = delayed.get(branch, 0) + 1
+
+        rows = []
+        for branch, total in totals.items():
+            late = delayed.get(branch, 0)
+            rows.append({
+                'branch':  branch,
+                'total':   total,
+                'delayed': late,
+                'rate':    round(late / total * 100) if total else 0,
+            })
+
+        # Worst delay rate first; ties broken by the bigger branch.
+        rows.sort(key=lambda r: (-r['rate'], -r['total']))
+
+        return jsonify({"data": rows}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -422,6 +498,19 @@ def assign_template(shipment_id, template_id):
             })
 
         supabase.table('shipment_milestones').insert(rows).execute()
+
+        requester_id, _ = get_current_user()
+        if requester_id:
+            # action_type_id=2 -> UPDATE, entity_type_id=1 -> Shipment
+            # (matches public.action_types / public.entity_types)
+            log_audit_action(
+                user_id=requester_id,
+                action_type_id=2,
+                entity_type_id=1,
+                entity_id=shipment_id,
+                description=f"Assigned template {template_id} to shipment {shipment_id}",
+            )
+
         return jsonify({"message": "Template assigned successfully"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

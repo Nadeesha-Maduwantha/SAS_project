@@ -41,6 +41,7 @@ const SecurityNotificationsSection: React.FC<SecurityNotificationsProps> = ({ da
               checked={data[item.key as keyof SecurityNotifications]}
               onChange={(e) => handleChange(item.key as keyof SecurityNotifications, e.target.checked)}
               className="w-4 h-4 accent-blue-500"
+              data-testid={`checkbox-${item.key}`}
             />
             {item.label}
           </label>

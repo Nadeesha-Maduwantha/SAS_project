@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import {
-    AlertCircle, Clock, CheckCircle2, Download, Search, Eye, Mail,
+    AlertCircle, Clock, CheckCircle2, Search, Eye, Mail,
     MoreHorizontal, Anchor, Truck, Warehouse, Plane, Navigation,
-    LayoutList, LayoutGrid, ChevronLeft, ChevronRight,
+    LayoutList, LayoutGrid, ChevronLeft, ChevronRight, Bell,
 } from 'lucide-react';
 import AlertDetailsModal, { AlertData } from '@/components/AlertDetailsModal';
 import EmailComposeModal from '@/components/EmailComposeModal';
+import { useAuth } from '@/lib/hooks/useAuth';
+
+const FLASK_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Alert = {
@@ -23,24 +26,43 @@ type Alert = {
     delay: string;
     delayColor: string;
     status: 'Get Action' | 'Action Taken' | 'Resolved';
+    dueDate: string | null;
+    alertStatus: string;
+    isCritical: boolean;
     createdAt: Date;
+    completedDate: string | null;
+    daysUntilDue: number | null;
+    isReminder: boolean;
 }
 
 type SupabaseRow = {
     shipment_id: string;
-    name: string;
-    status: string;
-    notes: string;
+    title: string;
+    message: string;
     is_critical: boolean;
-    due_date: string | null;
-    completed_date: string | null;
-    assigned_to: string;
-    assigned_email: string;
-    alert_sent: boolean;
+    status: string;
     created_at?: string;
+    sales_user_email?: string;
+    due_date?: string | null;
+    completed_date?: string | null;
+    assigned_to?: string;
+    name?: string;
+    notes?: string;
 }
 
-const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+// Milestones due within this many days (and not yet completed) surface in the
+// reminder feed, per the shipment_milestones.due_date column.
+const REMINDER_WINDOW_DAYS = 3;
+
+function daysUntil(dueDate: string): number {
+    const due = new Date(dueDate);
+    due.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
 
 async function parseApiResponse(response: Response) {
     const contentType = response.headers.get('content-type') || '';
@@ -67,6 +89,8 @@ function mapRow(row: SupabaseRow, idx: number): Alert {
     const assignedTo = row.assigned_to?.trim() || '—';
     const initial = String(assignedTo || '?')[0].toUpperCase();
     const isOverdue = row.due_date && !row.completed_date && new Date(row.due_date) < new Date();
+    const remainingDays = row.due_date && !row.completed_date ? daysUntil(row.due_date) : null;
+    const isReminder = remainingDays !== null && remainingDays >= 0 && remainingDays <= REMINDER_WINDOW_DAYS;
     return {
         id: `${row.shipment_id}-${idx}`,
         shipment_id: row.shipment_id,
@@ -82,7 +106,13 @@ function mapRow(row: SupabaseRow, idx: number): Alert {
         status: (row.status === 'Action Taken' || row.status === 'Resolved' || row.status === 'Get Action')
             ? row.status
             : 'Get Action',
+        dueDate: row.due_date ?? null,
+        alertStatus: row.due_date && !row.completed_date ? 'overdue' : row.status,
+        isCritical: row.is_critical,
         createdAt: row.created_at ? new Date(row.created_at) : new Date(),
+        completedDate: row.completed_date ?? null,
+        daysUntilDue: remainingDays,
+        isReminder,
     };
 }
 
@@ -101,6 +131,9 @@ function toAlertData(alert: Alert): AlertData {
         delay: alert.delay,
         delayColor: alert.delayColor,
         status: alert.status,
+        dueDate: alert.dueDate,
+        alertStatus: alert.alertStatus,
+        isCritical: alert.isCritical,
         createdAt: alert.createdAt,
     };
 }
@@ -158,6 +191,17 @@ function ClientAvatar({ initial, color, name }: { initial: string; color: string
     );
 }
 
+function ReminderDueLabel({ days }: { days: number }) {
+    const text  = days === 0 ? 'Due today' : days === 1 ? 'Due tomorrow' : `Due in ${days} days`;
+    const color = days <= 1 ? '#dc2626' : '#d97706';
+    const bg    = days <= 1 ? '#fef2f2' : '#fffbeb';
+    return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: bg, color, fontSize: '11.5px', fontWeight: 600, padding: '3px 9px', borderRadius: '20px', whiteSpace: 'nowrap' }}>
+            <Bell size={11} />{text}
+        </span>
+    );
+}
+
 function ActionBtn({ icon, title, onClick }: { icon: React.ReactNode; title: string; onClick?: () => void }) {
     return (
         <button onClick={onClick} title={title} style={{ width: '28px', height: '28px', borderRadius: '6px', border: '1px solid #e5e7eb', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', cursor: 'pointer', transition: 'all 0.15s' }}
@@ -190,6 +234,7 @@ export default function AlertDashboardPage() {
     const [alerts, setAlerts] = useState<Alert[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const { email } = useAuth();
 
     // ── Modal state ──────────────────────────────────────────────
     const [detailsOpen, setDetailsOpen]   = useState(false);
@@ -236,7 +281,11 @@ export default function AlertDashboardPage() {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(`${BACKEND_BASE_URL}/api/alerts`);
+            const userEmail = (localStorage.getItem('user_email') || '').trim();
+            const url = userEmail
+                ? `${BACKEND_BASE_URL}/api/alerts?email=${encodeURIComponent(userEmail)}`
+                : `${BACKEND_BASE_URL}/api/alerts`;
+            const response = await fetch(url);
             const payload = await parseApiResponse(response);
             if (!response.ok) {
                 throw new Error(payload?.error || 'Failed to load alerts');
@@ -248,7 +297,7 @@ export default function AlertDashboardPage() {
         setLoading(false);
     };
 
-    useEffect(() => { fetchAlerts(); }, []);
+    useEffect(() => { fetchAlerts(); }, [email]);
 
     const filtered = alerts.filter((a) => {
         const matchPriority = priorityFilter === 'All Priorities' || a.priority === priorityFilter;
@@ -267,10 +316,17 @@ export default function AlertDashboardPage() {
     const pending      = alerts.filter(a => a.status === 'Get Action').length;
     const resolved     = alerts.filter(a => a.status === 'Resolved').length;
 
+    // Reminder feed: milestones whose shipment_milestones.due_date falls within
+    // the next REMINDER_WINDOW_DAYS days and haven't been completed yet.
+    const reminders = alerts
+        .filter(a => a.isReminder)
+        .sort((a, b) => (a.daysUntilDue ?? 0) - (b.daysUntilDue ?? 0));
+
     const statsCards = [
-        { icon: <AlertCircle size={26} color="#ef4444" />, iconBg: '#fef2f2', count: highPriority, label: 'High Priority Alerts', borderColor: '#fca5a5' },
-        { icon: <Clock size={26} color="#f97316" />,        iconBg: '#fff7ed', count: pending,      label: 'Pending Review',       borderColor: '#fdba74' },
-        { icon: <CheckCircle2 size={26} color="#22c55e" />, iconBg: '#f0fdf4', count: resolved,     label: 'Resolved',             borderColor: '#86efac' },
+        { icon: <AlertCircle size={26} color="#ef4444" />, iconBg: '#fef2f2', count: highPriority,      label: 'High Priority Alerts', borderColor: '#fca5a5' },
+        { icon: <Clock size={26} color="#f97316" />,        iconBg: '#fff7ed', count: pending,           label: 'Pending Review',       borderColor: '#fdba74' },
+        { icon: <Bell size={26} color="#d97706" />,         iconBg: '#fffbeb', count: reminders.length,  label: 'Due Within 3 Days',    borderColor: '#fde68a' },
+        { icon: <CheckCircle2 size={26} color="#22c55e" />, iconBg: '#f0fdf4', count: resolved,          label: 'Resolved',             borderColor: '#86efac' },
     ];
 
     if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Loading alerts...</div>;
@@ -297,13 +353,10 @@ export default function AlertDashboardPage() {
                     <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1a1a2e', letterSpacing: '-0.4px' }}>Alert Dashboard</h1>
                     <p style={{ fontSize: '13.5px', color: '#6b7280', marginTop: '4px' }}>Overview of shipment delays and critical issues requiring attention.</p>
                 </div>
-                <button style={{ display: 'flex', alignItems: 'center', gap: '7px', background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 500, color: '#374151', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-                    <Download size={14} /> Export Report
-                </button>
             </div>
 
             {/* Stats cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
                 {statsCards.map((card) => (
                     <div key={card.label} style={{ background: 'white', borderRadius: '12px', padding: '20px 24px', display: 'flex', alignItems: 'center', gap: '18px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0' }}>
                         <div style={{ width: '52px', height: '52px', borderRadius: '12px', background: card.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: `1px solid ${card.borderColor}` }}>
@@ -315,6 +368,68 @@ export default function AlertDashboardPage() {
                         </div>
                     </div>
                 ))}
+            </div>
+
+            {/* Upcoming Reminders — milestones due within REMINDER_WINDOW_DAYS days */}
+            <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #f0f0f0', overflow: 'hidden', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '14px 20px', borderBottom: '1px solid #f0f0f0' }}>
+                    <Bell size={16} color="#d97706" />
+                    <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#1a1a2e' }}>Upcoming Reminders</h2>
+                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>— milestones due within {REMINDER_WINDOW_DAYS} days</span>
+                </div>
+
+                {reminders.length === 0 ? (
+                    <div style={{ padding: '24px 20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>
+                        No milestones due in the next {REMINDER_WINDOW_DAYS} days.
+                    </div>
+                ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr style={{ background: '#f9fafb', borderBottom: '1px solid #f0f0f0' }}>
+                                    <th style={thStyle}>SHIPMENT ID</th>
+                                    <th style={thStyle}>ASSIGNED TO</th>
+                                    <th style={thStyle}>PRIORITY</th>
+                                    <th style={thStyle}>MILESTONE</th>
+                                    <th style={thStyle}>DUE DATE</th>
+                                    <th style={thStyle}>REMINDER</th>
+                                    <th style={thStyle}>ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {reminders.map((alert, idx) => (
+                                    <tr key={alert.id}
+                                        style={{ borderBottom: idx < reminders.length - 1 ? '1px solid #f5f5f5' : 'none', cursor: 'pointer' }}
+                                        onClick={() => openDetails(alert)}
+                                        onMouseEnter={(e) => { e.currentTarget.style.background = '#fafbff'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}
+                                    >
+                                        <td style={{ ...tdStyle, fontWeight: 600, fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>{alert.shipment_id}</td>
+                                        <td style={tdStyle}><ClientAvatar initial={alert.clientInitial} color={alert.clientColor} name={alert.client} /></td>
+                                        <td style={tdStyle}><PriorityBadge level={alert.priority} /></td>
+                                        <td style={tdStyle}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#6b7280', fontSize: '13px', whiteSpace: 'nowrap' }}>
+                                                <MilestoneIcon type={alert.milestoneIcon} />{alert.milestone}
+                                            </div>
+                                        </td>
+                                        <td style={{ ...tdStyle, fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                                            {alert.dueDate ? new Date(alert.dueDate).toLocaleDateString() : '—'}
+                                        </td>
+                                        <td style={tdStyle}>
+                                            {alert.daysUntilDue !== null && <ReminderDueLabel days={alert.daysUntilDue} />}
+                                        </td>
+                                        <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <ActionBtn icon={<Eye size={14} />}  title="View"  onClick={() => openDetails(alert)} />
+                                                <ActionBtn icon={<Mail size={14} />} title="Email" onClick={() => openCompose(toAlertData(alert))} />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
 
             {/* Table card */}

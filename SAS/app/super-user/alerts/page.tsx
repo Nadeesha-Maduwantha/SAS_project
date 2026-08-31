@@ -5,7 +5,6 @@ import {
     AlertCircle,
     Clock,
     CheckCircle2,
-    Download,
     Search,
     Eye,
     Mail,
@@ -150,12 +149,6 @@ export default function AlertDashboardPage() {
         return matchPriority && matchStatus && matchSearch;
     });
 
-    const toggleActionStatus = (id: string) => {
-        setAlertsList(prev => prev.map(a =>
-            a.id === id ? { ...a, status: a.status === 'Action Taken' ? 'Get Action' : 'Action Taken' } : a
-        ));
-    };
-
     const statsCards = [
         {
             icon: <AlertCircle size={26} color="#ef4444" />,
@@ -198,21 +191,6 @@ export default function AlertDashboardPage() {
                                 {loading ? 'Loading alerts from Supabase...' : `${alertsList.length} shipment(s) with alerts`}
                             </p>
                         </div>
-                        <button style={{
-                            display: 'flex', alignItems: 'center', gap: '7px',
-                            background: 'white',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            padding: '8px 16px',
-                            fontSize: '13px',
-                            fontWeight: 500,
-                            color: '#374151',
-                            cursor: 'pointer',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                        } as React.CSSProperties}>
-                            <Download size={14} />
-                            Export Report
-                        </button>
                     </div>
 
                     {/* Stats cards */}
@@ -415,17 +393,6 @@ export default function AlertDashboardPage() {
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                         <ActionBtn icon={<Eye size={14} />} title="View" onClick={() => setViewModalData(alert)} />
                                                         <ActionBtn icon={<Mail size={14} />} title="Email" onClick={() => setComposeModalData(alert)} />
-                                                        {alert.status !== 'Resolved' && (
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={alert.status === 'Action Taken'}
-                                                                onChange={(e) => {
-                                                                    e.stopPropagation();
-                                                                    toggleActionStatus(alert.id);
-                                                                }}
-                                                                style={{ width: '15px', height: '15px', marginLeft: '4px', cursor: 'pointer' }}
-                                                            />
-                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -455,18 +422,6 @@ export default function AlertDashboardPage() {
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' } as React.CSSProperties}>
                                             <span style={{ fontWeight: 700, fontSize: '13px', color: '#374151' }}>{alert.id}</span>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                {alert.status !== 'Resolved' && (
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={alert.status === 'Action Taken'}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        onChange={(e) => {
-                                                            e.stopPropagation();
-                                                            toggleActionStatus(alert.id);
-                                                        }}
-                                                        style={{ width: '15px', height: '15px', cursor: 'pointer' }}
-                                                    />
-                                                )}
                                                 <ActionBtn icon={<Mail size={14} />} title="Email" onClick={(e) => { e.stopPropagation(); setComposeModalData(alert); }} />
                                                 <PriorityBadge level={alert.priority} />
                                             </div>
