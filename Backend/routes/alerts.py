@@ -81,17 +81,28 @@ def get_active_alerts():
         # Step 2: Get unique shipment IDs
         shipment_ids = list({m['shipment_id'] for m in milestones})
  
-        # Step 3: Fetch shipment info for those IDs
+        # Step 3: Fetch shipment info for those IDs (incl. the fields we scope on)
         shipments_res = (
             supabase.table('shipments')
-            .select('id, job_number, consignee_name, consignee_email, transport_mode')
+            .select('id, job_number, consignee_name, consignee_email, transport_mode, '
+                    'created_by_email, sales_user_email')
             .in_('id', shipment_ids)
             .execute()
         )
- 
+
         shipment_map = {
             s['id']: s for s in (shipments_res.data or [])
         }
+
+        # Role scoping: keep only shipments this viewer may see.
+        from services.scope import read_scope, allowed_shipment_ids
+        role, email, dept = read_scope(request.args)
+        allowed = allowed_shipment_ids(role, email, dept)   # None = all
+        if allowed is not None:
+            milestones = [m for m in milestones if m['shipment_id'] in allowed]
+            shipment_map = {sid: s for sid, s in shipment_map.items() if sid in allowed}
+            if not milestones:
+                return jsonify({'data': [], 'total': 0}), 200
  
         # Step 4: Calculate overdue_days and group by shipment
         today = datetime.now(timezone.utc)

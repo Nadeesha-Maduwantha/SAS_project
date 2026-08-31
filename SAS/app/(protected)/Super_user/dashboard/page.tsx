@@ -23,6 +23,7 @@ export default function SuperDashboardPage() {
           title="Department Alert Feed"
           apiBase="http://localhost:5000"
           maxRows={8}
+          scope="super"
         />
       </div>
     </div>

@@ -7,6 +7,7 @@ export default function CurrentMilestonePage() {
     <MilestoneBoard
       detailBase="/Super_user/milestone_detail"
       canByMember={true}
+      scope="super"
     />
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   LayoutGrid, Users, Building2, Truck, Bell,
@@ -68,7 +68,18 @@ function NavItem({ label, isActive, onClick }: {
 export default function AdminLeftNavBar({ topOffset = 57 }: { topOffset?: number }) {
   const router   = useRouter();
   const pathname = usePathname();
-  const { expanded, toggle, expand } = useNav();
+  const { expanded, toggle, expand, collapse } = useNav();
+
+  // Collapse the expanded nav when the user clicks anywhere outside it.
+  const navRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!expanded) return;
+    const onDown = (e: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) collapse();
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [expanded, collapse]);
 
   // ── Show text labels only after the slide animation finishes ──────────────
   // Prevents labels from wrapping to 2 lines while width is still animating.
@@ -155,7 +166,7 @@ export default function AdminLeftNavBar({ topOffset = 57 }: { topOffset?: number
 
   // ── Expanded view ──────────────────────────────────────────────────────────
   return (
-    <div className="admin-nav-container expanded" style={containerStyle}>
+    <div ref={navRef} className="admin-nav-container expanded" style={containerStyle}>
 
       {/* Collapse toggle */}
       <div className="nav-top-row">

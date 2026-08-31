@@ -59,17 +59,17 @@ export default function CreateUserPage() {
       // Show success message
       alert("User created successfully!");
       
-      // Optional: Reset the form so they can create another user
+      // Reset the form so they can create another user.
+      // Must match the FormData shape exactly — omitting a field (e.g. age,
+      // ethnicity) makes its input flip from controlled to uncontrolled.
       setFormData({
-        fullName: '',
         email: '',
         password: '',
+        fullName: '',
+        age: 0,
+        ethnicity: '',
+        role: '',
         department: '',
-        role: 'user',
-        status: 'active',
-        phone: '',
-        joinDate: '',
-        employeeId: '',
         address: '',
       });
 

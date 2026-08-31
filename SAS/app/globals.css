@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Tailwind v4: make the `dark:` variant follow our `.dark` class (set by
+   ThemeContext) instead of the OS `prefers-color-scheme`. Without this, every
+   `dark:` utility tracks the operating system, so the app toggle and the
+   Tailwind-based components disagree (e.g. the profile dropdown stays dark in
+   light mode when the OS is dark). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ─────────────────────────────────────────────────────────────
    Theme tokens as CSS variables.
    styles/tokens.js references these via var(), so every inline

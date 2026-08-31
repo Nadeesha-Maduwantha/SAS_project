@@ -43,7 +43,7 @@ function Badge({ label, color = 'gray' }) {
     amber: { bg: '#FEF3C7', text: '#92400E', border: '#FDE68A' },
     green: { bg: '#D1FAE5', text: '#065F46', border: '#A7F3D0' },
     blue:  { bg: '#DBEAFE', text: '#1D4ED8', border: '#BFDBFE' },
-    gray:  { bg: '#F3F4F6', text: '#374151', border: '#E5E7EB' },
+    gray:  { bg: 'var(--gray-100)', text: 'var(--gray-700)', border: 'var(--card-border-color)' },
   };
   const t = colors[color] || colors.gray;
   return (
@@ -66,11 +66,11 @@ function statusColor(s) {
 function EmptyState({ message }) {
   return (
     <div style={{ textAlign: 'center', padding: '56px 24px' }}>
-      <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#F3F4F6', border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-        <FolderOpen size={22} color="#9CA3AF" />
+      <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--gray-100)', border: '1px solid var(--card-border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+        <FolderOpen size={22} color="var(--gray-400)" />
       </div>
-      <p style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 4 }}>No results found</p>
-      <p style={{ fontSize: 13, color: '#9CA3AF' }}>{message}</p>
+      <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--gray-700)', marginBottom: 4 }}>No results found</p>
+      <p style={{ fontSize: 13, color: 'var(--gray-400)' }}>{message}</p>
     </div>
   );
 }
@@ -78,21 +78,21 @@ function EmptyState({ message }) {
 function Spinner() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 0', gap: 10 }}>
-      <Loader2 size={18} color="#6B7280" style={{ animation: 'spin 0.8s linear infinite' }} />
-      <span style={{ fontSize: 13, color: '#6B7280' }}>Loading...</span>
+      <Loader2 size={18} color="var(--gray-500)" style={{ animation: 'spin 0.8s linear infinite' }} />
+      <span style={{ fontSize: 13, color: 'var(--gray-500)' }}>Loading...</span>
     </div>
   );
 }
 
 function TableToolbar({ search, onSearch, count, label }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 20px', borderBottom: '1px solid #F3F4F6' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 8, padding: '7px 12px', width: 260 }}>
-        <Search size={13} color="#9CA3AF" />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 20px', borderBottom: '1px solid var(--gray-100)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--gray-50)', border: '1px solid var(--card-border-color)', borderRadius: 8, padding: '7px 12px', width: 260 }}>
+        <Search size={13} color="var(--gray-400)" />
         <input value={search} onChange={e => onSearch(e.target.value)} placeholder={`Search ${label}...`}
           style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 13, width: '100%' }} />
       </div>
-      <span style={{ fontSize: 12, color: '#9CA3AF' }}>{count} {label}</span>
+      <span style={{ fontSize: 12, color: 'var(--gray-400)' }}>{count} {label}</span>
     </div>
   );
 }
@@ -113,7 +113,7 @@ function ShipmentsDefaultTab() {
       {loading ? <Spinner /> : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr style={{ background: '#F9FAFB', borderBottom: '2px solid #E5E7EB' }}>
+            <thead><tr style={{ background: 'var(--gray-50)', borderBottom: '2px solid var(--card-border-color)' }}>
               {['Job Number','Consignee','Mode','Branch','Pickup Status','Stage','Created'].map(h => <th key={h} style={TH}>{h}</th>)}
             </tr></thead>
             <tbody>
@@ -123,10 +123,10 @@ function ShipmentsDefaultTab() {
                   <td style={{ ...TD, fontWeight: 600, fontFamily: 'monospace', color: '#1D4ED8' }}>#{r.job_number}</td>
                   <td style={TD}>{r.consignee_name || '—'}</td>
                   <td style={TD}><Badge label={r.transport_mode || '—'} color="blue" /></td>
-                  <td style={{ ...TD, color: '#6B7280' }}>{r.branch || '—'}</td>
+                  <td style={{ ...TD, color: 'var(--gray-500)' }}>{r.branch || '—'}</td>
                   <td style={TD}><Badge label={r.pickup_date_status || '—'} color={statusColor(r.pickup_date_status)} /></td>
                   <td style={TD}><Badge label={r.llm_identified_type || r.current_stage || '—'} color="gray" /></td>
-                  <td style={{ ...TD, color: '#9CA3AF', fontSize: 12 }}>{fmtDate(r.created_at)}</td>
+                  <td style={{ ...TD, color: 'var(--gray-400)', fontSize: 12 }}>{fmtDate(r.created_at)}</td>
                 </tr>
               ))}
             </tbody>
@@ -152,20 +152,20 @@ function AlertsDefaultTab() {
       {loading ? <Spinner /> : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr style={{ background: '#F9FAFB', borderBottom: '2px solid #E5E7EB' }}>
+            <thead><tr style={{ background: 'var(--gray-50)', borderBottom: '2px solid var(--card-border-color)' }}>
               {['Milestone','Shipment ID','Status','Priority','Due Date','Assigned To','Notes'].map(h => <th key={h} style={TH}>{h}</th>)}
             </tr></thead>
             <tbody>
               {filtered.length === 0 ? <tr><td colSpan={7}><EmptyState message="No alerts found." /></td></tr>
               : filtered.map((r, i) => (
                 <tr key={r.id || i} style={rowStyle(i)}>
-                  <td style={{ ...TD, fontWeight: 600, color: '#111827' }}>{r.name || '—'}</td>
-                  <td style={{ ...TD, fontFamily: 'monospace', fontSize: 12, color: '#6B7280' }}>{r.shipment_id?.slice(0,8)}…</td>
+                  <td style={{ ...TD, fontWeight: 600, color: 'var(--gray-900)' }}>{r.name || '—'}</td>
+                  <td style={{ ...TD, fontFamily: 'monospace', fontSize: 12, color: 'var(--gray-500)' }}>{r.shipment_id?.slice(0,8)}…</td>
                   <td style={TD}><Badge label={r.status || '—'} color={statusColor(r.status)} /></td>
                   <td style={TD}>{r.is_critical ? <Badge label="Critical" color="red" /> : <Badge label="Normal" color="gray" />}</td>
-                  <td style={{ ...TD, color: '#6B7280', fontSize: 12 }}>{fmtDate(r.due_date)}</td>
-                  <td style={TD}>{r.assigned_to || <span style={{ color: '#D1D5DB' }}>Unassigned</span>}</td>
-                  <td style={{ ...TD, color: '#6B7280', fontSize: 12, maxWidth: 180 }}>
+                  <td style={{ ...TD, color: 'var(--gray-500)', fontSize: 12 }}>{fmtDate(r.due_date)}</td>
+                  <td style={TD}>{r.assigned_to || <span style={{ color: 'var(--gray-300)' }}>Unassigned</span>}</td>
+                  <td style={{ ...TD, color: 'var(--gray-500)', fontSize: 12, maxWidth: 180 }}>
                     <span style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.notes || '—'}</span>
                   </td>
                 </tr>
@@ -224,16 +224,16 @@ function MilestonesDefaultTab() {
       {/* ── Toolbar ─────────────────────────────────────── */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
-        padding: '12px 20px', borderBottom: '1px solid #F3F4F6',
+        padding: '12px 20px', borderBottom: '1px solid var(--gray-100)',
         flexWrap: 'wrap',
       }}>
         {/* Search */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
-          background: '#F9FAFB', border: '1px solid #E5E7EB',
+          background: 'var(--gray-50)', border: '1px solid var(--card-border-color)',
           borderRadius: 8, padding: '7px 12px', width: 260,
         }}>
-          <Search size={13} color="#9CA3AF" />
+          <Search size={13} color="var(--gray-400)" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -249,13 +249,13 @@ function MilestonesDefaultTab() {
             onChange={e => setStatusFilter(e.target.value)}
             style={{
               padding: '7px 28px 7px 10px', borderRadius: 8, fontSize: 12,
-              border: '1px solid #E5E7EB', background: '#fff', color: '#374151',
+              border: '1px solid var(--card-border-color)', background: 'var(--card-bg)', color: 'var(--gray-700)',
               cursor: 'pointer', fontFamily: 'inherit', appearance: 'none', outline: 'none',
             }}
           >
             {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
-          <ChevronDown size={12} color="#9CA3AF" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+          <ChevronDown size={12} color="var(--gray-400)" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
         </div>
 
         {/* Critical filter */}
@@ -265,15 +265,15 @@ function MilestonesDefaultTab() {
             display: 'flex', alignItems: 'center', gap: 5,
             padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
             cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-            background:   critFilter === 'true' ? '#FEE2E2' : '#F9FAFB',
-            color:        critFilter === 'true' ? '#B91C1C' : '#6B7280',
-            border:       critFilter === 'true' ? '1px solid #FECACA' : '1px solid #E5E7EB',
+            background:   critFilter === 'true' ? '#FEE2E2' : 'var(--gray-50)',
+            color:        critFilter === 'true' ? '#B91C1C' : 'var(--gray-500)',
+            border:       critFilter === 'true' ? '1px solid #FECACA' : '1px solid var(--card-border-color)',
           }}
         >
           ⚠ Critical only
         </button>
 
-        <span style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 'auto' }}>
+        <span style={{ fontSize: 12, color: 'var(--gray-400)', marginLeft: 'auto' }}>
           {filtered.length} milestone{filtered.length !== 1 ? 's' : ''}
         </span>
       </div>
@@ -285,7 +285,7 @@ function MilestonesDefaultTab() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: '#F9FAFB', borderBottom: '2px solid #E5E7EB' }}>
+              <tr style={{ background: 'var(--gray-50)', borderBottom: '2px solid var(--card-border-color)' }}>
                 {['Milestone', 'Shipment', 'Client', 'Mode', 'Status', 'Critical', 'Due Date', 'Completed At', 'Assigned To', 'Notes'].map(h => (
                   <th key={h} style={TH}>{h}</th>
                 ))}
@@ -302,21 +302,21 @@ function MilestonesDefaultTab() {
                 filtered.map((r, i) => (
                   <tr key={r.id || i} style={rowStyle(i)}
                     onMouseEnter={e => (e.currentTarget.style.background = '#F0F7FF')}
-                    onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#FAFAFA')}
+                    onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? 'var(--card-bg)' : 'var(--gray-50)')}
                   >
                     {/* Milestone name */}
-                    <td style={{ ...TD, fontWeight: 600, color: '#111827', minWidth: 160 }}>
+                    <td style={{ ...TD, fontWeight: 600, color: 'var(--gray-900)', minWidth: 160 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{
                           width: 20, height: 20, borderRadius: 5, flexShrink: 0,
                           background: r.status === 'completed' ? '#D1FAE5'
                             : r.status === 'overdue'   ? '#FEE2E2'
                             : r.status === 'current'   ? '#DBEAFE'
-                            : '#F3F4F6',
+                            : 'var(--gray-100)',
                           color: r.status === 'completed' ? '#065F46'
                             : r.status === 'overdue'   ? '#B91C1C'
                             : r.status === 'current'   ? '#1D4ED8'
-                            : '#6B7280',
+                            : 'var(--gray-500)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           fontSize: 9, fontWeight: 800,
                         }}>
@@ -332,7 +332,7 @@ function MilestonesDefaultTab() {
                     </td>
 
                     {/* Consignee */}
-                    <td style={{ ...TD, color: '#374151', maxWidth: 160 }}>
+                    <td style={{ ...TD, color: 'var(--gray-700)', maxWidth: 160 }}>
                       <span style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {r.consignee_name || '—'}
                       </span>
@@ -342,7 +342,7 @@ function MilestonesDefaultTab() {
                     <td style={TD}>
                       {r.transport_mode
                         ? <Badge label={r.transport_mode} color="blue" />
-                        : <span style={{ color: '#D1D5DB' }}>—</span>}
+                        : <span style={{ color: 'var(--gray-300)' }}>—</span>}
                     </td>
 
                     {/* Status */}
@@ -354,28 +354,28 @@ function MilestonesDefaultTab() {
                     <td style={{ ...TD, textAlign: 'center' }}>
                       {r.is_critical
                         ? <Badge label="⚠ Critical" color="red" />
-                        : <span style={{ color: '#D1D5DB', fontSize: 12 }}>—</span>}
+                        : <span style={{ color: 'var(--gray-300)', fontSize: 12 }}>—</span>}
                     </td>
 
                     {/* Due date */}
-                    <td style={{ ...TD, color: '#6B7280', fontSize: 12, whiteSpace: 'nowrap' }}>
+                    <td style={{ ...TD, color: 'var(--gray-500)', fontSize: 12, whiteSpace: 'nowrap' }}>
                       {fmtDate(r.due_date)}
                     </td>
 
                     {/* Completed at */}
-                    <td style={{ ...TD, color: '#6B7280', fontSize: 12, whiteSpace: 'nowrap' }}>
+                    <td style={{ ...TD, color: 'var(--gray-500)', fontSize: 12, whiteSpace: 'nowrap' }}>
                       {fmtDate(r.completed_date)}
                     </td>
 
                     {/* Assigned to */}
-                    <td style={{ ...TD, color: '#374151', fontSize: 12 }}>
-                      {r.assigned_to || <span style={{ color: '#D1D5DB' }}>Unassigned</span>}
+                    <td style={{ ...TD, color: 'var(--gray-700)', fontSize: 12 }}>
+                      {r.assigned_to || <span style={{ color: 'var(--gray-300)' }}>Unassigned</span>}
                     </td>
 
                     {/* Notes */}
-                    <td style={{ ...TD, color: '#6B7280', fontSize: 12, maxWidth: 200 }}>
+                    <td style={{ ...TD, color: 'var(--gray-500)', fontSize: 12, maxWidth: 200 }}>
                       <span style={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        {r.notes || <span style={{ color: '#D1D5DB' }}>—</span>}
+                        {r.notes || <span style={{ color: 'var(--gray-300)' }}>—</span>}
                       </span>
                     </td>
                   </tr>
@@ -441,8 +441,8 @@ export function CustomTableView({ tableConfig, onSendAlert, onDelete }) {
     <div>
       {/* Filter pills */}
       {activeFilters.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '12px 20px', borderBottom: '1px solid #F3F4F6', background: '#FAFAFA' }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: '#9CA3AF', alignSelf: 'center', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '12px 20px', borderBottom: '1px solid var(--gray-100)', background: 'var(--gray-50)' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gray-400)', alignSelf: 'center', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 4 }}>
             <Filter size={11} /> Filters:
           </span>
           {activeFilters.map(([k, v]) => (
@@ -454,15 +454,15 @@ export function CustomTableView({ tableConfig, onSendAlert, onDelete }) {
       )}
 
       {/* Action toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px', borderBottom: '1px solid #F3F4F6', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px', borderBottom: '1px solid var(--gray-100)', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
         <button
           onClick={handleSendAlert} disabled={selected.length === 0}
           style={{
             display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
             cursor: selected.length === 0 ? 'not-allowed' : 'pointer',
-            background: alertSent ? '#D1FAE5' : selected.length === 0 ? '#F9FAFB' : '#DC2626',
-            color:  alertSent ? '#065F46' : selected.length === 0 ? '#D1D5DB' : '#fff',
-            border: alertSent ? '1px solid #A7F3D0' : selected.length === 0 ? '1px solid #E5E7EB' : '1px solid #DC2626',
+            background: alertSent ? '#D1FAE5' : selected.length === 0 ? 'var(--gray-50)' : '#DC2626',
+            color:  alertSent ? '#065F46' : selected.length === 0 ? 'var(--gray-300)' : 'var(--card-bg)',
+            border: alertSent ? '1px solid #A7F3D0' : selected.length === 0 ? '1px solid var(--card-border-color)' : '1px solid #DC2626',
             transition: 'all 0.2s',
           }}
         >
@@ -475,9 +475,9 @@ export function CustomTableView({ tableConfig, onSendAlert, onDelete }) {
           style={{
             display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500,
             cursor: pinning ? 'not-allowed' : 'pointer',
-            background: pinned ? '#EFF6FF' : '#F9FAFB',
-            color:  pinned ? '#1D4ED8' : '#6B7280',
-            border: pinned ? '1px solid #BFDBFE' : '1px solid #E5E7EB',
+            background: pinned ? '#EFF6FF' : 'var(--gray-50)',
+            color:  pinned ? '#1D4ED8' : 'var(--gray-500)',
+            border: pinned ? '1px solid #BFDBFE' : '1px solid var(--card-border-color)',
             transition: 'all 0.2s',
           }}
           title={pinned ? 'Remove from dashboard' : 'Pin to dashboard'}
@@ -511,7 +511,7 @@ export function CustomTableView({ tableConfig, onSendAlert, onDelete }) {
 function Field({ label, children }) {
   return (
     <div style={{ marginBottom: 16 }}>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</label>
+      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--gray-700)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</label>
       {children}
     </div>
   );
@@ -523,7 +523,7 @@ function SelectField({ value, onChange, options }) {
       <select value={value} onChange={e => onChange(e.target.value)} style={{ ...inputStyle, appearance: 'none', paddingRight: 32, cursor: 'pointer' }}>
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
-      <ChevronDown size={13} color="#9CA3AF" style={{ position: 'absolute', right: 11, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+      <ChevronDown size={13} color="var(--gray-400)" style={{ position: 'absolute', right: 11, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
     </div>
   );
 }
@@ -557,24 +557,24 @@ function CreateTableDrawer({ isOpen, onClose, onCreate }) {
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 40, opacity: isOpen ? 1 : 0, pointerEvents: isOpen ? 'auto' : 'none', transition: 'opacity 0.25s' }} />
-      <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 420, background: '#fff', boxShadow: '-4px 0 32px rgba(0,0,0,0.12)', zIndex: 50, overflowY: 'auto', transform: isOpen ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid #F3F4F6' }}>
+      <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 420, background: 'var(--card-bg)', boxShadow: '-4px 0 32px rgba(0,0,0,0.12)', zIndex: 50, overflowY: 'auto', transform: isOpen ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--gray-100)' }}>
           <div>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: '#111827', margin: 0 }}>Create Custom Table</h2>
-            <p style={{ fontSize: 12, color: '#9CA3AF', marginTop: 3 }}>Save a filtered view for instant access</p>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--gray-900)', margin: 0 }}>Create Custom Table</h2>
+            <p style={{ fontSize: 12, color: 'var(--gray-400)', marginTop: 3 }}>Save a filtered view for instant access</p>
           </div>
           <button onClick={onClose} style={{ ...iconBtn, width: 32, height: 32 }}><X size={15} /></button>
         </div>
         <div style={{ padding: '24px' }}>
           <Field label="Table Name *">
-            <input value={name} onChange={e => { setName(e.target.value); setError(''); }} placeholder='e.g. "ABC Company Shipments"' style={{ ...inputStyle, borderColor: error && !name ? '#FCA5A5' : '#E5E7EB' }} />
+            <input value={name} onChange={e => { setName(e.target.value); setError(''); }} placeholder='e.g. "ABC Company Shipments"' style={{ ...inputStyle, borderColor: error && !name ? '#FCA5A5' : 'var(--card-border-color)' }} />
             {error && !name && <span style={{ fontSize: 11, color: '#DC2626', marginTop: 4, display: 'block' }}>{error}</span>}
           </Field>
 
           <Field label="Data Source">
             <div style={{ display: 'flex', gap: 8 }}>
               {['shipments', 'alerts'].map(src => (
-                <button key={src} onClick={() => { setDataSource(src); setFilters({}); }} style={{ flex: 1, padding: '10px 0', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: dataSource === src ? '#1D4ED8' : '#F9FAFB', color: dataSource === src ? '#fff' : '#374151', border: dataSource === src ? '1px solid #1D4ED8' : '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <button key={src} onClick={() => { setDataSource(src); setFilters({}); }} style={{ flex: 1, padding: '10px 0', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: dataSource === src ? '#1D4ED8' : 'var(--gray-50)', color: dataSource === src ? 'var(--card-bg)' : 'var(--gray-700)', border: dataSource === src ? '1px solid #1D4ED8' : '1px solid var(--card-border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                   {src === 'shipments' ? <Ship size={14} /> : <Bell size={14} />}
                   {src === 'shipments' ? 'Shipments' : 'Alerts'}
                 </button>
@@ -583,9 +583,9 @@ function CreateTableDrawer({ isOpen, onClose, onCreate }) {
           </Field>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '20px 0 16px' }}>
-            <div style={{ flex: 1, height: 1, background: '#F3F4F6' }} />
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 4 }}><Filter size={10} /> Filters</span>
-            <div style={{ flex: 1, height: 1, background: '#F3F4F6' }} />
+            <div style={{ flex: 1, height: 1, background: 'var(--gray-100)' }} />
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gray-400)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 4 }}><Filter size={10} /> Filters</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--gray-100)' }} />
           </div>
 
           <Field label="Company / Consignee Name">
@@ -627,7 +627,7 @@ function CreateTableDrawer({ isOpen, onClose, onCreate }) {
           {error && name && <div style={{ marginTop: 12, padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, fontSize: 13, color: '#DC2626' }}>{error}</div>}
 
           <div style={{ display: 'flex', gap: 10, marginTop: 28 }}>
-            <button onClick={onClose} style={{ flex: 1, padding: '10px 0', borderRadius: 8, fontSize: 13, fontWeight: 600, background: '#F9FAFB', color: '#374151', border: '1px solid #E5E7EB', cursor: 'pointer' }}>Cancel</button>
+            <button onClick={onClose} style={{ flex: 1, padding: '10px 0', borderRadius: 8, fontSize: 13, fontWeight: 600, background: 'var(--gray-50)', color: 'var(--gray-700)', border: '1px solid var(--card-border-color)', cursor: 'pointer' }}>Cancel</button>
             <button onClick={handleCreate} disabled={saving} style={{ flex: 2, padding: '10px 0', borderRadius: 8, fontSize: 13, fontWeight: 700, background: saving ? '#93C5FD' : '#1D4ED8', color: '#fff', border: 'none', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, transition: 'background 0.15s' }}>
               {saving ? <><Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> Saving…</> : '✦ Create Table'}
             </button>
@@ -673,14 +673,14 @@ export default function CustomTablesPage() {
   return (
     <>
       <style>{`@keyframes spin { to { transform: rotate(360deg) } } @keyframes fadeIn { from { opacity:0; transform:translateY(4px) } to { opacity:1; transform:translateY(0) } }`}</style>
-      <div style={{ minHeight: '100vh', background: '#F9FAFB', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div style={{ minHeight: '100vh', background: 'var(--gray-50)', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
         <div style={{ padding: '24px 28px 0' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
             <div>
-              <h1 style={{ fontSize: 20, fontWeight: 700, color: '#111827', margin: 0, letterSpacing: '-0.02em' }}>Custom Tables</h1>
-              <p style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>Create focused views of your shipment and alert data. Each table is saved to your account.</p>
+              <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--gray-900)', margin: 0, letterSpacing: '-0.02em' }}>Custom Tables</h1>
+              <p style={{ fontSize: 13, color: 'var(--gray-400)', marginTop: 4 }}>Create focused views of your shipment and alert data. Each table is saved to your account.</p>
             </div>
-            <button onClick={() => setDrawerOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, fontSize: 13, fontWeight: 700, background: '#111827', color: '#fff', border: 'none', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.15)', transition: 'background 0.15s' }} onMouseEnter={e => (e.currentTarget.style.background = '#1D4ED8')} onMouseLeave={e => (e.currentTarget.style.background = '#111827')}>
+            <button onClick={() => setDrawerOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, fontSize: 13, fontWeight: 700, background: 'var(--gray-900)', color: 'var(--card-bg)', border: 'none', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.15)', transition: 'background 0.15s' }} onMouseEnter={e => (e.currentTarget.style.background = '#1D4ED8')} onMouseLeave={e => (e.currentTarget.style.background = 'var(--gray-900)')}>
               <Plus size={14} /> New Table
             </button>
           </div>
@@ -689,20 +689,20 @@ export default function CustomTablesPage() {
             {allTabs.map(tab => {
               const isActive = activeTab === tab.id;
               return (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px 10px', borderRadius: '8px 8px 0 0', fontSize: 13, fontWeight: isActive ? 700 : 500, cursor: 'pointer', whiteSpace: 'nowrap', background: isActive ? '#fff' : 'transparent', color: isActive ? '#111827' : '#6B7280', border: isActive ? '1px solid #E5E7EB' : '1px solid transparent', borderBottom: isActive ? '1px solid #fff' : '1px solid transparent', marginBottom: isActive ? -1 : 0, position: 'relative', zIndex: isActive ? 2 : 1, transition: 'all 0.15s' }} onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.6)'; }} onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}>
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px 10px', borderRadius: '8px 8px 0 0', fontSize: 13, fontWeight: isActive ? 700 : 500, cursor: 'pointer', whiteSpace: 'nowrap', background: isActive ? 'var(--card-bg)' : 'transparent', color: isActive ? 'var(--gray-900)' : 'var(--gray-500)', border: isActive ? '1px solid var(--card-border-color)' : '1px solid transparent', borderBottom: isActive ? '1px solid #fff' : '1px solid transparent', marginBottom: isActive ? -1 : 0, position: 'relative', zIndex: isActive ? 2 : 1, transition: 'all 0.15s' }} onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.6)'; }} onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}>
                   <TabIcon iconKey={tab.iconKey} />
                   {tab.label}
                   {!tab.isDefault && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#3B82F6', marginLeft: 2, flexShrink: 0 }} />}
                 </button>
               );
             })}
-            <button onClick={() => setDrawerOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '9px 12px 10px', borderRadius: '8px 8px 0 0', fontSize: 12, fontWeight: 500, background: 'transparent', color: '#9CA3AF', border: '1px dashed #D1D5DB', borderBottom: '1px dashed transparent', cursor: 'pointer', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.color = '#3B82F6'; e.currentTarget.style.borderColor = '#93C5FD'; }} onMouseLeave={e => { e.currentTarget.style.color = '#9CA3AF'; e.currentTarget.style.borderColor = '#D1D5DB'; }}>
+            <button onClick={() => setDrawerOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '9px 12px 10px', borderRadius: '8px 8px 0 0', fontSize: 12, fontWeight: 500, background: 'transparent', color: 'var(--gray-400)', border: '1px dashed var(--gray-300)', borderBottom: '1px dashed transparent', cursor: 'pointer', transition: 'all 0.15s' }} onMouseEnter={e => { e.currentTarget.style.color = '#3B82F6'; e.currentTarget.style.borderColor = '#93C5FD'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--gray-400)'; e.currentTarget.style.borderColor = 'var(--gray-300)'; }}>
               <Plus size={12} /> New
             </button>
           </div>
         </div>
 
-        <div style={{ margin: '0 28px 28px', background: '#fff', border: '1px solid #E5E7EB', borderRadius: '0 8px 8px 8px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', animation: 'fadeIn 0.2s ease', overflow: 'hidden' }}>
+        <div style={{ margin: '0 28px 28px', background: 'var(--card-bg)', border: '1px solid var(--card-border-color)', borderRadius: '0 8px 8px 8px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', animation: 'fadeIn 0.2s ease', overflow: 'hidden' }}>
           {activeTab === 'shipments'  && <ShipmentsDefaultTab />}
           {activeTab === 'alerts'     && <AlertsDefaultTab />}
           {activeTab === 'milestones' && <MilestonesDefaultTab />}
@@ -712,16 +712,16 @@ export default function CustomTablesPage() {
 
         {alertModalData && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ background: '#fff', borderRadius: 14, padding: '28px 32px', maxWidth: 420, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.15)', animation: 'fadeIn 0.2s ease' }}>
+            <div style={{ background: 'var(--card-bg)', borderRadius: 14, padding: '28px 32px', maxWidth: 420, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.15)', animation: 'fadeIn 0.2s ease' }}>
               <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#D1FAE5', border: '1px solid #A7F3D0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                 <Bell size={22} color="#065F46" />
               </div>
-              <h3 style={{ fontSize: 16, fontWeight: 700, textAlign: 'center', color: '#111827', marginBottom: 8 }}>Alert Queued</h3>
-              <p style={{ fontSize: 13, color: '#6B7280', textAlign: 'center', lineHeight: 1.6, marginBottom: 20 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, textAlign: 'center', color: 'var(--gray-900)', marginBottom: 8 }}>Alert Queued</h3>
+              <p style={{ fontSize: 13, color: 'var(--gray-500)', textAlign: 'center', lineHeight: 1.6, marginBottom: 20 }}>
                 Alert will be sent for <strong>{alertModalData.selectedRows.length}</strong> row(s) from <strong>"{alertModalData.tableConfig.name}"</strong>.
-                <br /><span style={{ fontSize: 12, color: '#9CA3AF' }}>Email integration connects in the next sprint.</span>
+                <br /><span style={{ fontSize: 12, color: 'var(--gray-400)' }}>Email integration connects in the next sprint.</span>
               </p>
-              <button onClick={() => setAlertModalData(null)} style={{ width: '100%', padding: '10px 0', borderRadius: 8, background: '#111827', color: '#fff', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer' }}>Got it</button>
+              <button onClick={() => setAlertModalData(null)} style={{ width: '100%', padding: '10px 0', borderRadius: 8, background: 'var(--gray-900)', color: 'var(--card-bg)', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer' }}>Got it</button>
             </div>
           </div>
         )}
@@ -731,8 +731,8 @@ export default function CustomTablesPage() {
   );
 }
 
-const TH = { padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' };
-const TD = { padding: '12px 16px', verticalAlign: 'middle', fontSize: 13, color: '#374151' };
-const rowStyle = i => ({ borderBottom: '1px solid #F9FAFB', background: i % 2 === 0 ? '#fff' : '#FAFAFA', transition: 'background 0.1s' });
-const iconBtn = { width: 32, height: 32, borderRadius: 7, border: '1px solid #E5E7EB', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6B7280', cursor: 'pointer', transition: 'all 0.15s', padding: 0 };
-const inputStyle = { width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 13, color: '#111827', background: '#fff', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' };
+const TH = { padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--gray-500)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' };
+const TD = { padding: '12px 16px', verticalAlign: 'middle', fontSize: 13, color: 'var(--gray-700)' };
+const rowStyle = i => ({ borderBottom: '1px solid var(--gray-50)', background: i % 2 === 0 ? 'var(--card-bg)' : 'var(--gray-50)', transition: 'background 0.1s' });
+const iconBtn = { width: 32, height: 32, borderRadius: 7, border: '1px solid var(--card-border-color)', background: 'var(--card-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gray-500)', cursor: 'pointer', transition: 'all 0.15s', padding: 0 };
+const inputStyle = { width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--card-border-color)', fontSize: 13, color: 'var(--gray-900)', background: 'var(--card-bg)', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' };

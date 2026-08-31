@@ -22,8 +22,8 @@ export function useAuth(): AuthUser {
   return {
     staffCode: 'STAFF001',
     name:      'Test User',
-    email:     'test@dartglobal.com',
-    department: 'SEA',   // ← change to 'AIR' or 'SEA' to test other departments
-    role:      'super_user',
+    email:     'operation@gmail.com',  // ← must match real data to see scoped views
+    department: 'SEA',                  // ← 'AIR' or 'SEA' for super-user testing
+    role:      'operation_user',
   }
 }

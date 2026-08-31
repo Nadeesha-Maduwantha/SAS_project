@@ -7,6 +7,7 @@ export default function CurrentMilestonePage() {
     <MilestoneBoard
       detailBase="/sales_user/milestone_detail"
       canByMember={false}
+      scope="sales"
     />
   );
 }

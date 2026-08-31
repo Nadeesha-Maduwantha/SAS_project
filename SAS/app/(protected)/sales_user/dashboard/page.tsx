@@ -11,7 +11,7 @@ export default function SalesDashboardPage() {
       </h1>
 
       {/* My Shipments + My Alerts stat cards */}
-      <UserDashboardMetricCards />
+      <UserDashboardMetricCards scope="sales" />
 
       {/* Pinned custom table stat cards */}
       <PinnedTableStatCards />
@@ -22,6 +22,7 @@ export default function SalesDashboardPage() {
           title="My Shipment Alert Feed"
           apiBase="http://localhost:5000"
           maxRows={8}
+          scope="sales"
         />
       </div>
     </div>

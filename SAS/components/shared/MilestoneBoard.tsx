@@ -17,10 +17,20 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/hooks/useAuth';
+
+// Build the ?role=&email=&department= scope query for the current viewer.
+function scopeQuery(scope: string | undefined, user: { email?: string; department?: string }) {
+  if (!scope || scope === 'admin') return '';
+  const p = new URLSearchParams({ role: scope });
+  if (scope === 'super') p.set('department', user.department ?? '');
+  else p.set('email', user.email ?? '');
+  return `?${p.toString()}`;
+}
 
 // ── status → colour ────────────────────────────────────────────────────────────
 type Tone = { label: string; bg: string; color: string; border: string; dot: string };
-const NONE:     Tone = { label: 'Completed', bg: '#FFFFFF', color: '#6B7280', border: '#E5E7EB', dot: '#D1D5DB' };
+const NONE:     Tone = { label: 'Completed', bg: 'var(--card-bg)', color: 'var(--gray-500)', border: 'var(--card-border-color)', dot: 'var(--gray-300)' };
 const DARKRED:  Tone = { label: 'Overdue',   bg: '#FEE2E2', color: '#991B1B', border: '#FCA5A5', dot: '#DC2626' };
 const LIGHTRED: Tone = { label: 'Delayed',   bg: '#FFF1F2', color: '#E11D48', border: '#FECDD3', dot: '#FB7185' };
 const BLUE:     Tone = { label: 'Pending',   bg: '#EFF6FF', color: '#1D4ED8', border: '#BFDBFE', dot: '#3B82F6' };
@@ -59,6 +69,7 @@ interface Props {
   apiBase?:     string;   // default http://localhost:5000
   detailBase?:  string;   // e.g. /admin/milestone_detail  → `${detailBase}?id=<shipmentId>`
   canByMember?: boolean;  // admin + super users only
+  scope?:       'admin' | 'operation' | 'sales' | 'super';  // role-based data scoping
 }
 
 type Tab = 'completed' | 'overdue' | 'delayed' | 'by_client' | 'by_member';
@@ -78,8 +89,10 @@ export default function MilestoneBoard({
   apiBase = 'http://localhost:5000',
   detailBase,
   canByMember = false,
+  scope,
 }: Props) {
   const router = useRouter();
+  const user = useAuth();
   const [rows, setRows]       = useState<any[]>([]);   // [{ shipment, milestones }]
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
@@ -91,12 +104,13 @@ export default function MilestoneBoard({
   const [memberBy, setMemberBy] = useState<'person' | 'sales'>('person');
 
   useEffect(() => {
-    fetch(`${apiBase}/api/shipments/all-milestones`)
+    fetch(`${apiBase}/api/shipments/all-milestones${scopeQuery(scope, user)}`)
       .then(r => { if (!r.ok) throw new Error(`Server error: ${r.status}`); return r.json(); })
       .then(res => setRows(res.data ?? []))
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  }, [apiBase]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiBase, scope, user.email, user.department]);
 
   // ── flatten: one entry per milestone, carrying its shipment ──
   const flat = useMemo(() => {
@@ -180,17 +194,17 @@ export default function MilestoneBoard({
   const isGrouped = tab === 'by_client' || tab === 'by_member';
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F9FAFB', fontFamily: "'Inter', -apple-system, sans-serif", color: '#111827', padding: '32px 32px 80px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--gray-50)', fontFamily: "'Inter', -apple-system, sans-serif", color: 'var(--gray-900)', padding: '32px 32px 80px' }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}} *{box-sizing:border-box} table{border-collapse:collapse;width:100%}`}</style>
 
       {/* header */}
       <div style={{ marginBottom: 22 }}>
         <h1 style={{ fontSize: 21, fontWeight: 700, letterSpacing: '-0.015em', marginBottom: 6 }}>Current Milestones</h1>
-        <p style={{ fontSize: 13, color: '#6B7280' }}>All milestones across shipments — grouped, filtered, and colour-coded by state.</p>
+        <p style={{ fontSize: 13, color: 'var(--gray-500)' }}>All milestones across shipments — grouped, filtered, and colour-coded by state.</p>
       </div>
 
       {/* tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 18, borderBottom: '1px solid #E5E7EB', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 18, borderBottom: '1px solid var(--card-border-color)', flexWrap: 'wrap' }}>
         {TABS.map(t => {
           const active = tab === t.key;
           return (
@@ -199,11 +213,11 @@ export default function MilestoneBoard({
                 display: 'flex', alignItems: 'center', gap: 7, padding: '9px 15px',
                 background: 'none', border: 'none', borderBottom: `2px solid ${active ? '#2563EB' : 'transparent'}`,
                 marginBottom: -1, fontSize: 13, fontWeight: active ? 700 : 500,
-                color: active ? '#2563EB' : '#6B7280', cursor: 'pointer', fontFamily: 'inherit',
+                color: active ? '#2563EB' : 'var(--gray-500)', cursor: 'pointer', fontFamily: 'inherit',
               }}>
               {t.label}
               {t.count != null && (
-                <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: 99, background: active ? '#EFF6FF' : '#F3F4F6', color: active ? '#2563EB' : '#9CA3AF' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: 99, background: active ? '#EFF6FF' : 'var(--gray-100)', color: active ? '#2563EB' : 'var(--gray-400)' }}>
                   {t.count}
                 </span>
               )}
@@ -214,11 +228,11 @@ export default function MilestoneBoard({
 
       {/* toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 14px', flex: 1, minWidth: 220, maxWidth: 340 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--card-bg)', border: '1px solid var(--card-border-color)', borderRadius: 8, padding: '8px 14px', flex: 1, minWidth: 220, maxWidth: 340 }}>
           <SearchIcon />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search shipments, milestones, people…"
-            style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: '#374151', flex: 1, fontFamily: 'inherit' }} />
-          {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', fontSize: 15 }}>×</button>}
+            style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: 'var(--gray-700)', flex: 1, fontFamily: 'inherit' }} />
+          {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gray-400)', fontSize: 15 }}>×</button>}
         </div>
 
         {/* dept pills */}
@@ -228,7 +242,7 @@ export default function MilestoneBoard({
             return (
               <button key={d} onClick={() => setDept(d)}
                 style={{ padding: '7px 13px', borderRadius: 8, fontSize: 12, fontWeight: active ? 700 : 500, cursor: 'pointer', fontFamily: 'inherit',
-                  border: `1px solid ${active ? '#BFDBFE' : '#E5E7EB'}`, background: active ? '#EFF6FF' : '#fff', color: active ? '#2563EB' : '#6B7280' }}>
+                  border: `1px solid ${active ? '#BFDBFE' : 'var(--card-border-color)'}`, background: active ? '#EFF6FF' : 'var(--card-bg)', color: active ? '#2563EB' : 'var(--gray-500)' }}>
                 {d === 'all' ? 'All modes' : d === 'AIR' ? ' Air' : ' Sea'}
               </button>
             );
@@ -237,7 +251,7 @@ export default function MilestoneBoard({
 
         {/* sort */}
         <select value={sort} onChange={e => setSort(e.target.value)}
-          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #E5E7EB', background: '#fff', fontSize: 13, color: '#374151', fontFamily: 'inherit', cursor: 'pointer' }}>
+          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--card-border-color)', background: 'var(--card-bg)', fontSize: 13, color: 'var(--gray-700)', fontFamily: 'inherit', cursor: 'pointer' }}>
           <option value="due_asc">Due date — earliest</option>
           <option value="due_desc">Due date — latest</option>
           <option value="name_asc">Milestone name — A→Z</option>
@@ -252,7 +266,7 @@ export default function MilestoneBoard({
               return (
                 <button key={mb} onClick={() => setMemberBy(mb)}
                   style={{ padding: '7px 13px', borderRadius: 8, fontSize: 12, fontWeight: active ? 700 : 500, cursor: 'pointer', fontFamily: 'inherit',
-                    border: `1px solid ${active ? '#BBF7D0' : '#E5E7EB'}`, background: active ? '#F0FDF4' : '#fff', color: active ? '#15803D' : '#6B7280' }}>
+                    border: `1px solid ${active ? '#BBF7D0' : 'var(--card-border-color)'}`, background: active ? '#F0FDF4' : 'var(--card-bg)', color: active ? '#15803D' : 'var(--gray-500)' }}>
                   {mb === 'person' ? 'Responsible person' : 'Sales / Ops user'}
                 </button>
               );
@@ -264,8 +278,8 @@ export default function MilestoneBoard({
       {/* body */}
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '60px 0' }}>
-          <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid #E5E7EB', borderTopColor: '#3B82F6', animation: 'spin .7s linear infinite' }} />
-          <span style={{ fontSize: 13, color: '#9CA3AF' }}>Loading milestones…</span>
+          <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid var(--card-border-color)', borderTopColor: '#3B82F6', animation: 'spin .7s linear infinite' }} />
+          <span style={{ fontSize: 13, color: 'var(--gray-400)' }}>Loading milestones…</span>
         </div>
       ) : error ? (
         <div style={{ textAlign: 'center', padding: '40px 0', color: '#DC2626', fontSize: 13 }}>⚠ {error}</div>
@@ -279,7 +293,7 @@ export default function MilestoneBoard({
       {!loading && !error && (
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 16 }}>
           {[DARKRED, LIGHTRED, BLUE, YELLOW, NONE].map((t, i) => (
-            <span key={i} style={{ fontSize: 11, color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span key={i} style={{ fontSize: 11, color: 'var(--gray-400)', display: 'flex', alignItems: 'center', gap: 5 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: t.dot, display: 'inline-block' }} />
               {t.label}
             </span>
@@ -292,15 +306,15 @@ export default function MilestoneBoard({
 
 // ── flat table (completed / overdue / delayed) ───────────────────────────────────
 function FlatTable({ list, detailBase, router }: { list: any[]; detailBase?: string; router: any }) {
-  const TH: React.CSSProperties = { padding: '11px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' };
+  const TH: React.CSSProperties = { padding: '11px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--gray-500)', letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' };
   if (list.length === 0)
-    return <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 14, padding: '60px 20px', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>No milestones in this state.</div>;
+    return <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border-color)', borderRadius: 14, padding: '60px 20px', textAlign: 'center', color: 'var(--gray-400)', fontSize: 13 }}>No milestones in this state.</div>;
   return (
-    <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 6px rgba(0,0,0,.06)' }}>
+    <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border-color)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 6px rgba(0,0,0,.06)' }}>
       <div style={{ overflowX: 'auto' }}>
         <table>
           <thead>
-            <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+            <tr style={{ background: 'var(--gray-50)', borderBottom: '1px solid var(--card-border-color)' }}>
               {['Shipment', 'Client', 'Milestone', 'Status', 'Due date', 'Critical', ''].map(h => <th key={h} style={TH}>{h}</th>)}
             </tr>
           </thead>
@@ -308,17 +322,17 @@ function FlatTable({ list, detailBase, router }: { list: any[]; detailBase?: str
             {list.map(({ s, m }) => {
               const t = toneFor(m);
               return (
-                <tr key={m.id} style={{ borderBottom: '1px solid #F3F4F6', borderLeft: `4px solid ${t.dot}` }}>
+                <tr key={m.id} style={{ borderBottom: '1px solid var(--gray-100)', borderLeft: `4px solid ${t.dot}` }}>
                   <td style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
                     <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 600, color: '#3B82F6', background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '2px 8px', borderRadius: 4 }}>
                       {s.job_number ?? s.id.slice(0, 8)}
                     </span>
                   </td>
                   <td style={{ padding: '13px 16px', fontSize: 13, fontWeight: 500, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.consignee_name ?? '—'}</td>
-                  <td style={{ padding: '13px 16px', fontSize: 13, color: '#374151', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</td>
+                  <td style={{ padding: '13px 16px', fontSize: 13, color: 'var(--gray-700)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</td>
                   <td style={{ padding: '13px 16px' }}><StatusPill m={m} /></td>
-                  <td style={{ padding: '13px 16px', fontSize: 12, color: m.status === 'overdue' ? '#DC2626' : '#6B7280', fontWeight: m.status === 'overdue' ? 600 : 400, whiteSpace: 'nowrap' }}>{fmtDate(m.due_date)}</td>
-                  <td style={{ padding: '13px 16px' }}>{m.is_critical ? <span style={{ fontSize: 11, fontWeight: 600, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', padding: '2px 8px', borderRadius: 4 }}>Critical</span> : <span style={{ color: '#D1D5DB', fontSize: 12 }}>—</span>}</td>
+                  <td style={{ padding: '13px 16px', fontSize: 12, color: m.status === 'overdue' ? '#DC2626' : 'var(--gray-500)', fontWeight: m.status === 'overdue' ? 600 : 400, whiteSpace: 'nowrap' }}>{fmtDate(m.due_date)}</td>
+                  <td style={{ padding: '13px 16px' }}>{m.is_critical ? <span style={{ fontSize: 11, fontWeight: 600, color: '#DC2626', background: '#FEF2F2', border: '1px solid #FECACA', padding: '2px 8px', borderRadius: 4 }}>Critical</span> : <span style={{ color: 'var(--gray-300)', fontSize: 12 }}>—</span>}</td>
                   <td style={{ padding: '13px 16px' }}>
                     {detailBase && (
                       <button onClick={() => router.push(`${detailBase}?id=${s.id}`)}
@@ -340,7 +354,7 @@ function FlatTable({ list, detailBase, router }: { list: any[]; detailBase?: str
 // ── grouped nested view (By Client / By Member) ──────────────────────────────────
 function GroupedView({ groups, detailBase, router }: { groups: any[]; detailBase?: string; router: any }) {
   if (groups.length === 0)
-    return <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 14, padding: '60px 20px', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>No shipments match.</div>;
+    return <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border-color)', borderRadius: 14, padding: '60px 20px', textAlign: 'center', color: 'var(--gray-400)', fontSize: 13 }}>No shipments match.</div>;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {groups.map(g => <GroupSection key={g.name} group={g} detailBase={detailBase} router={router} />)}
@@ -352,13 +366,13 @@ function GroupSection({ group, detailBase, router }: { group: any; detailBase?: 
   const [open, setOpen] = useState(true);
   const totalMs = group.ships.reduce((n: number, s: any) => n + (s.milestones?.length ?? 0), 0);
   return (
-    <div style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+    <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border-color)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
       <button onClick={() => setOpen(o => !o)}
-        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '13px 18px', background: '#F9FAFB', border: 'none', borderBottom: open ? '1px solid #E5E7EB' : 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '13px 18px', background: 'var(--gray-50)', border: 'none', borderBottom: open ? '1px solid var(--card-border-color)' : 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
         <Chevron open={open} />
-        <span style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>{group.name}</span>
-        <span style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', background: '#EFF1F5', padding: '2px 8px', borderRadius: 99 }}>{group.ships.length} shipment{group.ships.length !== 1 ? 's' : ''}</span>
-        <span style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', background: '#EFF1F5', padding: '2px 8px', borderRadius: 99 }}>{totalMs} milestone{totalMs !== 1 ? 's' : ''}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--gray-900)' }}>{group.name}</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gray-500)', background: 'var(--gray-100)', padding: '2px 8px', borderRadius: 99 }}>{group.ships.length} shipment{group.ships.length !== 1 ? 's' : ''}</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gray-500)', background: 'var(--gray-100)', padding: '2px 8px', borderRadius: 99 }}>{totalMs} milestone{totalMs !== 1 ? 's' : ''}</span>
       </button>
       {open && (
         <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -374,15 +388,15 @@ function ShipmentBlock({ entry, detailBase, router }: { entry: any; detailBase?:
   const s = entry.shipment;
   const mils = entry.milestones ?? [];
   return (
-    <div style={{ border: '1px solid #EEF0F3', borderRadius: 10, overflow: 'hidden' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: '#FCFCFD' }}>
-        <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', display: 'flex', padding: 0 }}><Chevron open={open} /></button>
+    <div style={{ border: '1px solid var(--gray-100)', borderRadius: 10, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: 'var(--gray-50)' }}>
+        <button onClick={() => setOpen(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gray-500)', display: 'flex', padding: 0 }}><Chevron open={open} /></button>
         <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, color: '#3B82F6', background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '2px 8px', borderRadius: 4 }}>{s.job_number ?? s.id.slice(0, 8)}</span>
-        <span style={{ fontSize: 12, color: '#6B7280' }}>{s.consignee_name ?? '—'}</span>
-        <span style={{ fontSize: 11, color: '#9CA3AF' }}>{s.transport_mode ?? ''}</span>
+        <span style={{ fontSize: 12, color: 'var(--gray-500)' }}>{s.consignee_name ?? '—'}</span>
+        <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>{s.transport_mode ?? ''}</span>
         {detailBase && (
           <button onClick={() => router.push(`${detailBase}?id=${s.id}`)}
-            style={{ marginLeft: 'auto', padding: '4px 10px', background: '#fff', border: '1px solid #BFDBFE', borderRadius: 6, fontSize: 11, fontWeight: 600, color: '#3B82F6', cursor: 'pointer', fontFamily: 'inherit' }}>
+            style={{ marginLeft: 'auto', padding: '4px 10px', background: 'var(--card-bg)', border: '1px solid #BFDBFE', borderRadius: 6, fontSize: 11, fontWeight: 600, color: '#3B82F6', cursor: 'pointer', fontFamily: 'inherit' }}>
             View
           </button>
         )}
@@ -390,15 +404,15 @@ function ShipmentBlock({ entry, detailBase, router }: { entry: any; detailBase?:
       {open && (
         <div style={{ padding: '6px 10px 10px' }}>
           {mils.length === 0 ? (
-            <div style={{ fontSize: 12, color: '#9CA3AF', padding: '8px 6px' }}>No milestones assigned.</div>
+            <div style={{ fontSize: 12, color: 'var(--gray-400)', padding: '8px 6px' }}>No milestones assigned.</div>
           ) : mils.map((m: any) => {
             const t = toneFor(m);
             return (
               <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', marginTop: 4, background: t.bg, border: `1px solid ${t.border}`, borderLeft: `4px solid ${t.dot}`, borderRadius: 8 }}>
                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: t.dot, flexShrink: 0 }} />
-                <span style={{ fontSize: 13, fontWeight: 500, color: '#111827', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: t.color, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
                 {m.is_critical && <span style={{ fontSize: 9, fontWeight: 800, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #FECACA', padding: '1px 6px', borderRadius: 4 }}>CRITICAL</span>}
-                <span style={{ fontSize: 11, color: '#9CA3AF', whiteSpace: 'nowrap' }}>{fmtDate(m.due_date)}</span>
+                <span style={{ fontSize: 11, color: 'var(--gray-400)', whiteSpace: 'nowrap' }}>{fmtDate(m.due_date)}</span>
                 <StatusPill m={m} />
               </div>
             );

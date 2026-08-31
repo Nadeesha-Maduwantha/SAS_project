@@ -28,6 +28,7 @@ export default function AdminDashboardPage() {
           apiBase="http://localhost:5000"
           maxRows={8}
           showFieldDelayed
+          scope="admin"
         />
       </div>
 

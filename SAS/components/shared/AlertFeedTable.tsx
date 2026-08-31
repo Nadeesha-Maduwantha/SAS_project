@@ -7,6 +7,16 @@ import EmailComposeModal from '@/components/EmailComposeModal';
 import { AlertData } from '@/components/AlertDetailsModal';
 import ShipmentMilestonesModal from '@/components/Shipmentmilestonesmodal';
 import MilestoneDetailModal    from '@/components/Milestonedetailmodal';
+import { useAuth } from '@/lib/hooks/useAuth';
+
+// Build the ?role=&email=&department= scope query for the current viewer.
+function scopeQuery(scope: string | undefined, u: { email?: string; department?: string }) {
+  if (!scope || scope === 'admin') return '';
+  const p = new URLSearchParams({ role: scope });
+  if (scope === 'super') p.set('department', u.department ?? '');
+  else p.set('email', u.email ?? '');
+  return `?${p.toString()}`;
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface AlertMilestone {
@@ -41,6 +51,7 @@ interface Props {
   apiBase?: string;
   maxRows?: number;
   showFieldDelayed?: boolean;   // include yellow "expected data not arrived" rows/cards
+  scope?: 'admin' | 'operation' | 'sales' | 'super';  // role-based data scoping
 }
 
 // "expected data field delayed / possibly renamed" item (yellow)
@@ -90,7 +101,7 @@ function Tooltip({ children, text }: { children: React.ReactNode; text: string }
       {vis && (
         <span style={{
           position: 'absolute', bottom: 'calc(100% + 8px)', left: '50%',
-          transform: 'translateX(-50%)', background: '#1F2937', color: '#fff',
+          transform: 'translateX(-50%)', background: '#1F2937', color: '#F8FAFC',
           fontSize: 11, fontWeight: 500, padding: '6px 10px', borderRadius: 6,
           whiteSpace: 'nowrap', zIndex: 9999, pointerEvents: 'none',
           boxShadow: '0 4px 12px rgba(0,0,0,.15)',
@@ -140,14 +151,14 @@ function MilestonePopup({
     >
       <div style={{
         width: '100%', maxWidth: 620, maxHeight: '85vh',
-        background: '#fff', borderRadius: 14,
+        background: 'var(--card-bg)', borderRadius: 14,
         boxShadow: '0 24px 48px rgba(0,0,0,0.18)',
         overflow: 'hidden', display: 'flex', flexDirection: 'column',
         animation: 'scaleIn 0.18s ease',
       }}>
         {/* Header */}
         <div style={{
-          padding: '18px 24px', borderBottom: '1px solid #F3F4F6',
+          padding: '18px 24px', borderBottom: '1px solid var(--gray-100)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           background: t.bg,
         }}>
@@ -170,7 +181,7 @@ function MilestonePopup({
               )}
               <span style={{
                 fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
-                background: '#fff', color: t.text, border: `1px solid ${t.border}`,
+                background: 'var(--card-bg)', color: t.text, border: `1px solid ${t.border}`,
               }}>
                 {group.alert_count} {group.alert_count === 1 ? 'alert' : 'alerts'}
               </span>
@@ -195,12 +206,12 @@ function MilestonePopup({
         {/* Sub-header */}
         <div style={{
           display: 'grid', gridTemplateColumns: '1fr 130px 120px 110px',
-          padding: '8px 24px', background: '#F9FAFB',
-          borderBottom: '1px solid #E5E7EB',
+          padding: '8px 24px', background: 'var(--gray-50)',
+          borderBottom: '1px solid var(--card-border-color)',
         }}>
           {['Milestone', 'Due Date', 'Overdue', ''].map((h, i) => (
             <span key={i} style={{
-              fontSize: 10, fontWeight: 700, color: '#9CA3AF',
+              fontSize: 10, fontWeight: 700, color: 'var(--gray-400)',
               textTransform: 'uppercase', letterSpacing: '0.07em',
             }}>{h}</span>
           ))}
@@ -231,7 +242,7 @@ function MilestonePopup({
               <div
                 key={alert.milestone_id}
                 style={{
-                  background: '#fff', borderRadius: 10,
+                  background: 'var(--card-bg)', borderRadius: 10,
                   border: `1.5px solid ${mt.border}`,
                   borderLeft: `4px solid ${mt.dot}`,
                   padding: '12px 16px',
@@ -256,19 +267,19 @@ function MilestonePopup({
                     )}
                   </div>
                   {alert.assigned_to && (
-                    <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2, paddingLeft: 13 }}>
+                    <div style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: 2, paddingLeft: 13 }}>
                       {alert.assigned_to}
                     </div>
                   )}
                   {alert.notes && (
-                    <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4, paddingLeft: 13, lineHeight: 1.4 }}>
+                    <div style={{ fontSize: 11, color: 'var(--gray-500)', marginTop: 4, paddingLeft: 13, lineHeight: 1.4 }}>
                       {alert.notes}
                     </div>
                   )}
                 </div>
 
                 {/* Due date */}
-                <div style={{ fontSize: 12, color: '#6B7280' }}>{fmtDate(alert.due_date)}</div>
+                <div style={{ fontSize: 12, color: 'var(--gray-500)' }}>{fmtDate(alert.due_date)}</div>
 
                 {/* Overdue badge */}
                 <div><OverdueBadge days={alert.overdue_days} status={alert.status} /></div>
@@ -316,12 +327,12 @@ function AlertCard({
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
-        background:   '#fff',
+        background:   'var(--card-bg)',
         borderRadius: 12,
         borderTop:    `4px solid ${t.dot}`,
-        borderRight:  `1.5px solid ${hov ? t.border : '#E5E7EB'}`,
-        borderBottom: `1.5px solid ${hov ? t.border : '#E5E7EB'}`,
-        borderLeft:   `1.5px solid ${hov ? t.border : '#E5E7EB'}`,
+        borderRight:  `1.5px solid ${hov ? t.border : 'var(--card-border-color)'}`,
+        borderBottom: `1.5px solid ${hov ? t.border : 'var(--card-border-color)'}`,
+        borderLeft:   `1.5px solid ${hov ? t.border : 'var(--card-border-color)'}`,
         boxShadow:    hov
           ? `0 8px 24px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06)`
           : '0 1px 4px rgba(0,0,0,0.05)',
@@ -338,8 +349,8 @@ function AlertCard({
       {/* Card top strip */}
       <div style={{
         padding: '14px 16px 10px',
-        background: hov ? t.bg : '#FAFAFA',
-        borderBottom: `1px solid ${hov ? t.border : '#F3F4F6'}`,
+        background: hov ? t.bg : 'var(--gray-50)',
+        borderBottom: `1px solid ${hov ? t.border : 'var(--gray-100)'}`,
         transition: 'background 0.15s, border-color 0.15s',
       }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
@@ -380,10 +391,10 @@ function AlertCard({
       <div style={{ padding: '12px 16px', flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {/* Consignee */}
         <div>
-          <div style={{ fontSize: 10, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--gray-400)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>
             Client
           </div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#111827', lineHeight: 1.3 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-900)', lineHeight: 1.3 }}>
             {group.consignee_name}
           </div>
         </div>
@@ -401,7 +412,7 @@ function AlertCard({
           {/* Description from notes */}
         {group.alerts[0]?.notes && (
           <div style={{
-            fontSize: 11, color: '#6B7280', lineHeight: 1.5,
+            fontSize: 11, color: 'var(--gray-500)', lineHeight: 1.5,
             display: '-webkit-box',
             WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical',
@@ -415,10 +426,10 @@ function AlertCard({
         {/* Most overdue */}
         <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--gray-400)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>
               Most Recent Due
             </div>
-            <div style={{ fontSize: 12, color: '#374151', fontWeight: 500 }}>
+            <div style={{ fontSize: 12, color: 'var(--gray-700)', fontWeight: 500 }}>
               {fmtDate(nextDue)}
             </div>
           </div>
@@ -428,8 +439,8 @@ function AlertCard({
 
       {/* Card footer */}
       <div style={{
-        padding: '8px 16px', borderTop: '1px solid #F3F4F6',
-        background: '#FAFAFA', display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+        padding: '8px 16px', borderTop: '1px solid var(--gray-100)',
+        background: 'var(--gray-50)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
       }}>
         <span style={{ fontSize: 11, color: t.text, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
           View alerts <ChevronRight size={12} />
@@ -469,11 +480,11 @@ function ShipmentAlertRow({
       style={{
         display: 'flex', alignItems: 'center',
         padding: '13px 16px 13px 0', cursor: 'pointer',
-        background: expanded ? '#FAFAFA' : '#fff', transition: 'background 0.12s',
+        background: expanded ? 'var(--gray-50)' : 'var(--card-bg)', transition: 'background 0.12s',
         borderRadius: expanded ? '12px 12px 0 0' : 0,
       }}
-      onMouseEnter={e => (e.currentTarget.style.background = '#F9FAFB')}
-      onMouseLeave={e => (e.currentTarget.style.background = expanded ? '#FAFAFA' : '#fff')}
+      onMouseEnter={e => (e.currentTarget.style.background = 'var(--gray-50)')}
+      onMouseLeave={e => (e.currentTarget.style.background = expanded ? 'var(--gray-50)' : 'var(--card-bg)')}
     >
       <div style={{ width: 48, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{
@@ -502,8 +513,8 @@ function ShipmentAlertRow({
         </Tooltip>
       </div>
       <div style={{ width: 200, flexShrink: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{group.consignee_name}</div>
-        <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>{group.transport_mode}</div>
+        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--gray-900)' }}>{group.consignee_name}</div>
+        <div style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: 2 }}>{group.transport_mode}</div>
       </div>
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span style={{
@@ -525,13 +536,13 @@ function ShipmentAlertRow({
           </span>
         )}
         {nextDue && (
-          <span style={{ fontSize: 12, color: '#9CA3AF', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ color: '#D1D5DB' }}>·</span>
+          <span style={{ fontSize: 12, color: 'var(--gray-400)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ color: 'var(--gray-300)' }}>·</span>
             Most recent due {fmtDate(nextDue)}
           </span>
         )}
       </div>
-      <div style={{ flexShrink: 0, fontSize: 11, color: '#9CA3AF', paddingLeft: 12 }}>
+      <div style={{ flexShrink: 0, fontSize: 11, color: 'var(--gray-400)', paddingLeft: 12 }}>
         {expanded ? 'Collapse ↑' : 'View alerts ↓'}
       </div>
     </div>
@@ -539,7 +550,7 @@ function ShipmentAlertRow({
 
   if (!expanded && !visible) {
     return (
-      <tr style={{ borderBottom: '1px solid #F3F4F6' }}>
+      <tr style={{ borderBottom: '1px solid var(--gray-100)' }}>
         <td colSpan={7} style={{ padding: 0 }}>{rowContent}</td>
       </tr>
     );
@@ -551,23 +562,23 @@ function ShipmentAlertRow({
       <tr>
         <td colSpan={7} style={{ padding: '0 10px' }}>
           <div style={{
-            background: '#fff', borderRadius: 12,
+            background: 'var(--card-bg)', borderRadius: 12,
             boxShadow: '0 2px 8px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.11)',
             border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden',
           }}>
             {rowContent}
             <div style={{
-              borderTop: '1px solid #F3F4F6',
+              borderTop: '1px solid var(--gray-100)',
               animation: closing ? 'panelClose 0.26s cubic-bezier(0.4,0,1,1) forwards' : 'panelOpen 0.3s cubic-bezier(0.22,0.61,0.36,1) forwards',
               overflow: 'hidden',
             }}>
               <div style={{
                 display: 'grid', gridTemplateColumns: '48px 1fr 150px 140px 130px',
-                padding: '7px 16px 7px 0', background: '#F9FAFB', borderBottom: '1px solid #E5E7EB',
+                padding: '7px 16px 7px 0', background: 'var(--gray-50)', borderBottom: '1px solid var(--card-border-color)',
               }}>
                 <span />
                 {['Milestone', 'Due date', 'Overdue', ''].map((h, i) => (
-                  <span key={i} style={{ fontSize: 10, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', paddingLeft: 4 }}>{h}</span>
+                  <span key={i} style={{ fontSize: 10, fontWeight: 600, color: 'var(--gray-400)', textTransform: 'uppercase', letterSpacing: '0.06em', paddingLeft: 4 }}>{h}</span>
                 ))}
               </div>
               {group.alerts.map((alert, idx) => {
@@ -594,13 +605,13 @@ function ShipmentAlertRow({
                     }
                   }} style={{
                     display: 'grid', gridTemplateColumns: '48px 1fr 150px 140px 130px',
-                    alignItems: 'center', paddingRight: 16, background: '#fff',
-                    borderBottom: idx < group.alerts.length - 1 ? '1px solid #F3F4F6' : 'none',
+                    alignItems: 'center', paddingRight: 16, background: 'var(--card-bg)',
+                    borderBottom: idx < group.alerts.length - 1 ? '1px solid var(--gray-100)' : 'none',
                     borderLeft: `3px solid ${mt.dot}`, cursor: 'pointer', transition: 'background 0.1s',
                     animation: `subRowIn 0.28s cubic-bezier(0.22,0.61,0.36,1) ${idx * 55}ms both`,
                   }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#FAFAFA')}
-                    onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--gray-50)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'var(--card-bg)')}
                   >
                     <span />
                     <div style={{ padding: '11px 12px 11px 0' }}>
@@ -611,9 +622,9 @@ function ShipmentAlertRow({
                           <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#FEE2E2', color: '#B91C1C', border: '1px solid #FECACA' }}>CRITICAL</span>
                         )}
                       </div>
-                      {alert.assigned_to && <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2, paddingLeft: 13 }}>{alert.assigned_to}</div>}
+                      {alert.assigned_to && <div style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: 2, paddingLeft: 13 }}>{alert.assigned_to}</div>}
                     </div>
-                    <div style={{ fontSize: 12, color: '#6B7280', padding: '11px 4px' }}>{fmtDate(alert.due_date)}</div>
+                    <div style={{ fontSize: 12, color: 'var(--gray-500)', padding: '11px 4px' }}>{fmtDate(alert.due_date)}</div>
                     <div style={{ padding: '11px 4px' }}><OverdueBadge days={alert.overdue_days} status={alert.status} /></div>
                     <div style={{ padding: '11px 0', textAlign: 'right' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: mt.bg, color: mt.text, border: `1px solid ${mt.border}` }}>
@@ -661,11 +672,11 @@ function SortDropdown({ value, onChange }: { value: SortKey; onChange: (v: SortK
         style={{
           display: 'flex', alignItems: 'center', gap: 6,
           fontSize: 12, fontWeight: 500, padding: '7px 12px', borderRadius: 8,
-          border: '1px solid #E5E7EB', background: '#fff', color: '#374151',
+          border: '1px solid var(--card-border-color)', background: 'var(--card-bg)', color: 'var(--gray-700)',
           cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
         }}
-        onMouseEnter={e => (e.currentTarget.style.background = '#F9FAFB')}
-        onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--gray-50)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'var(--card-bg)')}
       >
         Sort: {current?.label}
         <ChevronDown size={13} />
@@ -673,7 +684,7 @@ function SortDropdown({ value, onChange }: { value: SortKey; onChange: (v: SortK
       {open && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 100,
-          background: '#fff', border: '1px solid #E5E7EB', borderRadius: 10,
+          background: 'var(--card-bg)', border: '1px solid var(--card-border-color)', borderRadius: 10,
           boxShadow: '0 8px 24px rgba(0,0,0,0.10)', minWidth: 210, overflow: 'hidden',
         }}>
           {opts.map(opt => (
@@ -683,11 +694,11 @@ function SortDropdown({ value, onChange }: { value: SortKey; onChange: (v: SortK
               style={{
                 width: '100%', textAlign: 'left', padding: '9px 14px',
                 fontSize: 12, fontWeight: value === opt.value ? 600 : 400,
-                color: value === opt.value ? '#2563EB' : '#374151',
+                color: value === opt.value ? '#2563EB' : 'var(--gray-700)',
                 background: value === opt.value ? '#EFF6FF' : 'transparent',
                 border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'block',
               }}
-              onMouseEnter={e => { if (value !== opt.value) e.currentTarget.style.background = '#F9FAFB'; }}
+              onMouseEnter={e => { if (value !== opt.value) e.currentTarget.style.background = 'var(--gray-50)'; }}
               onMouseLeave={e => { if (value !== opt.value) e.currentTarget.style.background = 'transparent'; }}
             >
               {opt.label}
@@ -715,13 +726,13 @@ function FDCard({ fd, onMap }: { fd: FDItem; onMap: () => void }) {
   return (
     <div style={{ background: C.amber.bg, border: `1px solid ${C.amber.border}`, borderTop: `4px solid ${C.amber.dot}`, borderRadius: 12, padding: '13px 15px', display: 'flex', flexDirection: 'column', gap: 6, minHeight: 130 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-        <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 800, color: C.amber.text, background: '#fff', border: `1px solid ${C.amber.border}`, padding: '2px 8px', borderRadius: 6 }}>{fd.job_number || fd.shipment_id?.slice(0, 8)}</span>
+        <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 800, color: C.amber.text, background: 'var(--card-bg)', border: `1px solid ${C.amber.border}`, padding: '2px 8px', borderRadius: 6 }}>{fd.job_number || fd.shipment_id?.slice(0, 8)}</span>
         {fd.is_critical && <span style={{ fontSize: 9, fontWeight: 800, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #FECACA', padding: '1px 6px', borderRadius: 4 }}>CRITICAL</span>}
-        <span style={{ fontSize: 9, fontWeight: 800, color: C.amber.text, background: '#fff', border: `1px solid ${C.amber.border}`, padding: '1px 6px', borderRadius: 4 }}>FIELD MISMATCH</span>
+        <span style={{ fontSize: 9, fontWeight: 800, color: C.amber.text, background: 'var(--card-bg)', border: `1px solid ${C.amber.border}`, padding: '1px 6px', borderRadius: 4 }}>FIELD MISMATCH</span>
       </div>
-      <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{fd.milestone_name}</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-900)' }}>{fd.milestone_name}</div>
       <FDBody fd={fd} />
-      <button onClick={onMap} style={{ marginTop: 'auto', alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: '#fff', color: '#1D4ED8', border: '1px solid #BFDBFE', fontFamily: 'inherit' }}>
+      <button onClick={onMap} style={{ marginTop: 'auto', alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: 'var(--card-bg)', color: '#1D4ED8', border: '1px solid #BFDBFE', fontFamily: 'inherit' }}>
         Map in Field Registry <ArrowRight size={12} />
       </button>
     </div>
@@ -730,19 +741,19 @@ function FDCard({ fd, onMap }: { fd: FDItem; onMap: () => void }) {
 
 function FDRow({ fd, onMap }: { fd: FDItem; onMap: () => void }) {
   return (
-    <tr style={{ borderBottom: '1px solid #F3F4F6' }}>
+    <tr style={{ borderBottom: '1px solid var(--gray-100)' }}>
       <td colSpan={7} style={{ padding: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: '#FFFBEB', borderLeft: `4px solid ${C.amber.dot}` }}>
           <span style={{ width: 150, flexShrink: 0, fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: C.amber.text, background: C.amber.bg, border: `1px solid ${C.amber.border}`, padding: '4px 10px', borderRadius: 6, textAlign: 'center' }}>{fd.job_number || fd.shipment_id?.slice(0, 8)}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{fd.milestone_name}</span>
-              <span style={{ fontSize: 9, fontWeight: 800, color: C.amber.text, background: '#fff', border: `1px solid ${C.amber.border}`, padding: '1px 6px', borderRadius: 4 }}>FIELD MISMATCH</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-900)' }}>{fd.milestone_name}</span>
+              <span style={{ fontSize: 9, fontWeight: 800, color: C.amber.text, background: 'var(--card-bg)', border: `1px solid ${C.amber.border}`, padding: '1px 6px', borderRadius: 4 }}>FIELD MISMATCH</span>
               {fd.is_critical && <span style={{ fontSize: 9, fontWeight: 800, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #FECACA', padding: '1px 6px', borderRadius: 4 }}>CRITICAL</span>}
             </div>
             <div style={{ marginTop: 2 }}><FDBody fd={fd} /></div>
           </div>
-          <button onClick={onMap} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer', background: '#fff', color: '#1D4ED8', border: '1px solid #BFDBFE', fontFamily: 'inherit' }}>
+          <button onClick={onMap} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer', background: 'var(--card-bg)', color: '#1D4ED8', border: '1px solid #BFDBFE', fontFamily: 'inherit' }}>
             Map in Field Registry <ArrowRight size={11} />
           </button>
         </div>
@@ -757,8 +768,10 @@ export default function AlertFeedTable({
   apiBase = 'http://localhost:5000',
   maxRows = 8,
   showFieldDelayed = false,
+  scope,
 }: Props) {
   const router = useRouter();
+  const user = useAuth();
   const [groups,    setGroups]    = useState<ShipmentAlertGroup[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState<string | null>(null);
@@ -797,7 +810,7 @@ export default function AlertFeedTable({
   const fetchAlerts = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const res = await fetch(`${apiBase}/api/alerts/active`);
+      const res = await fetch(`${apiBase}/api/alerts/active${scopeQuery(scope, user)}`);
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
       const data = await res.json();
       setGroups(data.data ?? []);
@@ -813,7 +826,8 @@ export default function AlertFeedTable({
     } finally {
       setLoading(false);
     }
-  }, [apiBase, showFieldDelayed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiBase, showFieldDelayed, scope, user.email, user.department]);
 
   useEffect(() => { fetchAlerts(); }, [fetchAlerts]);
 
@@ -851,7 +865,7 @@ export default function AlertFeedTable({
 
   const TH: React.CSSProperties = {
     padding: '10px 12px', textAlign: 'left', fontSize: 11, fontWeight: 600,
-    color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
+    color: 'var(--gray-500)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap',
   };
 
   return (
@@ -866,16 +880,16 @@ export default function AlertFeedTable({
         @keyframes cardIn    { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
       `}</style>
 
-      <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB', boxShadow: '0 1px 6px rgba(0,0,0,.06)' }}>
+      <div style={{ background: 'var(--card-bg)', borderRadius: 14, border: '1px solid var(--card-border-color)', boxShadow: '0 1px 6px rgba(0,0,0,.06)' }}>
 
         {/* ── Header ─────────────────────────────────────────── */}
         <div style={{
-          padding: '16px 20px', borderBottom: '1px solid #F3F4F6',
+          padding: '16px 20px', borderBottom: '1px solid var(--gray-100)',
           borderRadius: '14px 14px 0 0', display: 'flex',
           alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: '#111827', margin: 0 }}>{title}</h2>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--gray-900)', margin: 0 }}>{title}</h2>
             {!loading && groups.length > 0 && (
               <div style={{ display: 'flex', gap: 6 }}>
                 {redCount > 0 && (
@@ -895,10 +909,10 @@ export default function AlertFeedTable({
             onClick={fetchAlerts}
             style={{
               display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500,
-              color: '#6B7280', background: 'none', border: '1px solid #E5E7EB',
+              color: 'var(--gray-500)', background: 'none', border: '1px solid var(--card-border-color)',
               padding: '5px 12px', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit',
             }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#F9FAFB')}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--gray-50)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'none')}
           >
             <RefreshCw size={12} /> Refresh
@@ -907,28 +921,28 @@ export default function AlertFeedTable({
 
         {/* ── Shared Toolbar ──────────────────────────────────── */}
         <div style={{
-          padding: '12px 20px', borderBottom: '1px solid #F3F4F6',
+          padding: '12px 20px', borderBottom: '1px solid var(--gray-100)',
           display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-          background: '#FAFAFA',
+          background: 'var(--gray-50)',
         }}>
           {/* Search */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8,
+            background: 'var(--card-bg)', border: '1px solid var(--card-border-color)', borderRadius: 8,
             padding: '6px 12px', flex: 1, minWidth: 180,
           }}>
-            <Search size={13} color="#9CA3AF" />
+            <Search size={13} color="var(--gray-400)" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search client or shipment ID..."
               style={{
                 border: 'none', outline: 'none', background: 'transparent',
-                fontSize: 12, color: '#374151', fontFamily: 'inherit', width: '100%',
+                fontSize: 12, color: 'var(--gray-700)', fontFamily: 'inherit', width: '100%',
               }}
             />
             {search && (
-              <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: 0, display: 'flex' }}>
+              <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gray-400)', padding: 0, display: 'flex' }}>
                 <X size={13} />
               </button>
             )}
@@ -942,9 +956,9 @@ export default function AlertFeedTable({
                 onClick={() => setFilterStatus(val)}
                 style={{
                   fontSize: 11, fontWeight: 600, padding: '6px 12px', borderRadius: 7,
-                  border: `1px solid ${filterStatus === val ? (val === 'critical' ? '#FECACA' : val === 'overdue' ? '#FDE68A' : '#BFDBFE') : '#E5E7EB'}`,
-                  background: filterStatus === val ? (val === 'critical' ? '#FEE2E2' : val === 'overdue' ? '#FEF3C7' : '#EFF6FF') : '#fff',
-                  color: filterStatus === val ? (val === 'critical' ? '#B91C1C' : val === 'overdue' ? '#92400E' : '#2563EB') : '#6B7280',
+                  border: `1px solid ${filterStatus === val ? (val === 'critical' ? '#FECACA' : val === 'overdue' ? '#FDE68A' : '#BFDBFE') : 'var(--card-border-color)'}`,
+                  background: filterStatus === val ? (val === 'critical' ? '#FEE2E2' : val === 'overdue' ? '#FEF3C7' : '#EFF6FF') : 'var(--card-bg)',
+                  color: filterStatus === val ? (val === 'critical' ? '#B91C1C' : val === 'overdue' ? '#92400E' : '#2563EB') : 'var(--gray-500)',
                   cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
@@ -958,7 +972,7 @@ export default function AlertFeedTable({
 
           {/* View toggle */}
           <div style={{
-            display: 'flex', border: '1px solid #E5E7EB', borderRadius: 8,
+            display: 'flex', border: '1px solid var(--card-border-color)', borderRadius: 8,
             overflow: 'hidden', marginLeft: 'auto', flexShrink: 0,
           }}>
             {([['cards', LayoutGrid], ['table', List]] as const).map(([v, Icon]) => (
@@ -967,12 +981,12 @@ export default function AlertFeedTable({
                 onClick={() => switchView(v)}
                 style={{
                   padding: '7px 12px', border: 'none', cursor: 'pointer',
-                  background: view === v ? '#EFF6FF' : '#fff',
-                  color: view === v ? '#2563EB' : '#6B7280',
+                  background: view === v ? '#EFF6FF' : 'var(--card-bg)',
+                  color: view === v ? '#2563EB' : 'var(--gray-500)',
                   display: 'flex', alignItems: 'center', gap: 5,
                   fontSize: 12, fontWeight: view === v ? 600 : 400,
                   fontFamily: 'inherit', transition: 'all 0.12s',
-                  borderRight: v === 'cards' ? '1px solid #E5E7EB' : 'none',
+                  borderRight: v === 'cards' ? '1px solid var(--card-border-color)' : 'none',
                 }}
               >
                 <Icon size={14} />
@@ -986,8 +1000,8 @@ export default function AlertFeedTable({
         {loading ? (
           <div style={{ textAlign: 'center', padding: '48px 20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-              <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid #E5E7EB', borderTopColor: '#DC2626', animation: 'spin 0.7s linear infinite' }} />
-              <span style={{ fontSize: 13, color: '#9CA3AF' }}>Loading alerts...</span>
+              <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid var(--card-border-color)', borderTopColor: '#DC2626', animation: 'spin 0.7s linear infinite' }} />
+              <span style={{ fontSize: 13, color: 'var(--gray-400)' }}>Loading alerts...</span>
             </div>
           </div>
         ) : error ? (
@@ -999,7 +1013,7 @@ export default function AlertFeedTable({
               <span style={{ fontSize: 14, fontWeight: 600, color: '#16A34A' }}>
                 {search || filterStatus !== 'all' ? 'No results match your filters' : 'All clear'}
               </span>
-              <span style={{ fontSize: 12, color: '#9CA3AF' }}>
+              <span style={{ fontSize: 12, color: 'var(--gray-400)' }}>
                 {search || filterStatus !== 'all' ? 'Try adjusting your search or filter' : 'No overdue milestones at this time'}
               </span>
             </div>
@@ -1028,7 +1042,7 @@ export default function AlertFeedTable({
           <div style={{ overflowX: 'auto', overflowY: 'visible' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+                <tr style={{ background: 'var(--gray-50)', borderBottom: '1px solid var(--card-border-color)' }}>
                   <th style={TH} />
                   <th style={TH}>Shipment</th>
                   <th style={TH}>Client</th>
@@ -1059,11 +1073,11 @@ export default function AlertFeedTable({
         {/* ── Footer ──────────────────────────────────────────── */}
         {!loading && processed.length > maxRows && (
           <div style={{
-            padding: '12px 20px', borderTop: '1px solid #F3F4F6', background: '#F9FAFB',
+            padding: '12px 20px', borderTop: '1px solid var(--gray-100)', background: 'var(--gray-50)',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             borderRadius: '0 0 14px 14px',
           }}>
-            <span style={{ fontSize: 12, color: '#6B7280' }}>
+            <span style={{ fontSize: 12, color: 'var(--gray-500)' }}>
               Showing {displayed.length} of {processed.length} shipments
               {(search || filterStatus !== 'all') && ` (filtered from ${groups.length})`}
             </span>
@@ -1078,17 +1092,17 @@ export default function AlertFeedTable({
 
         {/* ── Legend ──────────────────────────────────────────── */}
         {!loading && groups.length > 0 && (
-          <div style={{ padding: '10px 20px', borderTop: '1px solid #F3F4F6', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11, color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ padding: '10px 20px', borderTop: '1px solid var(--gray-100)', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11, color: 'var(--gray-400)', display: 'flex', alignItems: 'center', gap: 5 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#DC2626', display: 'inline-block' }} />
               Overdue — past its deadline
             </span>
-            <span style={{ fontSize: 11, color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ fontSize: 11, color: 'var(--gray-400)', display: 'flex', alignItems: 'center', gap: 5 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#FB7185', display: 'inline-block' }} />
               Delayed — out of sequence
             </span>
             {showFieldDelayed && (
-              <span style={{ fontSize: 11, color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ fontSize: 11, color: 'var(--gray-400)', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B', display: 'inline-block' }} />
                 Field name mismatch
               </span>

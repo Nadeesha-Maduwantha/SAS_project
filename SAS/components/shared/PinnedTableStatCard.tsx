@@ -39,7 +39,7 @@ function statusDot(status: string): string {
   if (s.includes('delayed') || s.includes('overdue') || s.includes('critical')) return '#EF4444';
   if (s.includes('future') || s.includes('pending')) return '#F59E0B';
   if (s.includes('completed') || s.includes('delivered') || s === 'resolved') return '#10B981';
-  return '#9CA3AF';
+  return 'var(--gray-400)';
 }
 
 // ── Ticker strip ──────────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ function TickerStrip({ items }: { items: TickerItem[] }) {
 
   if (!items.length) {
     return (
-      <div style={{ fontSize: 12, color: '#9CA3AF', padding: '4px 0', fontStyle: 'italic' }}>
+      <div style={{ fontSize: 12, color: 'var(--gray-400)', padding: '4px 0', fontStyle: 'italic' }}>
         No records
       </div>
     );
@@ -58,11 +58,11 @@ function TickerStrip({ items }: { items: TickerItem[] }) {
   const content = items.map(item => (
     <span key={item.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginRight: 24 }}>
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: statusDot(item.status), flexShrink: 0, display: 'inline-block' }} />
-      <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 600, color: '#374151' }}>
+      <span style={{ fontFamily: 'monospace', fontSize: 11, fontWeight: 600, color: 'var(--gray-700)' }}>
         {item.label}
       </span>
-      <span style={{ fontSize: 10, color: '#9CA3AF' }}>{item.status}</span>
-      <span style={{ color: '#E5E7EB', marginLeft: 4 }}>·</span>
+      <span style={{ fontSize: 10, color: 'var(--gray-400)' }}>{item.status}</span>
+      <span style={{ color: 'var(--card-border-color)', marginLeft: 4 }}>·</span>
     </span>
   ));
 
@@ -137,8 +137,8 @@ function PinnedStatCard({ table, onOpen }: { table: PinnedTable; onOpen: (t: Pin
     <div
     onClick={() => onOpen(table)}
      style={{
-        background:   '#fff',
-        border:       '1px solid #E5E7EB',
+        background:   'var(--card-bg)',
+        border:       '1px solid var(--card-border-color)',
         borderRadius: 12,
         padding:      '16px 18px',
         cursor:       'pointer',
@@ -160,34 +160,34 @@ function PinnedStatCard({ table, onOpen }: { table: PinnedTable; onOpen: (t: Pin
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
-            fontSize: 11, fontWeight: 600, color: '#9CA3AF',
+            fontSize: 11, fontWeight: 600, color: 'var(--gray-400)',
             textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2,
           }}>
             {subtitle}
           </div>
           <div style={{
-            fontSize: 14, fontWeight: 700, color: '#111827',
+            fontSize: 14, fontWeight: 700, color: 'var(--gray-900)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>
             {title}
           </div>
         </div>
-        <Maximize2 size={13} color="#D1D5DB" style={{ flexShrink: 0, marginTop: 2 }} />
+        <Maximize2 size={13} color="var(--gray-300)" style={{ flexShrink: 0, marginTop: 2 }} />
       </div>
 
       {/* Count row */}
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 0' }}>
-          <Loader2 size={13} color="#9CA3AF" style={{ animation: 'dtSpin 0.8s linear infinite' }} />
-          <span style={{ fontSize: 12, color: '#9CA3AF' }}>Loading...</span>
+          <Loader2 size={13} color="var(--gray-400)" style={{ animation: 'dtSpin 0.8s linear infinite' }} />
+          <span style={{ fontSize: 12, color: 'var(--gray-400)' }}>Loading...</span>
         </div>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
-          <span style={{ fontSize: 22, fontWeight: 700, color: '#111827', lineHeight: 1 }}>
+          <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--gray-900)', lineHeight: 1 }}>
             {counts.total}
           </span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <span style={{ fontSize: 10, color: '#9CA3AF' }}>{counts.active} active</span>
+            <span style={{ fontSize: 10, color: 'var(--gray-400)' }}>{counts.active} active</span>
             {counts.issues > 0 && (
               <span style={{ fontSize: 10, color: '#B91C1C', fontWeight: 600 }}>
                 {counts.issues} {table.data_source === 'shipments' ? 'delayed' : 'critical'}
@@ -206,12 +206,12 @@ function PinnedStatCard({ table, onOpen }: { table: PinnedTable; onOpen: (t: Pin
         style={{
           position: 'absolute', top: 8, right: 28,
           background: 'none', border: 'none', cursor: 'pointer',
-          color: '#D1D5DB', padding: 4, borderRadius: 4,
+          color: 'var(--gray-300)', padding: 4, borderRadius: 4,
           display: 'flex', alignItems: 'center',
           transition: 'color 0.12s',
         }}
-        onMouseEnter={e => (e.currentTarget.style.color = '#9CA3AF')}
-        onMouseLeave={e => (e.currentTarget.style.color = '#D1D5DB')}
+        onMouseEnter={e => (e.currentTarget.style.color = 'var(--gray-400)')}
+        onMouseLeave={e => (e.currentTarget.style.color = 'var(--gray-300)')}
         title="Refresh"
       >
         <RefreshCw size={11} />
@@ -246,7 +246,7 @@ export default function PinnedTableStatCards() {
       `}</style>
 
       <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--gray-400)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
           Pinned Tables
         </div>
         <div style={{

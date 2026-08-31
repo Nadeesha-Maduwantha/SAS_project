@@ -11,7 +11,7 @@ export default function OperationDashboardPage() {
       </h1>
 
       {/* My Shipments + My Alerts stat cards */}
-      <UserDashboardMetricCards />
+      <UserDashboardMetricCards scope="operation" />
 
       {/* Pinned custom table stat cards */}
       <PinnedTableStatCards />
@@ -19,9 +19,10 @@ export default function OperationDashboardPage() {
       {/* Alert feed — shows all active alerts (filtered by dept when auth wired) */}
       <div style={{ marginTop: 4 }}>
         <AlertFeedTable
-          title="Department Alert Feed"
+          title="My Alert Feed"
           apiBase="http://localhost:5000"
           maxRows={8}
+          scope="operation"
         />
       </div>
     </div>
