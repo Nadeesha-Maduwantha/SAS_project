@@ -3,7 +3,8 @@ from flask import Blueprint, request, jsonify
 from services.supabase_service import get_supabase
 from services.security_settings_service import get_login_security_settings
 from utils.auth_helper import require_auth, get_current_user
-from utils.access_logger import log_access_event
+from utils.access_logger import log_access_event, is_new_device, is_new_ip
+from utils.password_policy import is_password_expired
 from datetime import datetime, timedelta, timezone
 import os
 
@@ -104,7 +105,8 @@ def login():
     # 1. SAFELY CHECK IF USER IS ALREADY LOCKED / BLOCKED
     try:
         profile_response = supabase.table('profiles').select(
-            'id, role, department, is_locked, is_blocked, failed_attempts, locked_until, permanently_locked'
+            'id, role, department, is_locked, is_blocked, failed_attempts, locked_until, '
+            'permanently_locked, password_changed_at'
         ).eq('email', email).execute()
         if profile_response.data:
             profile_data = profile_response.data[0]
@@ -181,15 +183,25 @@ def login():
         # Get the actual role from the profile data we fetched earlier, default to 'user' if not found
         actual_role = profile_data.get('role', 'user') if profile_data else 'user'
 
+        user_payload = {
+            'id': user_id,
+            'email': str(response.user.email),
+            'role': actual_role,
+            'department': profile_data.get('department') if profile_data else None
+        }
+
+        if is_password_expired(profile_data.get('password_changed_at') if profile_data else None):
+            return jsonify({
+                'message': 'Password expired',
+                'passwordExpired': True,
+                'access_token': response.session.access_token,
+                'user': user_payload,
+            }), 200
+
         return jsonify({
             'message': 'Login successful',
             'access_token': response.session.access_token,
-            'user': {
-                'id': user_id,
-                'email': str(response.user.email),
-                'role': actual_role,
-                'department': profile_data.get('department') if profile_data else None
-            }
+            'user': user_payload,
         }), 200
 
     except Exception as e:
@@ -242,6 +254,133 @@ def login():
             pass
 
         return jsonify({'error': 'Invalid credentials'}), 401
+
+
+@bp.route('/verify-otp', methods=['POST'])
+def verify_otp():
+    data = request.json or {}
+    email = data.get('email')
+    code = str(data.get('code') or '').strip()
+
+    if not email or not code:
+        return jsonify({'error': 'Email and code are required'}), 400
+
+    supabase = get_supabase()
+    now = datetime.now(timezone.utc)
+
+    try:
+        resp = supabase.table('profiles').select(
+            'id, role, department, otp_code_hash, otp_expires_at, otp_attempts, '
+            'otp_locked_until, otp_pending_access_token, otp_pending_refresh_token, password_changed_at'
+        ).eq('email', email).execute()
+        profile_data = resp.data[0] if resp.data else None
+    except Exception:
+        return jsonify({'error': 'Unable to verify code'}), 500
+
+    if not profile_data or not profile_data.get('otp_code_hash'):
+        return jsonify({'error': 'No verification code is pending for this account. Please log in again.'}), 400
+
+    user_id = profile_data['id']
+
+    # Locked out from too many wrong codes?
+    locked_until = None
+    if profile_data.get('otp_locked_until'):
+        try:
+            locked_until = datetime.fromisoformat(profile_data['otp_locked_until'].replace('Z', '+00:00'))
+        except Exception:
+            locked_until = None
+    if locked_until and now < locked_until:
+        return jsonify({'error': f'Too many incorrect codes. Try again after {locked_until.isoformat()}.'}), 403
+
+    # Expired?
+    expired = True
+    if profile_data.get('otp_expires_at'):
+        try:
+            expired = now >= datetime.fromisoformat(profile_data['otp_expires_at'].replace('Z', '+00:00'))
+        except Exception:
+            expired = True
+    if expired:
+        try:
+            supabase.table('profiles').update({
+                'otp_code_hash': None,
+                'otp_expires_at': None,
+                'otp_attempts': 0,
+                'otp_pending_access_token': None,
+                'otp_pending_refresh_token': None,
+            }).eq('id', user_id).execute()
+        except Exception:
+            pass
+        return jsonify({'error': 'Verification code expired. Please log in again.'}), 400
+
+    if hashlib.sha256(code.encode()).hexdigest() != profile_data.get('otp_code_hash'):
+        attempts = (profile_data.get('otp_attempts') or 0) + 1
+        update_payload = {'otp_attempts': attempts}
+        locked_now = attempts >= OTP_MAX_ATTEMPTS
+        if locked_now:
+            update_payload.update({
+                'otp_locked_until': (now + timedelta(minutes=OTP_LOCKOUT_MINUTES)).isoformat(),
+                'otp_code_hash': None,
+                'otp_pending_access_token': None,
+                'otp_pending_refresh_token': None,
+            })
+        try:
+            supabase.table('profiles').update(update_payload).eq('id', user_id).execute()
+        except Exception:
+            pass
+
+        log_access_event('Failed 2FA Verification', status='Failed', email_attempted=email, user_id=user_id)
+
+        if locked_now:
+            return jsonify({'error': f'Too many incorrect codes. Locked for {OTP_LOCKOUT_MINUTES} minutes.'}), 403
+        return jsonify({'error': 'Incorrect verification code.'}), 401
+
+    access_token = profile_data.get('otp_pending_access_token')
+    if not access_token:
+        return jsonify({'error': 'Session expired. Please log in again.'}), 400
+
+    try:
+        supabase.table('profiles').update({
+            'otp_code_hash': None,
+            'otp_expires_at': None,
+            'otp_attempts': 0,
+            'otp_locked_until': None,
+            'otp_pending_access_token': None,
+            'otp_pending_refresh_token': None,
+        }).eq('id', user_id).execute()
+    except Exception:
+        pass
+
+    # Checked BEFORE log_access_event('Login', ...) inserts this login's own
+    # access_logs row below — otherwise that row would match against itself.
+    device = get_device_info(request.user_agent)
+    new_device = is_new_device_login_notification_enabled() and is_new_device(user_id, device)
+
+    log_access_event('Login', status='Success', email_attempted=email, user_id=user_id)
+
+    if new_device:
+        log_access_event('New Device Login', status='Success', email_attempted=email, user_id=user_id)
+
+    user_payload = {
+        'id': user_id,
+        'email': email,
+        'role': profile_data.get('role', 'user'),
+        'department': profile_data.get('department'),
+    }
+
+    if is_password_expired(profile_data.get('password_changed_at')):
+        return jsonify({
+            'message': 'Password expired',
+            'passwordExpired': True,
+            'access_token': access_token,
+            'user': user_payload,
+        }), 200
+
+    return jsonify({
+        'message': 'Login successful',
+        'access_token': access_token,
+        'user': user_payload,
+    }), 200
+
 
 @bp.route('/logout', methods=['POST'])
 def logout():
@@ -322,8 +461,8 @@ def forgot_password():
 
     supabase = get_supabase()
     supabase.auth.reset_password_email(
-        email=email,
-        redirect_to=reset_redirect,
+        email,
+        {'redirect_to': reset_redirect},
     )
 
     return jsonify({'message': 'Password reset email sent'}), 200

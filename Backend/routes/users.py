@@ -5,6 +5,7 @@ from services.supabase_service import get_supabase
 from utils.access_logger import log_access_event
 from utils.audit_logger import log_audit_action
 from utils.auth_helper import get_current_user
+from utils.password_policy import validate_password_complexity, record_password_history
 
 print("=== USERS.PY MODULE LOADED ===")  # ← TOP OF FILE outside function
 
@@ -20,6 +21,20 @@ def create_user():
 
         if not data.get('email') or not data.get('password'):
             return jsonify({'error': 'Email and password are required'}), 400
+
+        policy_error = validate_password_complexity(data.get('password'))
+        if policy_error:
+            return jsonify({'error': policy_error}), 400
+
+        # A Super User may only create Sales/Operation accounts — Admin and
+        # Super User accounts stay Admin-only. Requesters with no identifiable
+
+        # restricted by this check specifically.
+        requester_id, requester_role = get_current_user()
+        if (requester_role or '').lower() == 'superuser':
+            allowed_roles = {'salesuser', 'operationuser'}
+            if (data.get('role') or '').lower() not in allowed_roles:
+                return jsonify({'error': 'Super Users can only create Sales User or Operation User accounts'}), 403
 
         supabase = get_supabase()
 
@@ -62,6 +77,7 @@ def create_user():
             return jsonify({'error': f'Profile Insert failed: {str(table_err)}'}), 400
 
         print("=== STEP 4: Success ===")
+        record_password_history(user_id, data.get('password'))
         log_access_event('Create', status='Success', email_attempted=email, user_id=user_id)
 
         requester_id, _ = get_current_user()
@@ -96,6 +112,3 @@ def create_user():
             
         return jsonify({'error': error_message}), 400
 
-# Note: DELETE /<user_id> is handled by routes/user_edit.py (the real
-# implementation — deletes from Supabase Auth + profiles, logs correctly).
-# A dead-stub duplicate of this route used to live here, shadowing it.
