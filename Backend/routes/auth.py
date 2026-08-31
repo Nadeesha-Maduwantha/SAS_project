@@ -9,6 +9,7 @@ from services.security_settings_service import (
 )
 from utils.auth_helper import require_auth, get_current_user
 from utils.access_logger import log_access_event, is_new_device, is_new_ip
+from utils.password_policy import is_password_expired
 from datetime import datetime, timedelta, timezone
 import hashlib
 import secrets
@@ -136,7 +137,8 @@ def login():
     # 1. SAFELY CHECK IF USER IS ALREADY LOCKED / BLOCKED
     try:
         profile_response = supabase.table('profiles').select(
-            'id, role, department, is_locked, is_blocked, failed_attempts, locked_until, permanently_locked'
+            'id, role, department, is_locked, is_blocked, failed_attempts, locked_until, '
+            'permanently_locked, password_changed_at'
         ).eq('email', email).execute()
         if profile_response.data:
             profile_data = profile_response.data[0]
@@ -267,15 +269,25 @@ def login():
         if new_device:
             log_access_event('New Device Login', status='Success', email_attempted=email, user_id=user_id)
 
+        user_payload = {
+            'id': user_id,
+            'email': str(response.user.email),
+            'role': actual_role,
+            'department': profile_data.get('department') if profile_data else None
+        }
+
+        if is_password_expired(profile_data.get('password_changed_at') if profile_data else None):
+            return jsonify({
+                'message': 'Password expired',
+                'passwordExpired': True,
+                'access_token': response.session.access_token,
+                'user': user_payload,
+            }), 200
+
         return jsonify({
             'message': 'Login successful',
             'access_token': response.session.access_token,
-            'user': {
-                'id': user_id,
-                'email': str(response.user.email),
-                'role': actual_role,
-                'department': profile_data.get('department') if profile_data else None
-            }
+            'user': user_payload,
         }), 200
 
     except Exception as e:
@@ -356,7 +368,7 @@ def verify_otp():
     try:
         resp = supabase.table('profiles').select(
             'id, role, department, otp_code_hash, otp_expires_at, otp_attempts, '
-            'otp_locked_until, otp_pending_access_token, otp_pending_refresh_token'
+            'otp_locked_until, otp_pending_access_token, otp_pending_refresh_token, password_changed_at'
         ).eq('email', email).execute()
         profile_data = resp.data[0] if resp.data else None
     except Exception:
@@ -445,15 +457,25 @@ def verify_otp():
     if new_device:
         log_access_event('New Device Login', status='Success', email_attempted=email, user_id=user_id)
 
+    user_payload = {
+        'id': user_id,
+        'email': email,
+        'role': profile_data.get('role', 'user'),
+        'department': profile_data.get('department'),
+    }
+
+    if is_password_expired(profile_data.get('password_changed_at')):
+        return jsonify({
+            'message': 'Password expired',
+            'passwordExpired': True,
+            'access_token': access_token,
+            'user': user_payload,
+        }), 200
+
     return jsonify({
         'message': 'Login successful',
         'access_token': access_token,
-        'user': {
-            'id': user_id,
-            'email': email,
-            'role': profile_data.get('role', 'user'),
-            'department': profile_data.get('department'),
-        },
+        'user': user_payload,
     }), 200
 
 
@@ -536,8 +558,8 @@ def forgot_password():
 
     supabase = get_supabase()
     supabase.auth.reset_password_email(
-        email=email,
-        redirect_to=reset_redirect,
+        email,
+        {'redirect_to': reset_redirect},
     )
 
     return jsonify({'message': 'Password reset email sent'}), 200

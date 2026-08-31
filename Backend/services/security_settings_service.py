@@ -115,3 +115,36 @@ def get_login_restriction_settings() -> dict:
         'send_suspicious_alerts': bool(row.get('login_send_suspicious_alerts')),
         'allow_unrecognized_devices': True if allow_unrecognized is None else bool(allow_unrecognized),
     }
+
+
+DEFAULT_PASSWORD_MIN_LENGTH = 8
+DEFAULT_PASSWORD_EXPIRY_DAYS = 0  # 0 = passwords never expire
+
+
+def get_password_policy() -> dict:
+    """Returns the Password Policy settings row. 'expiry_days' of 0/None
+    means passwords never expire. Falls back to safe defaults (8-char
+    minimum, no other requirements) if the settings row is missing."""
+    try:
+        resp = (
+            supabase.table('password_policy_settings')
+            .select(
+                'min_length, expiry_days, require_uppercase, require_lowercase, '
+                'require_numbers, require_special_chars, prevent_reuse'
+            )
+            .eq('id', 1)
+            .execute()
+        )
+        row = resp.data[0] if resp.data else {}
+    except Exception:
+        row = {}
+
+    return {
+        'min_length': row.get('min_length') or DEFAULT_PASSWORD_MIN_LENGTH,
+        'expiry_days': row.get('expiry_days') if row.get('expiry_days') is not None else DEFAULT_PASSWORD_EXPIRY_DAYS,
+        'require_uppercase': bool(row.get('require_uppercase')),
+        'require_lowercase': bool(row.get('require_lowercase')),
+        'require_numbers': bool(row.get('require_numbers')),
+        'require_special_chars': bool(row.get('require_special_chars')),
+        'prevent_reuse': bool(row.get('prevent_reuse')),
+    }
