@@ -244,6 +244,16 @@ export default function AdminLeftNavBar({ topOffset = 57 }: { topOffset?: number
           isActive={active('/admin/sales-digest')}
           onClick={() => go('/admin/sales-digest')}
         />
+        <NavItem
+          label="Operations Digest Emails"
+          isActive={active('/admin/operations-digest')}
+          onClick={() => go('/admin/operations-digest')}
+        />
+        <NavItem
+          label="Super User Digest Emails"
+          isActive={active('/admin/super-digest')}
+          onClick={() => go('/admin/super-digest')}
+        />
       </Section>
 
       {/* Custom Tables */}

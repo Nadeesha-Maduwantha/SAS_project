@@ -33,8 +33,9 @@ from routes.field_map import field_map_bp
 from routes.system_settings import system_settings_bp
 from routes.field_definitions import field_definitions_bp
 from routes.field_watch import field_watch_bp
-from routes.alert_engine_routes import alert_engine_bp
 from routes.sales_digest_routes import sales_digest_bp
+from routes.operations_digest_routes import operations_digest_bp
+from routes.super_digest_routes import super_digest_bp
 
 from routes.dashboard import dashboard_bp
 
@@ -221,18 +222,6 @@ def run_field_watch():
         print(f"[field_watch] ERROR: {e}")
 
 
-def run_alert_engine_job():
-    try:
-        from services.alert_engine import run_alert_engine
-        result = run_alert_engine()
-        print(f"[alert_engine] evaluated={result.get('evaluated')} "
-              f"outstanding={result.get('outstanding')} sent={result.get('sent')} "
-              f"skipped={result.get('skipped')} stopped={result.get('stopped')} "
-              f"errors={len(result.get('errors', []))}")
-    except Exception as e:
-        print(f"[alert_engine] ERROR: {e}")
-
-
 def run_sales_digest_job():
     try:
         from services.sales_digest import run_sales_digest
@@ -242,6 +231,28 @@ def run_sales_digest_job():
               f"errors={len(result.get('errors', []))}")
     except Exception as e:
         print(f"[sales_digest] ERROR: {e}")
+
+
+def run_operations_digest_job():
+    try:
+        from services.operations_digest import run_operations_digest
+        result = run_operations_digest()
+        print(f"[operations_digest] overdue_emails={result.get('overdue_emails')} "
+              f"reminder_emails={result.get('reminder_emails')} "
+              f"errors={len(result.get('errors', []))}")
+    except Exception as e:
+        print(f"[operations_digest] ERROR: {e}")
+
+
+def run_super_digest_job():
+    try:
+        from services.super_digest import run_super_digest
+        result = run_super_digest()
+        print(f"[super_digest] overdue_emails={result.get('overdue_emails')} "
+              f"reminder_emails={result.get('reminder_emails')} "
+              f"errors={len(result.get('errors', []))}")
+    except Exception as e:
+        print(f"[super_digest] ERROR: {e}")
 
 
 # ── App setup ────────────────────────────────────────────────────────────────
@@ -286,8 +297,9 @@ app.register_blueprint(field_map_bp)
 app.register_blueprint(system_settings_bp)
 app.register_blueprint(field_definitions_bp)
 
-app.register_blueprint(alert_engine_bp)
 app.register_blueprint(sales_digest_bp)
+app.register_blueprint(operations_digest_bp)
+app.register_blueprint(super_digest_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(field_watch_bp)
 
@@ -363,19 +375,27 @@ scheduler.add_job(
     replace_existing=True,
 )
 
-# Alert engine at :05 every hour
-scheduler.add_job(
-    run_alert_engine_job,
-    CronTrigger(minute=5, timezone='Asia/Colombo'),
-    id='alert_engine_run',
-    replace_existing=True,
-)
-
 # Sales-user digest emails (overdue + upcoming) at 8:00 AM Sri Lanka time
 scheduler.add_job(
     run_sales_digest_job,
     CronTrigger(hour=8, minute=0, timezone='Asia/Colombo'),
     id='sales_digest_run',
+    replace_existing=True,
+)
+
+# Operation-user digest emails (overdue + upcoming) at 8:00 AM Sri Lanka time
+scheduler.add_job(
+    run_operations_digest_job,
+    CronTrigger(hour=8, minute=0, timezone='Asia/Colombo'),
+    id='operations_digest_run',
+    replace_existing=True,
+)
+
+# Super-user digest emails (overdue + upcoming) at 8:00 AM Sri Lanka time
+scheduler.add_job(
+    run_super_digest_job,
+    CronTrigger(hour=8, minute=0, timezone='Asia/Colombo'),
+    id='super_digest_run',
     replace_existing=True,
 )
 
