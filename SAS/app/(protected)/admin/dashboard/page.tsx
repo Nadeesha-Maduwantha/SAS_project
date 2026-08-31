@@ -68,8 +68,8 @@ export default function AdminDashboardPage() {
       {/* Pinned custom table cards — only if user has pinned tables */}
       <PinnedTableStatCards />
 
-      {/* Alert feed hidden for this layout */}
-      {/* <div className="section-gap">
+      {/* Scoped alert feed — all overdue / delayed milestones + field mismatches */}
+      <div className="section-gap">
         <AlertFeedTable
           title="Admin Shipment Alert Feed"
           apiBase={API}
@@ -77,7 +77,7 @@ export default function AdminDashboardPage() {
           showFieldDelayed
           scope="admin"
         />
-      </div> */}
+      </div>
 
       <div className="bottom-grid">
         <ProgressLogs />
