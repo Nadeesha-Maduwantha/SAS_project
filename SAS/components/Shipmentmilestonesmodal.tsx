@@ -135,7 +135,14 @@ export default function ShipmentMilestonesModal({ isOpen, onClose, shipmentId, a
       .then(r => r.json()).then(res => {
         if (res.error) throw new Error(res.error);
         setShipment(res.data.shipment);
-        setMilestones(res.data.milestones || []);
+        const ms: Milestone[] = res.data.milestones || [];
+        setMilestones(ms);
+        // Open on the current ACTIVE milestone (first not-yet-completed one),
+        // not the first/past one. Falls back to the last if all are completed.
+        const ordered = [...ms].sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0));
+        const active = ordered.find(x => x.status !== 'completed');
+        const idx = ms.findIndex(x => x.id === (active ?? ordered[ordered.length - 1])?.id);
+        setCurrentIndex(idx >= 0 ? idx : 0);
       }).catch(e => setError(e.message)).finally(() => setLoading(false));
   }, [isOpen, shipmentId, apiBase]);
 
@@ -165,7 +172,7 @@ export default function ShipmentMilestonesModal({ isOpen, onClose, shipmentId, a
         @keyframes spin  { to{transform:rotate(360deg)} }
       `}</style>
 
-      <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
+      <div onClick={onClose} style={{ position:'fixed', inset:0, zIndex:10000, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
         <div onClick={e => e.stopPropagation()} style={{ width:'100%', maxWidth:860, background:'#fff', borderRadius:16, boxShadow:'0 24px 60px rgba(0,0,0,0.22)', overflow:'hidden', animation:'smIn 0.22s cubic-bezier(0.22,0.61,0.36,1)', display:'flex', flexDirection:'column', maxHeight:'90vh' }}>
 
           {/* Header */}
