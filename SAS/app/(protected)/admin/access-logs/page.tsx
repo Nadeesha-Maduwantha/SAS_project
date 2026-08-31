@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import AccessLogsStats from "@/components/AdminUser/AccessLogs/AccessLogsStats";
 import AccessLogsFilters from "@/components/AdminUser/AccessLogs/AccessLogsFilters";
-import AccessLogsTable from "@/components/AdminUser/AccessLogs/AccessLogsTable";
+import AccessLogsTable, { formatTimestamp } from "@/components/AdminUser/AccessLogs/AccessLogsTable";
 import { AccessLog, AccessLogFilters } from "@/types/access-logs";
 
 export default function AccessLogsPage() {
@@ -23,7 +23,7 @@ export default function AccessLogsPage() {
     const fetchLogs = async () => {
       try {
         setIsLoading(true);
-        // Replace localhost:5000 with your actual backend URL/environment variable if different
+        // Replace 127.0.0.1:5000 with your actual backend URL/environment variable if different
         const response = await fetch("http://127.0.0.1:5000/api/access-logs");
         const json = await response.json();
         
@@ -65,26 +65,27 @@ export default function AccessLogsPage() {
     }
 
     // Filter by date range
-    if (filters.dateRange !== "today" && filters.dateRange !== "all") {
+    if (filters.dateRange !== "all") {
       const now = new Date();
       result = result.filter((log) => {
         const logDate = new Date(log.timestamp);
-        
+
         if (filters.dateRange === "today") {
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0); // start of today at midnight
-        result = result.filter(log => new Date(log.timestamp) >= todayStart);
+          const todayStart = new Date();
+          todayStart.setHours(0, 0, 0, 0); // start of today at midnight
+          return logDate >= todayStart;
         }
+
         if (filters.dateRange === "week") {
           const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
           return logDate >= weekAgo;
         }
-        
+
         if (filters.dateRange === "month") {
           const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           return logDate >= monthAgo;
         }
-        
+
         return true;
       });
     }
@@ -115,7 +116,7 @@ export default function AccessLogsPage() {
     const csvContent = [
       ["Timestamp", "User", "Email", "Action", "IP Address", "Location", "Device", "Status"],
       ...filteredLogs.map(log => [
-        log.timestamp,
+        formatTimestamp(log.timestamp),
         log.user.name,
         log.user.email,
         log.action,

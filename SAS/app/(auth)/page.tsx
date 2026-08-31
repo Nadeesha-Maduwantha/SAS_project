@@ -25,6 +25,21 @@ export default function LoginPage() {
   const isValidEmail = (email: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
+  const finishLogin = (data: any) => {
+    const role = data.user.role?.toLowerCase().trim() || 'super_user';
+    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem('user_role', role);
+    localStorage.setItem('user_email', data.user.email || '');
+    localStorage.setItem('user_department', data.user.department || '');
+    document.cookie = `access_token=${data.access_token}; path=/; max-age=86400`;
+    document.cookie = `user_role=${role}; path=/; max-age=86400`;
+
+    if      (role.includes('admin'))     router.push('/admin/dashboard');
+    else if (role.includes('operation')) router.push('/operation_user/dashboard');
+    else if (role.includes('sales'))     router.push('/sales_user/dashboard');
+    else if (role.includes('super'))     router.push('/Super_user/dashboard');
+  };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -37,7 +52,7 @@ export default function LoginPage() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch('http://127.0.0.1:5000/api/auth/login', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ email, password }),
@@ -229,6 +244,8 @@ export default function LoginPage() {
            style={{ background: '#F8FAFC' }}>
         <div className="w-full max-w-md">
 
+          {stage === 'credentials' && (
+          <>
           {/* Header */}
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>

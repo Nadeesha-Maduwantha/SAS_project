@@ -1,58 +1,23 @@
-from flask import Blueprint, request, jsonify
-from services.supabase_client import supabase
-
-alerts_bp = Blueprint('alerts', __name__)
-
-
-@alerts_bp.route('/api/alerts', methods=['GET'])
-def get_alerts():
-    email = (request.args.get('email') or '').strip().lower()
-    if not email:
-        return jsonify({"error": "email is required"}), 400
-
-    try:
-        profile_resp = (
-            supabase.table('profiles').select('id, role, department')
-            .ilike('email', email)
-            .execute()
-        )
-        if not profile_resp.data:
-            return jsonify({"error": "No profile found for this email"}), 404
-        profile = profile_resp.data[0]
-        role = (profile.get('role') or '').lower()
-
-        if role == 'admin':
-            # Admins see every alert, matched or not.
-            resp = supabase.table('alerts').select('*').order('created_at', desc=True).execute()
-        elif role == 'superuser':
-            # Super users see every alert for shipments in their own department,
-            # regardless of who (if anyone) it's assigned to.
-            resp = (
-                supabase.table('alerts')
-                .select('*, shipments!inner(transport_mode)')
-                .eq('shipments.transport_mode', profile.get('department'))
-                .order('created_at', desc=True)
-                .execute()
-            )
-        else:
-            # Sales / operation users see only alerts assigned directly to them.
-            resp = (
-                supabase.table('alerts').select('*')
-                .eq('assigned_profile_id', profile['id'])
-                .order('created_at', desc=True)
-                .execute()
-            )
-
-        return jsonify({"data": resp.data or []}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 from flask import Blueprint, jsonify, request
-from services.supabase_client import supabase
+from services.supabase_service import get_supabase
 from datetime import datetime, timezone
+import time
 
 alerts_bp = Blueprint('alerts', __name__)
 
 ALLOWED_STATUS = {'Get Action', 'Action Taken', 'Resolved'}
+def _get_shipments(supabase, shipment_ids, fields):
+    for attempt in range(2):
+        try:
+            query_client = get_supabase() if attempt else supabase
+            response = query_client.table('shipments').select(fields).execute()
+            break
+        except Exception:
+            if attempt == 1:
+                raise
+            time.sleep(0.2)
+    wanted = set(shipment_ids)
+    return [shipment for shipment in (response.data or []) if shipment.get('id') in wanted]
 
 
 # ── Recompute milestone statuses (stand-in for the alert engine's status pass) ──
@@ -73,7 +38,10 @@ def recompute_statuses():
 @alerts_bp.route('/api/alerts', methods=['GET'])
 def get_alerts():
     try:
+        supabase = get_supabase()
         sales_email = (request.args.get('email') or '').strip().lower()
+        assigned_email = (request.args.get('assigned_email') or '').strip().lower()
+        department = (request.args.get('department') or '').strip().upper()
 
         response = (
             supabase.table('shipment_milestones')
@@ -83,26 +51,30 @@ def get_alerts():
         )
         rows = response.data or []
 
-        # Attach each row's shipment-level sales_user_email so a sales user
-        # can be shown only the alerts for shipments assigned to them.
+        # Attach each row's shipment-level sales_user_email and transport_mode so a
+        # sales user can be shown only alerts for shipments assigned to them, and a
+        # super user only alerts for shipments in their own department.
         shipment_ids = list({r['shipment_id'] for r in rows if r.get('shipment_id')})
-        sales_email_by_shipment = {}
+        shipment_by_id = {}
         if shipment_ids:
-            shipments_res = (
-                supabase.table('shipments')
-                .select('id, sales_user_email')
-                .in_('id', shipment_ids)
-                .execute()
-            )
-            sales_email_by_shipment = {
-                s['id']: (s.get('sales_user_email') or '') for s in (shipments_res.data or [])
+            shipment_by_id = {
+                s['id']: s
+                for s in _get_shipments(supabase, shipment_ids, 'id, sales_user_email, transport_mode')
             }
 
         for r in rows:
-            r['sales_user_email'] = sales_email_by_shipment.get(r['shipment_id'], '')
+            shipment = shipment_by_id.get(r['shipment_id'], {})
+            r['sales_user_email'] = shipment.get('sales_user_email') or ''
+            r['transport_mode'] = shipment.get('transport_mode') or ''
 
         if sales_email:
             rows = [r for r in rows if (r.get('sales_user_email') or '').strip().lower() == sales_email]
+
+        if assigned_email:
+            rows = [r for r in rows if (r.get('assigned_email') or '').strip().lower() == assigned_email]
+
+        if department:
+            rows = [r for r in rows if (r.get('transport_mode') or '').strip().upper() == department]
 
         return jsonify({'data': rows}), 200
     except Exception as e:
@@ -112,6 +84,7 @@ def get_alerts():
 @alerts_bp.route('/api/alerts/<shipment_id>/status', methods=['PATCH'])
 def update_alert_status(shipment_id):
     try:
+        supabase = get_supabase()
         payload = request.get_json(silent=True) or {}
         new_status = payload.get('status')
 
@@ -132,9 +105,8 @@ def update_alert_status(shipment_id):
 @alerts_bp.route('/api/alerts/active', methods=['GET'])
 def get_active_alerts():
     try:
-        # Step 1: Get all INCOMPLETE late milestones — overdue (deadline passed,
-        # dark red) and delayed (out of sequence, lighter red). Completed
-        # milestones are never late, so they never appear on the dashboard.
+        supabase = get_supabase()
+        # Step 1: Get all overdue milestones
         milestones_res = (
             supabase.table('shipment_milestones')
             .select(
@@ -155,15 +127,12 @@ def get_active_alerts():
         shipment_ids = list({m['shipment_id'] for m in milestones})
  
         # Step 3: Fetch shipment info for those IDs
-        shipments_res = (
-            supabase.table('shipments')
-            .select('id, job_number, consignee_name, consignee_email, transport_mode')
-            .in_('id', shipment_ids)
-            .execute()
-        )
- 
         shipment_map = {
-            s['id']: s for s in (shipments_res.data or [])
+            s['id']: s for s in _get_shipments(
+                supabase,
+                shipment_ids,
+                'id, job_number, consignee_name, consignee_email, transport_mode',
+            )
         }
  
         # Step 4: Calculate overdue_days and group by shipment

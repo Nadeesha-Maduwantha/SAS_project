@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import '@/styles/AdminStyles/theme.css';
 import AdminLeftNavBar from '@/components/AdminUser/AdminLeftNavBar';
 import AdminTopBar    from '@/components/AdminUser/AdminTopBar';
 import RouterLoadingOverlay from '@/components/shared/RouterLoadingOverlay';

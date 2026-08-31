@@ -78,7 +78,7 @@ export default function OperationUserShipmentsPage() {
   // staffCode filter in getShipmentsByOperationUser() is temporarily
   // disabled — see shipment.service.ts for details. All shipments are
   // returned until real auth staff codes are available in the database.
-  const { staffCode, name } = useAuth()
+  const { email, name } = useAuth()
 
   const [currentPage, setCurrentPage]    = useState(1)
   const [shipments, setShipments]        = useState<Shipment[]>([])
@@ -95,7 +95,7 @@ export default function OperationUserShipmentsPage() {
     async function fetchData() {
       try {
         setLoading(true)
-        const data = await getShipmentsByOperationUser(staffCode)
+        const data = await getShipmentsByOperationUser(email)
         setShipments(data)
       } catch (err) {
         console.error('Failed to load shipments:', err)
@@ -105,7 +105,7 @@ export default function OperationUserShipmentsPage() {
       }
     }
     fetchData()
-  }, [staffCode]) // re-fetches if staffCode changes when real auth is connected
+  }, [email]) // re-fetches if email changes when real auth is connected
 
   // Stats
   // isDelayedShipment() imported from constants — single source of

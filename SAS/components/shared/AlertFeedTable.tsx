@@ -757,7 +757,7 @@ function FDRow({ fd, onMap }: { fd: FDItem; onMap: () => void }) {
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function AlertFeedTable({
   title   = 'Alert Feed',
-  apiBase = 'http://localhost:5000',
+  apiBase = 'http://127.0.0.1:5000',
   maxRows = 8,
   showFieldDelayed = false,
 }: Props) {

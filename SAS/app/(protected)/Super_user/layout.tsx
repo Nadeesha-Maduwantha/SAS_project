@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+// Same design tokens the admin dashboard uses — one type scale, one palette.
+import '@/styles/AdminStyles/theme.css';
 import SuperLeftNavBar from '@/components/SuperUser/SuperLeftNavBar';
 import RouterLoadingOverlay from '@/components/shared/RouterLoadingOverlay';
 import { NavProvider } from '@/contexts/NavContext';

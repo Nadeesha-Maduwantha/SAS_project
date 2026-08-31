@@ -34,11 +34,14 @@ from routes.system_settings import system_settings_bp
 from routes.field_definitions import field_definitions_bp
 from routes.field_watch import field_watch_bp
 from routes.alert_engine_routes import alert_engine_bp
+from routes.sales_digest_routes import sales_digest_bp
 
 from routes.dashboard import dashboard_bp
 
 # NOTE: Add this import if the blueprint exists in your routes folder
 # from routes.cargowise_sync import cargowise_sync_bp
+from routes.notes import notes_bp
+from routes.notifications import notifications_bp
 
 
 def run_sync_job():
@@ -231,6 +234,17 @@ def run_alert_engine_job():
         print(f"[alert_engine] ERROR: {e}")
 
 
+def run_sales_digest_job():
+    try:
+        from services.sales_digest import run_sales_digest
+        result = run_sales_digest()
+        print(f"[sales_digest] overdue_emails={result.get('overdue_emails')} "
+              f"reminder_emails={result.get('reminder_emails')} "
+              f"errors={len(result.get('errors', []))}")
+    except Exception as e:
+        print(f"[sales_digest] ERROR: {e}")
+
+
 # ── App setup ────────────────────────────────────────────────────────────────
 
 class CustomJSONProvider(DefaultJSONProvider):
@@ -265,18 +279,23 @@ app.register_blueprint(milestones_bp)
 app.register_blueprint(shipments_bp)
 app.register_blueprint(sync_bp)
 app.register_blueprint(alerts_bp)
+
+app.register_blueprint(notes_bp)
+app.register_blueprint(notifications_bp)
+
 app.register_blueprint(milestone_library_bp)
 app.register_blueprint(field_map_bp)
 app.register_blueprint(system_settings_bp)
 app.register_blueprint(field_definitions_bp)
 
 app.register_blueprint(alert_engine_bp)
+app.register_blueprint(sales_digest_bp)
+app.register_blueprint(dashboard_bp)
+app.register_blueprint(field_watch_bp)
 
+@app.route("/health")
 def health_check():
     return {"status": "Backend is running"}, 200
-app.register_blueprint(field_watch_bp)
-app.register_blueprint(alert_engine_bp)
-app.register_blueprint(dashboard_bp)
 
 # Uncomment this once the route file exists:
 # app.register_blueprint(cargowise_sync_bp, name="cargowise_sync_routes")
@@ -330,62 +349,6 @@ scheduler.add_job(
     replace_existing=True,
 )
 
-# Stand-in for the alert engine's status pass: recompute completed/overdue/pending
-# on assigned milestones so the dashboard + alert feed stay current. No emails.
-def run_status_recompute():
-    try:
-        from services.status_recompute import recompute_milestone_status
-        recompute_milestone_status()
-    except Exception as e:
-        print(f"[status_recompute] ERROR: {e}")
-
-scheduler.add_job(
-    run_status_recompute,
-    CronTrigger(minute='*/30', timezone='Asia/Colombo'),
-    id='status_recompute',
-    replace_existing=True,
-)
-
-# Field Integrity / Registry Watch — its own module: detects expected data fields
-# that are delayed / possibly renamed and emails its own admin (settings). Runs a
-# few minutes after the status pass so due dates are fresh.
-def run_field_watch():
-    try:
-        from services.field_watch import scan_field_alerts
-        scan_field_alerts()
-    except Exception as e:
-        print(f"[field_watch] ERROR: {e}")
-
-scheduler.add_job(
-    run_field_watch,
-    CronTrigger(minute='5,35', timezone='Asia/Colombo'),
-    id='field_watch_scan',
-
-# Runtime alert engine. Reads the milestone + alert-rule snapshots frozen onto
-# each shipment_milestones row, evaluates the combined check (including
-# multi-logic / custom milestones) and emails whichever rules are due.
-# alert_fire_log makes each pass idempotent, so running hourly is safe.
-def run_alert_engine_job():
-    try:
-        from services.alert_engine import run_alert_engine
-        result = run_alert_engine()
-        print(f"[alert_engine] evaluated={result.get('evaluated')} "
-              f"outstanding={result.get('outstanding')} sent={result.get('sent')} "
-              f"skipped={result.get('skipped')} stopped={result.get('stopped')} "
-              f"errors={len(result.get('errors', []))}")
-    except Exception as e:
-        print(f"[alert_engine] ERROR: {e}")
-
-scheduler.add_job(
-    run_alert_engine_job,
-    CronTrigger(minute=5, timezone='Asia/Colombo'),
-    id='alert_engine_run',
-    replace_existing=True,
-)
-app.config['SCHEDULER'] = scheduler
-app.config['RUN_SYNC_JOB'] = run_sync_job
-
-
 # Milestone status recompute every 30 minutes
 scheduler.add_job(
     run_status_recompute,
@@ -410,6 +373,14 @@ scheduler.add_job(
     replace_existing=True,
 )
 
+# Sales-user digest emails (overdue + upcoming) at 8:00 AM Sri Lanka time
+scheduler.add_job(
+    run_sales_digest_job,
+    CronTrigger(hour=8, minute=0, timezone='Asia/Colombo'),
+    id='sales_digest_run',
+    replace_existing=True,
+)
+
 scheduler.start()
 print('Scheduler started — fixed sync at 12AM, 6AM, 12PM, 6PM Sri Lanka time')
 
@@ -417,5 +388,25 @@ app.config['SCHEDULER'] = scheduler
 app.config['RUN_SYNC_JOB'] = run_sync_job
 
 
-if __name__ == "__main__":
-    app.run(debug=True, port=5000, use_reloader=False)
+def find_available_port(start_port: int, max_attempts: int = 20) -> int:
+    import socket
+
+    configured_port = int(os.getenv('PORT', str(start_port)))
+    ports_to_try = [configured_port] + list(range(configured_port + 1, configured_port + max_attempts + 1))
+
+    for port in ports_to_try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                sock.bind(('127.0.0.1', port))
+                return port
+            except OSError:
+                continue
+
+    raise RuntimeError(f'No free port found starting from {configured_port} within {max_attempts} attempts.')
+
+
+if __name__ == '__main__':
+    port = find_available_port(5000)
+    print(f'Starting Flask app on port {port}')
+    app.run(debug=True, host='0.0.0.0', port=port, use_reloader=False)

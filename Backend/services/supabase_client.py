@@ -22,6 +22,12 @@ class LazySupabaseClient:
             self._client = get_supabase_client()
         return self._client
 
+    def reset(self):
+        """Drop the cached client so the next call opens a fresh connection pool.
+        Callers use this after a transport-level error (dropped/corrupted keep-alive
+        connection) instead of retrying on the same broken connection."""
+        self._client = None
+
     def __getattr__(self, name):
         return getattr(self._get_client(), name)
 

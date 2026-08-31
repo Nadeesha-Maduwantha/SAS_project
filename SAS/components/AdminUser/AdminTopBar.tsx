@@ -1,9 +1,10 @@
 'use client';
 
-import { Bell, HelpCircle, Search } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import ProfileDropdown from '@/components/profile/ProfileDropdown';
+import NotificationsDropdown from '@/components/AdminUser/NotificationsDropdown';
+import TopBarSearch from '@/components/shared/TopBarSearch';
 import '@/styles/AdminStyles/AdminTopBar.css';
 
 export default function AdminTopBar() {
@@ -32,19 +33,11 @@ export default function AdminTopBar() {
         </div>
 
         {/* Center search */}
-        <div className="admin-topbar__search">
-          <Search className="admin-topbar__searchIcon" />
-          <input className="admin-topbar__searchInput" placeholder="Search alerts, IDs..." />
-        </div>
+        <TopBarSearch basePath="/admin" />
 
         {/* Right */}
         <div className="admin-topbar__right">
-          <button className="admin-topbar__iconBtn" aria-label="Notifications">
-            <Bell className="admin-topbar__icon" />
-          </button>
-          <button className="admin-topbar__iconBtn" aria-label="Help">
-            <HelpCircle className="admin-topbar__icon" />
-          </button>
+          <NotificationsDropdown />
           <ProfileDropdown />
         </div>
 
