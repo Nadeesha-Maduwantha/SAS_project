@@ -2,7 +2,7 @@ import { Shipment, ShipmentMilestone, ShipmentStats, DelayedStats, DepartmentSta
 import { supabase } from '@/lib/supabase'
 
 
-const FLASK_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000'
+const FLASK_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5000'
 
 // Row Type 
 
@@ -214,26 +214,17 @@ export async function getDepartmentStats(department: string): Promise<Department
   }
 }
 
-// NOTE: staffCode filter is intentionally skipped for now because the mock
-// auth hook returns a placeholder staffCode ('STAFF001') that doesn't match
-// any created_by_staff_code value in the database.
-// All shipments are returned so the operation user page is not empty.
-// TODO: re-enable the staffCode filter below once real authentication is
-// connected and staffCode comes from a real session:
-//   fetchFlask(`/api/shipments?created_by_staff_code=${encodeURIComponent(staffCode)}`)
-export async function getShipmentsByOperationUser(staffCode: string): Promise<Shipment[]> {
-  const data = await fetchFlask<ShipmentRow[]>('/api/shipments')
+export async function getShipmentsByOperationUser(email: string): Promise<Shipment[]> {
+  const data = await fetchFlask<ShipmentRow[]>(
+    `/api/shipments?assigned_email=${encodeURIComponent(email)}`
+  )
   return (data ?? []).map(mapRow)
 }
 
-// NOTE: staffCode filter is intentionally skipped for now because the company
-// has not yet provided sales user staff codes in the CargoWise data.
-// All shipments are returned so the sales user page is not empty.
-// TODO: re-enable the staffCode filter below once real sales_user_staff_code
-// values exist in the database:
-//   fetchFlask(`/api/shipments?sales_user_staff_code=${encodeURIComponent(staffCode)}`)
-export async function getShipmentsBySalesUser(staffCode: string): Promise<Shipment[]> {
-  const data = await fetchFlask<ShipmentRow[]>('/api/shipments')
+export async function getShipmentsBySalesUser(email: string): Promise<Shipment[]> {
+  const data = await fetchFlask<ShipmentRow[]>(
+    `/api/shipments?sales_user_email=${encodeURIComponent(email)}`
+  )
   return (data ?? []).map(mapRow)
 }
 

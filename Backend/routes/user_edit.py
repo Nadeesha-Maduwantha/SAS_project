@@ -88,6 +88,19 @@ def update_user(user_id):
 
             # --- ADD THIS: LOG TO AUDIT TRAIL ---
             if requester_id:
+                # Prefer the name this update just set; otherwise look up the
+                # current one, so the audit/notification text reads with a
+                # name instead of a raw user_id.
+                display_name = update_data.get('full_name')
+                if not display_name:
+                    try:
+                        existing = supabase.table('profiles').select('full_name').eq('id', user_id).execute()
+                        if existing.data:
+                            display_name = existing.data[0].get('full_name')
+                    except Exception:
+                        pass
+                display_name = display_name or 'Unknown User'
+
                 # action_type_id=2 -> UPDATE, entity_type_id=2 -> User Profile
                 # (matches public.action_types / public.entity_types)
                 log_audit_action(
@@ -96,7 +109,7 @@ def update_user(user_id):
                     entity_type_id=2,
                     entity_id=user_id,
                     new_value=update_data,
-                    description=f"Updated user profile for ID: {user_id}"
+                    description=f"Updated user profile for {display_name}"
                 )
 
             log_access_event('Update', status='Success', email_attempted=data.get('email'), user_id=user_id)

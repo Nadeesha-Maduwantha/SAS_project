@@ -70,3 +70,47 @@ def log_access_event(action, status='Success', email_attempted=None, user_id=Non
         supabase.table('access_logs').insert(record).execute()
     except Exception as log_err:
         print(f"Failed to record access log: {log_err}")
+
+
+def is_new_device(user_id, device):
+    """True if this user has no prior successful Login access_logs row with
+    this device string. Returns False on a user's very first login (nothing
+    to compare against yet) and on any lookup failure, so a query error never
+    misfires a false 'new device' notification."""
+    try:
+        supabase = get_supabase()
+        rows = (
+            supabase.table('access_logs')
+            .select('device')
+            .eq('user_id', user_id)
+            .eq('action', 'Login')
+            .eq('status', 'Success')
+            .execute()
+        ).data or []
+        return bool(rows) and device not in {r.get('device') for r in rows}
+    except Exception:
+        return False
+
+
+def is_new_ip(user_id, ip_address):
+    """True if this user's most recent successful Login used a different IP
+    address than the current one — specifically the last login, not 'ever
+    seen before'. False if there's no prior login to compare against, or on
+    any lookup failure."""
+    try:
+        supabase = get_supabase()
+        rows = (
+            supabase.table('access_logs')
+            .select('ip_address')
+            .eq('user_id', user_id)
+            .eq('action', 'Login')
+            .eq('status', 'Success')
+            .order('timestamp', desc=True)
+            .limit(1)
+            .execute()
+        ).data or []
+        if not rows:
+            return False
+        return rows[0].get('ip_address') != ip_address
+    except Exception:
+        return False

@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react';
 import {
     AlertCircle, Clock, CheckCircle2, Search, Eye, Mail,
-    MoreHorizontal, Anchor, Truck, Warehouse, Plane, Navigation,
+    Anchor, Truck, Warehouse, Plane, Navigation,
     LayoutList, LayoutGrid, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import AlertDetailsModal, { AlertData } from '@/components/AlertDetailsModal';
 import EmailComposeModal from '@/components/EmailComposeModal';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 const FLASK_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
 
@@ -40,7 +41,7 @@ type SupabaseRow = {
     created_at?: string;
 }
 
-const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
 
 async function parseApiResponse(response: Response) {
     const contentType = response.headers.get('content-type') || '';
@@ -195,7 +196,7 @@ export default function AlertDashboardPage() {
     const [alerts, setAlerts] = useState<Alert[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-    const { email } = useAuth();
+    const { email, department } = useAuth();
 
     // ── Modal state ──────────────────────────────────────────────
     const [detailsOpen, setDetailsOpen]   = useState(false);
@@ -217,7 +218,10 @@ export default function AlertDashboardPage() {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(`${BACKEND_BASE_URL}/api/alerts`);
+            const url = department
+                ? `${BACKEND_BASE_URL}/api/alerts?department=${encodeURIComponent(department)}`
+                : `${BACKEND_BASE_URL}/api/alerts`;
+            const response = await fetch(url);
             const payload = await parseApiResponse(response);
             if (!response.ok) {
                 throw new Error(payload?.error || 'Failed to load alerts');
@@ -229,7 +233,7 @@ export default function AlertDashboardPage() {
         setLoading(false);
     };
 
-    useEffect(() => { fetchAlerts(); }, [email]);
+    useEffect(() => { fetchAlerts(); }, [email, department]);
 
     const filtered = alerts.filter((a) => {
         const matchPriority = priorityFilter === 'All Priorities' || a.priority === priorityFilter;
@@ -365,7 +369,6 @@ export default function AlertDashboardPage() {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 <ActionBtn icon={<Eye size={14} />}  title="View"  onClick={() => openDetails(alert)} />
                                                 <ActionBtn icon={<Mail size={14} />} title="Email" onClick={() => openCompose(toAlertData(alert))} />
-                                                <ActionBtn icon={<MoreHorizontal size={14} />} title="More" />
                                             </div>
                                         </td>
                                     </tr>
@@ -391,7 +394,7 @@ export default function AlertDashboardPage() {
                                 <div style={{ marginTop: '12px', fontSize: '12.5px', color: '#6b7280', lineHeight: 1.5 }}>{alert.issue}</div>
                                 <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <StatusBadge status={alert.status} />
-                                    <span style={{ fontWeight: 700, fontSize: '13px', color: alert.delayColor }}>⏱ {alert.delay}</span>
+                                    <span style={{ fontWeight: 700, fontSize: '13px', color: alert.delayColor }}>{alert.delay}</span>
                                 </div>
                             </div>
                         ))}

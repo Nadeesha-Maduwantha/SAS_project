@@ -33,15 +33,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // it's placed on — it does NOT affect children.
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Inline script to apply dark class BEFORE paint — prevents flash */}
+        {/* Inline script to apply dark class BEFORE paint — prevents flash.
+            Light is the default: dark is only used when the user has picked it
+            from the profile menu. The OS setting is deliberately ignored so the
+            dashboard looks the same on every machine. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
                 try {
-                  var saved = localStorage.getItem('sas-theme');
-                  var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                  if (saved === 'dark' || (!saved && prefersDark)) {
+                  if (localStorage.getItem('sas-theme') === 'dark') {
                     document.documentElement.classList.add('dark');
                   }
                 } catch(e) {}

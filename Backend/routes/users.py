@@ -80,7 +80,6 @@ def create_user():
         record_password_history(user_id, data.get('password'))
         log_access_event('Create', status='Success', email_attempted=email, user_id=user_id)
 
-        requester_id, _ = get_current_user()
         if requester_id:
             # action_type_id=1 -> CREATE, entity_type_id=2 -> User Profile
             # (matches public.action_types / public.entity_types)

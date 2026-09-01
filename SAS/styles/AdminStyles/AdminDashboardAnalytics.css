@@ -1,0 +1,74 @@
+@reference "tailwindcss";
+
+.admin-dashboard-analytics {
+  @apply mt-[18px] grid grid-cols-1 gap-[14px];
+}
+
+.admin-dashboard-analytics__sync {
+  @apply min-w-0;
+}
+
+.admin-dashboard-analytics__charts {
+  @apply grid grid-cols-1 gap-[14px] min-w-0;
+}
+
+.freight-pie-card {
+  @apply p-4 min-w-0;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-light);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.freight-pie-card__head {
+  @apply flex items-center gap-3 pb-3;
+  border-bottom: 1px solid var(--c-border-light);
+}
+
+.freight-pie-card__icon {
+  @apply h-9 w-9 flex items-center justify-center shrink-0;
+  border-radius: var(--radius-inner);
+}
+
+.freight-pie-card__title {
+  @apply m-0;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--c-text-strong);
+}
+
+.freight-pie-card__body {
+  @apply pt-4 flex items-center gap-5 min-h-[128px];
+}
+
+.freight-pie-card__legend {
+  @apply flex-1 min-w-0;
+}
+
+.freight-pie-card__loading {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-normal);
+  color: var(--c-text-muted);
+}
+
+@media (min-width: 900px) {
+  .admin-dashboard-analytics {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .admin-dashboard-analytics__sync,
+  .admin-dashboard-analytics__sync .sync-card {
+    height: 100%;
+  }
+
+  .admin-dashboard-analytics__charts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .freight-pie-card__body {
+    @apply flex-col items-start;
+  }
+}

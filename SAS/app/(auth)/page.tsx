@@ -25,30 +25,7 @@ export default function LoginPage() {
   const isValidEmail = (email: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  // Redirected here by middleware.ts (expired token) or SessionTimeoutGuard
-  // (inactivity) after finding an ended session on a protected route. The
-  // cookie is already cleared server-side — localStorage is client-only, so
-  // clear it here too, otherwise components reading it directly (e.g.
-  // ProfileDropdown) would still show the old signed-in user.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const reason = params.get('session');
-    if (reason === 'expired' || reason === 'timeout') {
-      setError(
-        reason === 'timeout'
-          ? "You've been logged out due to inactivity."
-          : 'Your session has expired. Please log in again.'
-      );
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user_role');
-      localStorage.removeItem('user_email');
-      localStorage.removeItem('user_department');
-    }
-  }, []);
-
-  // Shared by a plain successful login, a successful OTP verification, and a
-  // successful forced password change — all three end the same way.
-  const finishLogin = (data: { access_token: string; user: any }) => {
+  const finishLogin = (data: any) => {
     const role = data.user.role?.toLowerCase().trim() || 'super_user';
     localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('user_role', role);
@@ -75,7 +52,7 @@ export default function LoginPage() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch('http://127.0.0.1:5000/api/auth/login', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ email, password }),

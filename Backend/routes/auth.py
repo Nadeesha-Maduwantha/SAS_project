@@ -3,12 +3,18 @@ import requests
 import secrets
 from flask import Blueprint, request, jsonify
 from services.supabase_service import get_supabase
-from services.security_settings_service import get_login_security_settings, is_two_factor_required_for_admins
-from services.email_service import send_email
+from services.security_settings_service import (
+    get_login_security_settings,
+    is_two_factor_required_for_admins,
+    is_new_device_login_notification_enabled,
+    get_login_restriction_settings,
+)
 from utils.auth_helper import require_auth, get_current_user
 from utils.access_logger import log_access_event, is_new_device
 from utils.password_policy import is_password_expired
 from datetime import datetime, timedelta, timezone
+import hashlib
+import secrets
 import os
 
 bp = Blueprint('auth', __name__, url_prefix='/api/auth')
@@ -16,10 +22,29 @@ bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 reset_redirect = f"{FRONTEND_URL.rstrip('/')}/reset-password"
 
-OTP_LENGTH = 6
+OTP_CODE_LENGTH = 6
 OTP_EXPIRY_MINUTES = 10
 OTP_MAX_ATTEMPTS = 5
 OTP_LOCKOUT_MINUTES = 15
+
+
+def _generate_otp_code() -> str:
+    return f"{secrets.randbelow(10 ** OTP_CODE_LENGTH):0{OTP_CODE_LENGTH}d}"
+
+
+def _send_suspicious_login_alert(email, reason):
+    """Security Settings -> 'Send email alerts for suspicious login attempts'.
+    Best-effort — never allowed to break the lockout response it's called from."""
+    try:
+        from services.email_service import send_email
+        send_email(
+            email,
+            'Suspicious login activity on your SAS account',
+            f'{reason} If this wasn\'t you, your account is temporarily protected, '
+            f'but consider changing your password and contacting an administrator.',
+        )
+    except Exception as e:
+        print(f"Failed to send suspicious-login alert: {e}")
 
 # --- HELPER FUNCTIONS FOR DEVICE AND LOCATION ---
 def get_location_from_ip(ip):
@@ -109,6 +134,7 @@ def login():
     profile_data = None
     is_probation_attempt = False
     now = datetime.now(timezone.utc)
+    login_restrictions = get_login_restriction_settings()
 
     # 1. SAFELY CHECK IF USER IS ALREADY LOCKED / BLOCKED
     try:
@@ -173,40 +199,67 @@ def login():
             except Exception:
                 pass
 
-        # 2FA CHALLENGE — short-circuits before logging a 'Login' success
-        # event, since the login isn't actually complete yet; verify_otp()
-        # logs the real success once the code is confirmed.
+        # Get the actual role from the profile data we fetched earlier, default to 'user' if not found
         actual_role = profile_data.get('role', 'user') if profile_data else 'user'
-        if actual_role == 'admin' and is_two_factor_required_for_admins():
-            code = f"{secrets.randbelow(10 ** OTP_LENGTH):0{OTP_LENGTH}d}"
+        device = get_device_info(request.user_agent)
+        ip_address = request.remote_addr or 'Unknown'
+
+        # 3b. TWO-FACTOR GATE — three independent reasons can trigger it:
+        #   - admin account + 'Required for admin users' toggle
+        #   - 'Enable IP-based access restrictions' + this IP differs from
+        #     the account's last successful login
+        #   - 'Allow login from unrecognized devices' is OFF + this device
+        #     has never completed a successful login for this account
+        # Credentials were correct, so this is a 200 with no access_token yet,
+        # not an error. The real token was already issued by Supabase Auth
+        # above; we hold it in the profile row until the code is verified.
+        require_2fa = (
+            ((actual_role or '').lower() == 'admin' and is_two_factor_required_for_admins())
+            or (login_restrictions['enable_ip_restrictions'] and is_new_ip(user_id, ip_address))
+            or (not login_restrictions['allow_unrecognized_devices'] and is_new_device(user_id, device))
+        )
+
+        if require_2fa:
+            code = _generate_otp_code()
+            now_utc = datetime.now(timezone.utc)
             try:
                 supabase.table('profiles').update({
                     'otp_code_hash': hashlib.sha256(code.encode()).hexdigest(),
-                    'otp_expires_at': (now + timedelta(minutes=OTP_EXPIRY_MINUTES)).isoformat(),
+                    'otp_expires_at': (now_utc + timedelta(minutes=OTP_EXPIRY_MINUTES)).isoformat(),
                     'otp_attempts': 0,
                     'otp_locked_until': None,
                     'otp_pending_access_token': response.session.access_token,
                     'otp_pending_refresh_token': response.session.refresh_token,
                 }).eq('id', user_id).execute()
-
-                send_email(
-                    to=email,
-                    subject='Your SAS verification code',
-                    text=f'Your verification code is {code}. It expires in {OTP_EXPIRY_MINUTES} minutes.',
-                )
             except Exception as e:
-                print(f"Failed to start 2FA challenge: {e}")
-                return jsonify({'error': 'Could not send verification code. Please try again.'}), 500
+                print(f"Failed to store OTP challenge: {e}")
+                return jsonify({'error': 'Unable to start verification. Please try again.'}), 500
 
-            return jsonify({'message': 'Verification code sent', 'twoFactorRequired': True}), 200
+            try:
+                from services.email_service import send_email
+                send_email(
+                    email,
+                    'Your SAS verification code',
+                    f'Your SAS Systems verification code is {code}. It expires in '
+                    f'{OTP_EXPIRY_MINUTES} minutes. If you did not request this, contact an administrator.',
+                )
+            except Exception as email_err:
+                print(f"Failed to send 2FA email: {email_err}")
+                return jsonify({'error': 'Could not send verification code. Please try again shortly.'}), 500
+
+            log_access_event('2FA Code Sent', status='Success', email_attempted=email, user_id=user_id)
+            return jsonify({'message': 'Verification code required', 'twoFactorRequired': True, 'email': email}), 200
 
         # LOG SUCCESSFUL ACCESS
+        # Checked BEFORE inserting this login's own access_logs row below —
+        # otherwise that row would already be there to match against itself.
+        new_device = is_new_device_login_notification_enabled() and is_new_device(user_id, device)
         try:
             supabase.table('access_logs').insert({
                 'action': 'Login',
-                'ip_address': request.remote_addr or 'Unknown',
+                'ip_address': ip_address,
                 'location': get_location_from_ip(request.remote_addr),
-                'device': get_device_info(request.user_agent),
+                'device': device,
                 'status': 'Success',
                 'email_attempted': email,
                 'user_id': user_id,
@@ -214,6 +267,9 @@ def login():
             }).execute()
         except Exception as log_err:
             print(f"Failed to record access log: {log_err}")
+
+        if new_device:
+            log_access_event('New Device Login', status='Success', email_attempted=email, user_id=user_id)
 
         user_payload = {
             'id': user_id,
@@ -251,6 +307,12 @@ def login():
                 except Exception:
                     pass
 
+                if login_restrictions['send_suspicious_alerts']:
+                    _send_suspicious_login_alert(
+                        email,
+                        'Repeated failed login attempts on your account have permanently locked it.'
+                    )
+
                 return jsonify({'error': 'Account permanently locked due to a failed login after the temporary lockout period. Contact an admin to unlock it.'}), 403
 
             current_attempts = profile_data.get('failed_attempts', 0) + 1
@@ -269,6 +331,11 @@ def login():
                 pass
 
             if is_locked:
+                if login_restrictions['send_suspicious_alerts']:
+                    _send_suspicious_login_alert(
+                        email,
+                        f'{max_attempts} consecutive failed login attempts on your account have triggered a temporary lockout.'
+                    )
                 return jsonify({'error': f'Account locked for {lockout_minutes} minutes due to {max_attempts} consecutive failed login attempts.'}), 403
 
         # LOG FAILED ACCESS

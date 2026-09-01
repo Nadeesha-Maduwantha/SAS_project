@@ -28,11 +28,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // On mount: read saved preference
+  // On mount: read saved preference.
+  // Light is the default — the OS colour scheme is deliberately not followed,
+  // so the app looks identical regardless of the machine it is demoed on.
+  // Dark only applies when the user picks it from the profile menu.
   useEffect(() => {
-    const saved = localStorage.getItem('sas-theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const shouldBeDark = saved ? saved === 'dark' : prefersDark;
+    const shouldBeDark = localStorage.getItem('sas-theme') === 'dark';
 
     setIsDark(shouldBeDark);
     setMounted(true);

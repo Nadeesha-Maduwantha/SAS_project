@@ -24,12 +24,14 @@ import json
 import os
 import smtplib
 import ssl
+import time
 import urllib.error
 import urllib.request
 from email.message import EmailMessage
 
 DEFAULT_ENDPOINT = 'http://localhost:3000/api/email/send'
 REQUEST_TIMEOUT  = 20
+FRONTEND_ATTEMPTS = 2   # a mid-request connection reset (e.g. dev-server hot reload) gets one retry
 
 
 def _as_list(value) -> list:
@@ -91,13 +93,22 @@ def _send_via_frontend(to, subject, text, html, cc, bcc) -> None:
         _endpoint(), data=payload, method='POST',
         headers={'Content-Type': 'application/json'},
     )
-    try:
-        with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT) as response:
-            if response.status >= 300:
-                raise RuntimeError(f'HTTP {response.status}')
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode('utf-8', 'replace')[:300]
-        raise RuntimeError(f'HTTP {e.code}: {detail}') from e
+
+    for attempt in range(1, FRONTEND_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT) as response:
+                if response.status >= 300:
+                    raise RuntimeError(f'HTTP {response.status}')
+            return
+        except urllib.error.HTTPError as e:
+            detail = e.read().decode('utf-8', 'replace')[:300]
+            raise RuntimeError(f'HTTP {e.code}: {detail}') from e
+        except (urllib.error.URLError, OSError) as e:
+            # Connection dropped mid-request (e.g. dev-server hot reload) rather than
+            # a real HTTP failure — worth one retry before giving up.
+            if attempt == FRONTEND_ATTEMPTS:
+                raise RuntimeError(f'connection to {_endpoint()} failed: {e}') from e
+            time.sleep(1)
 
 
 def _send_via_smtp(to, subject, text, html, cc, bcc) -> None:
