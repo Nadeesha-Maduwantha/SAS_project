@@ -53,6 +53,7 @@ export default function SecuritySettingsPage() {
   const [settings, setSettings] = useState<SecuritySettings>(defaultSettings);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -73,12 +74,18 @@ export default function SecuritySettingsPage() {
         }));
       } catch {
         // Keep defaults if the backend/settings rows aren't reachable yet.
+      } finally {
+        // Gates Save (below) so a click before this resolves can't silently
+        // write the hardcoded defaultSettings above back over real saved
+        // values for whichever fields hadn't loaded yet.
+        setLoaded(true);
       }
     };
     loadSettings();
   }, []);
 
   const handleSave = async () => {
+    if (!loaded) return;
     setSaving(true);
     setError(null);
     try {
@@ -140,13 +147,13 @@ export default function SecuritySettingsPage() {
           </div>
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || !loaded}
             data-testid="save-settings-btn"
             className={`px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
               saved ? "bg-green-500" : "bg-blue-500 hover:bg-blue-600"
             }`}
           >
-            {saving ? "Saving..." : saved ? "✓ Saved!" : "Save Changes"}
+            {saving ? "Saving..." : saved ? "✓ Saved!" : !loaded ? "Loading…" : "Save Changes"}
           </button>
         </div>
 
