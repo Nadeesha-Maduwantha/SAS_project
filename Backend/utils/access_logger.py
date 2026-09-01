@@ -25,6 +25,31 @@ def get_device_info(user_agent):
     return f"{browser} on {platform}".title()
 
 
+def is_new_device(user_id, device):
+    """True if this user has no prior successful-login access_logs row from
+    this device string. Used to gate the "new device login" notification —
+    fails closed (False) on any lookup error, so a DB hiccup can't spam a
+    notification for what might be a perfectly familiar device."""
+    if not user_id or not device:
+        return False
+    try:
+        supabase = get_supabase()
+        resp = (
+            supabase.table('access_logs')
+            .select('id')
+            .eq('user_id', user_id)
+            .eq('device', device)
+            .eq('action', 'Login')
+            .eq('status', 'Success')
+            .limit(1)
+            .execute()
+        )
+        return not resp.data
+    except Exception as e:
+        print(f"is_new_device lookup failed: {e}")
+        return False
+
+
 def log_access_event(action, status='Success', email_attempted=None, user_id=None):
     """Insert a row into access_logs. Mirrors the Login/Failed-Login logging
     in routes/auth.py, so the Access Logs page's Action filter (Logout,

@@ -1,9 +1,12 @@
+import hashlib
 import requests
+import secrets
 from flask import Blueprint, request, jsonify
 from services.supabase_service import get_supabase
-from services.security_settings_service import get_login_security_settings
+from services.security_settings_service import get_login_security_settings, is_two_factor_required_for_admins
+from services.email_service import send_email
 from utils.auth_helper import require_auth, get_current_user
-from utils.access_logger import log_access_event, is_new_device, is_new_ip
+from utils.access_logger import log_access_event, is_new_device
 from utils.password_policy import is_password_expired
 from datetime import datetime, timedelta, timezone
 import os
@@ -12,6 +15,11 @@ bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 reset_redirect = f"{FRONTEND_URL.rstrip('/')}/reset-password"
+
+OTP_LENGTH = 6
+OTP_EXPIRY_MINUTES = 10
+OTP_MAX_ATTEMPTS = 5
+OTP_LOCKOUT_MINUTES = 15
 
 # --- HELPER FUNCTIONS FOR DEVICE AND LOCATION ---
 def get_location_from_ip(ip):
@@ -165,6 +173,33 @@ def login():
             except Exception:
                 pass
 
+        # 2FA CHALLENGE — short-circuits before logging a 'Login' success
+        # event, since the login isn't actually complete yet; verify_otp()
+        # logs the real success once the code is confirmed.
+        actual_role = profile_data.get('role', 'user') if profile_data else 'user'
+        if actual_role == 'admin' and is_two_factor_required_for_admins():
+            code = f"{secrets.randbelow(10 ** OTP_LENGTH):0{OTP_LENGTH}d}"
+            try:
+                supabase.table('profiles').update({
+                    'otp_code_hash': hashlib.sha256(code.encode()).hexdigest(),
+                    'otp_expires_at': (now + timedelta(minutes=OTP_EXPIRY_MINUTES)).isoformat(),
+                    'otp_attempts': 0,
+                    'otp_locked_until': None,
+                    'otp_pending_access_token': response.session.access_token,
+                    'otp_pending_refresh_token': response.session.refresh_token,
+                }).eq('id', user_id).execute()
+
+                send_email(
+                    to=email,
+                    subject='Your SAS verification code',
+                    text=f'Your verification code is {code}. It expires in {OTP_EXPIRY_MINUTES} minutes.',
+                )
+            except Exception as e:
+                print(f"Failed to start 2FA challenge: {e}")
+                return jsonify({'error': 'Could not send verification code. Please try again.'}), 500
+
+            return jsonify({'message': 'Verification code sent', 'twoFactorRequired': True}), 200
+
         # LOG SUCCESSFUL ACCESS
         try:
             supabase.table('access_logs').insert({
@@ -179,9 +214,6 @@ def login():
             }).execute()
         except Exception as log_err:
             print(f"Failed to record access log: {log_err}")
-            
-        # Get the actual role from the profile data we fetched earlier, default to 'user' if not found
-        actual_role = profile_data.get('role', 'user') if profile_data else 'user'
 
         user_payload = {
             'id': user_id,
