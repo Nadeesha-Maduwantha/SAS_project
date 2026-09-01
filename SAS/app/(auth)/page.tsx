@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent, ChangeEvent } from 'react';
+import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -25,6 +25,44 @@ export default function LoginPage() {
   const isValidEmail = (email: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
+  // Redirected here by middleware.ts (expired token) or SessionTimeoutGuard
+  // (inactivity) after finding an ended session on a protected route. The
+  // cookie is already cleared server-side — localStorage is client-only, so
+  // clear it here too, otherwise components reading it directly (e.g.
+  // ProfileDropdown) would still show the old signed-in user.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reason = params.get('session');
+    if (reason === 'expired' || reason === 'timeout') {
+      setError(
+        reason === 'timeout'
+          ? "You've been logged out due to inactivity."
+          : 'Your session has expired. Please log in again.'
+      );
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user_role');
+      localStorage.removeItem('user_email');
+      localStorage.removeItem('user_department');
+    }
+  }, []);
+
+  // Shared by a plain successful login, a successful OTP verification, and a
+  // successful forced password change — all three end the same way.
+  const finishLogin = (data: { access_token: string; user: any }) => {
+    const role = data.user.role?.toLowerCase().trim() || 'super_user';
+    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem('user_role', role);
+    localStorage.setItem('user_email', data.user.email || '');
+    localStorage.setItem('user_department', data.user.department || '');
+    document.cookie = `access_token=${data.access_token}; path=/; max-age=86400`;
+    document.cookie = `user_role=${role}; path=/; max-age=86400`;
+
+    if      (role.includes('admin'))     router.push('/admin/dashboard');
+    else if (role.includes('operation')) router.push('/operation_user/dashboard');
+    else if (role.includes('sales'))     router.push('/sales_user/dashboard');
+    else if (role.includes('super'))     router.push('/Super_user/dashboard');
+  };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -44,19 +82,6 @@ export default function LoginPage() {
       });
       const data = await response.json();
 
-      if (response.ok && data.user) {
-        const role = data.user.role?.toLowerCase().trim() || 'super_user';
-        localStorage.setItem('access_token', data.access_token);
-        localStorage.setItem('user_role', role);
-        localStorage.setItem('user_email', data.user.email || '');
-        localStorage.setItem('user_department', data.user.department || '');
-        document.cookie = `access_token=${data.access_token}; path=/; max-age=86400`;
-        document.cookie = `user_role=${role}; path=/; max-age=86400`;
-
-        if      (role.includes('admin'))     router.push('/admin/dashboard');
-        else if (role.includes('operation')) router.push('/operation_user/dashboard');
-        else if (role.includes('sales'))     router.push('/sales_user/dashboard');
-        else if (role.includes('super'))     router.push('/Super_user/dashboard');
       if (response.ok && data.twoFactorRequired) {
         setStage('otp');
         setError('');
@@ -229,6 +254,8 @@ export default function LoginPage() {
            style={{ background: '#F8FAFC' }}>
         <div className="w-full max-w-md">
 
+          {stage === 'credentials' && (
+          <>
           {/* Header */}
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
