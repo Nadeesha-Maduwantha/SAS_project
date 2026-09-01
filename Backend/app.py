@@ -271,11 +271,7 @@ app.register_blueprint(system_settings_bp)
 app.register_blueprint(field_definitions_bp)
 
 app.register_blueprint(alert_engine_bp)
-
-def health_check():
-    return {"status": "Backend is running"}, 200
 app.register_blueprint(field_watch_bp)
-app.register_blueprint(alert_engine_bp)
 app.register_blueprint(dashboard_bp)
 
 # Uncomment this once the route file exists:
@@ -329,62 +325,6 @@ scheduler.add_job(
     id='field_mismatch_detect',
     replace_existing=True,
 )
-
-# Stand-in for the alert engine's status pass: recompute completed/overdue/pending
-# on assigned milestones so the dashboard + alert feed stay current. No emails.
-def run_status_recompute():
-    try:
-        from services.status_recompute import recompute_milestone_status
-        recompute_milestone_status()
-    except Exception as e:
-        print(f"[status_recompute] ERROR: {e}")
-
-scheduler.add_job(
-    run_status_recompute,
-    CronTrigger(minute='*/30', timezone='Asia/Colombo'),
-    id='status_recompute',
-    replace_existing=True,
-)
-
-# Field Integrity / Registry Watch — its own module: detects expected data fields
-# that are delayed / possibly renamed and emails its own admin (settings). Runs a
-# few minutes after the status pass so due dates are fresh.
-def run_field_watch():
-    try:
-        from services.field_watch import scan_field_alerts
-        scan_field_alerts()
-    except Exception as e:
-        print(f"[field_watch] ERROR: {e}")
-
-scheduler.add_job(
-    run_field_watch,
-    CronTrigger(minute='5,35', timezone='Asia/Colombo'),
-    id='field_watch_scan',
-
-# Runtime alert engine. Reads the milestone + alert-rule snapshots frozen onto
-# each shipment_milestones row, evaluates the combined check (including
-# multi-logic / custom milestones) and emails whichever rules are due.
-# alert_fire_log makes each pass idempotent, so running hourly is safe.
-def run_alert_engine_job():
-    try:
-        from services.alert_engine import run_alert_engine
-        result = run_alert_engine()
-        print(f"[alert_engine] evaluated={result.get('evaluated')} "
-              f"outstanding={result.get('outstanding')} sent={result.get('sent')} "
-              f"skipped={result.get('skipped')} stopped={result.get('stopped')} "
-              f"errors={len(result.get('errors', []))}")
-    except Exception as e:
-        print(f"[alert_engine] ERROR: {e}")
-
-scheduler.add_job(
-    run_alert_engine_job,
-    CronTrigger(minute=5, timezone='Asia/Colombo'),
-    id='alert_engine_run',
-    replace_existing=True,
-)
-app.config['SCHEDULER'] = scheduler
-app.config['RUN_SYNC_JOB'] = run_sync_job
-
 
 # Milestone status recompute every 30 minutes
 scheduler.add_job(
