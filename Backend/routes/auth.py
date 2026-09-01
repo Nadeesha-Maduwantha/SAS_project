@@ -1,4 +1,6 @@
+import hashlib
 import requests
+import secrets
 from flask import Blueprint, request, jsonify
 from services.supabase_service import get_supabase
 from services.security_settings_service import (
@@ -8,7 +10,7 @@ from services.security_settings_service import (
     get_login_restriction_settings,
 )
 from utils.auth_helper import require_auth, get_current_user
-from utils.access_logger import log_access_event, is_new_device, is_new_ip
+from utils.access_logger import log_access_event, is_new_device
 from utils.password_policy import is_password_expired
 from datetime import datetime, timedelta, timezone
 import hashlib
