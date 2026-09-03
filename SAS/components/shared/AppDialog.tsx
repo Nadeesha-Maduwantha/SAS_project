@@ -78,7 +78,10 @@ export default function AppDialog({
         ) : (
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              onClose();
+              dialog.onConfirm?.();
+            }}
             className="mt-5 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
           >
             OK
