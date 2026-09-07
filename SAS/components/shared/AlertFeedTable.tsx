@@ -835,7 +835,7 @@ export default function AlertFeedTable({
   const processed = groups
     .filter(g => {
       const q = search.toLowerCase();
-      const matchSearch = !q || g.consignee_name.toLowerCase().includes(q) || g.job_number.toLowerCase().includes(q);
+      const matchSearch = !q || (g.consignee_name || '').toLowerCase().includes(q) || (g.job_number || '').toLowerCase().includes(q);
       const matchStatus =
         filterStatus === 'all'      ? true :
         filterStatus === 'critical' ? g.has_critical :

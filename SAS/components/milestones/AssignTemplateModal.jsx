@@ -154,7 +154,9 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
 
   // Milestones whose due-date basis is "manual" — admin picks a date at assign time.
   const [manualMilestones, setManualMilestones] = useState([]); // [{ key, name }]
-  const [manualDates,      setManualDates]      = useState({});  // { key: 'YYYY-MM-DD' }
+  const [manualDates,      setManualDates]      = useState({});  // shared: { key: 'YYYY-MM-DD' }
+  const [dateMode,         setDateMode]         = useState("shared"); // 'shared' | 'per_shipment'
+  const [perShipDates,     setPerShipDates]     = useState({});  // { shipment_id: { key: 'YYYY-MM-DD' } }
 
   // ── Reset on open
   useEffect(() => {
@@ -172,6 +174,8 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
       setResult(null);
       setError(null);
       setManualDates({});
+      setDateMode("shared");
+      setPerShipDates({});
     }
   }, [isOpen]);
 
@@ -216,6 +220,27 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
         || (s.consignee_name ?? "").toLowerCase().includes(q)
         || (s.branch ?? "").toLowerCase().includes(q);
   });
+
+  // Shipments that will actually receive the template (skipped conflicts won't,
+  // so they don't need manual dates).
+  const targetShipments = conflictStrategy === "replace"
+    ? previewShipments
+    : previewShipments.filter(s => !s.has_milestones);
+
+  // Every manual milestone must have a date before assigning.
+  const datesComplete = () => {
+    if (manualMilestones.length === 0) return true;
+    if (dateMode === "shared") return manualMilestones.every(m => manualDates[m.key]);
+    return targetShipments.every(s =>
+      manualMilestones.every(m => (perShipDates[s.id] || {})[m.key]));
+  };
+
+  // After conflicts are handled (or if there are none), collect manual dates
+  // when the template has any manual milestones — otherwise assign directly.
+  const proceedAfterConflicts = () => {
+    if (manualMilestones.length > 0) { setError(null); setStep("dates"); }
+    else handleAssign();
+  };
 
   // ── API: Load all shipments for custom picker
   const loadAllShipments = async () => {
@@ -276,7 +301,8 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
         body: JSON.stringify({
           shipment_ids:      previewShipments.map(s => s.id),
           conflict_strategy: conflictStrategy,
-          manual_due_dates:  manualDates,
+          // Shared → flat { key: date }; per-shipment → { shipment_id: { key: date } }.
+          manual_due_dates:  dateMode === "per_shipment" ? perShipDates : manualDates,
         }),
       });
       const data = await res.json();
@@ -599,7 +625,7 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
             ← Back
           </button>
           <button
-            onClick={() => { conflictCount > 0 ? setStep("conflict") : handleAssign(); }}
+            onClick={() => { conflictCount > 0 ? setStep("conflict") : proceedAfterConflicts(); }}
             disabled={assigning || previewShipments.length === 0}
             style={{
               ...solidBtn(previewShipments.length > 0 ? T.blue : T.gray300, "#fff"),
@@ -612,6 +638,8 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
               ? "Assigning..."
               : conflictCount > 0
               ? `Next: Handle ${conflictCount} Conflict${conflictCount !== 1 ? "s" : ""} →`
+              : manualMilestones.length > 0
+              ? "Next: Set Due Dates →"
               : `Assign to ${previewShipments.length} Shipment${previewShipments.length !== 1 ? "s" : ""}`}
           </button>
         </ModalFooter>
@@ -682,26 +710,9 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
                 : `${previewShipments.length - conflictCount} shipment(s) will get the template, ${conflictCount} skipped.`}
             </div>
 
-            {/* Manual due dates — for milestones whose basis is "Set manually when assigning" */}
             {manualMilestones.length > 0 && (
-              <div style={{ marginTop: "16px", padding: "12px 14px", background: T.amberBg, border: `1px solid ${T.amberBorder}`, borderRadius: "8px" }}>
-                <div style={{ fontSize: "12px", fontWeight: "700", color: T.gray900, marginBottom: "4px" }}>
-                  Set due dates for manual milestones
-                </div>
-                <div style={{ fontSize: "11px", color: T.gray500, marginBottom: "10px", lineHeight: "1.5" }}>
-                  These milestones use a manual due-date basis. The date you pick applies to all selected shipments.
-                </div>
-                {manualMilestones.map(m => (
-                  <div key={m.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginBottom: "6px" }}>
-                    <span style={{ fontSize: "12px", color: T.gray700 }}>{m.name}</span>
-                    <input
-                      type="date"
-                      value={manualDates[m.key] || ""}
-                      onChange={e => setManualDates(p => ({ ...p, [m.key]: e.target.value }))}
-                      style={{ fontSize: "12px", padding: "6px 8px", border: `1px solid ${T.gray300}`, borderRadius: "6px", fontFamily: T.font, color: T.gray900, background: T.cardBg }}
-                    />
-                  </div>
-                ))}
+              <div style={{ marginTop: "16px", fontSize: "11px", color: T.gray500, lineHeight: "1.5" }}>
+                This template has manual-date milestone{manualMilestones.length !== 1 ? "s" : ""} — you'll set {manualMilestones.length !== 1 ? "their" : "its"} due date{manualMilestones.length !== 1 ? "s" : ""} on the next step.
               </div>
             )}
           </div>
@@ -715,7 +726,7 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
           <ModalFooter>
             <button onClick={() => { setError(null); setStep("preview"); }} style={{ ...outlineBtn(T.gray500, T.gray200, T.gray50) }}>← Back</button>
             <button
-              onClick={handleAssign}
+              onClick={proceedAfterConflicts}
               disabled={assigning}
               style={{
                 ...solidBtn(replacing ? T.red : T.blue, "#fff"),
@@ -726,9 +737,126 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
             >
               {assigning
                 ? "Assigning..."
+                : manualMilestones.length > 0
+                ? "Next: Set Due Dates →"
                 : replacing
                 ? `Replace & Assign (${previewShipments.length})`
                 : `Skip Conflicts & Assign (${previewShipments.length - conflictCount})`}
+            </button>
+          </ModalFooter>
+        </div>
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  //  STEP 3c — Set Manual Due Dates (required, always shown when any exist)
+  // ══════════════════════════════════════════════════════════════
+  if (step === "dates") {
+    const complete = datesComplete();
+    const setShared  = (key, v) => setManualDates(p => ({ ...p, [key]: v }));
+    const setPerShip = (sid, key, v) =>
+      setPerShipDates(p => ({ ...p, [sid]: { ...(p[sid] || {}), [key]: v } }));
+    const dateInp = { fontSize: "12px", padding: "6px 8px", border: `1px solid ${T.gray300}`, borderRadius: "6px", fontFamily: T.font, color: T.gray900, background: T.cardBg };
+
+    return (
+      <div style={OVERLAY}>
+        <div style={{ ...baseCard, width: "560px" }}>
+          <ModalHeader
+            title="Set Due Dates"
+            subtitle={`${manualMilestones.length} manual milestone${manualMilestones.length !== 1 ? "s" : ""} need a due date before assigning`}
+            onClose={onClose}
+          />
+
+          <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+            {/* Mode toggle */}
+            <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+              {[
+                { val: "shared",       label: "Same date for all", desc: "One date per milestone, applied to every shipment." },
+                { val: "per_shipment", label: "Per shipment",      desc: "A separate date per shipment." },
+              ].map(opt => {
+                const sel = dateMode === opt.val;
+                return (
+                  <div key={opt.val} onClick={() => setDateMode(opt.val)}
+                    style={{
+                      flex: 1, padding: "10px 12px", cursor: "pointer",
+                      border: `1.5px solid ${sel ? T.blue : T.gray200}`, borderRadius: "10px",
+                      background: sel ? T.blueBg : T.cardBg, transition: "all 0.13s",
+                    }}
+                  >
+                    <div style={{ fontSize: "12px", fontWeight: "700", color: sel ? T.blue : T.gray900 }}>{opt.label}</div>
+                    <div style={{ fontSize: "11px", color: T.gray500, marginTop: "2px", lineHeight: "1.4" }}>{opt.desc}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Shared: one input per milestone */}
+            {dateMode === "shared" && (
+              <div style={{ border: `1px solid ${T.gray200}`, borderRadius: "10px", padding: "12px 14px" }}>
+                {manualMilestones.map(m => (
+                  <div key={m.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginBottom: "8px" }}>
+                    <span style={{ fontSize: "12px", color: T.gray700 }}>
+                      {m.name} <span style={{ color: T.red }}>*</span>
+                    </span>
+                    <input type="date" value={manualDates[m.key] || ""} onChange={e => setShared(m.key, e.target.value)} style={dateInp} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Per shipment: a card per shipment with all milestone inputs */}
+            {dateMode === "per_shipment" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {targetShipments.length === 0 ? (
+                  <div style={{ fontSize: "12px", color: T.gray400, padding: "16px", textAlign: "center" }}>
+                    No shipments will receive the template.
+                  </div>
+                ) : targetShipments.map(s => (
+                  <div key={s.id} style={{ border: `1px solid ${T.gray200}`, borderRadius: "10px", padding: "12px 14px" }}>
+                    <div style={{ fontSize: "12px", fontWeight: "700", color: T.gray900, fontFamily: T.mono, marginBottom: "8px" }}>
+                      {s.job_number ?? s.id.slice(0, 8)}
+                      <span style={{ marginLeft: "8px", fontWeight: "500", fontFamily: T.font, color: T.gray500 }}>{s.consignee_name ?? "—"}</span>
+                    </div>
+                    {manualMilestones.map(m => (
+                      <div key={m.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginBottom: "6px" }}>
+                        <span style={{ fontSize: "12px", color: T.gray700 }}>
+                          {m.name} <span style={{ color: T.red }}>*</span>
+                        </span>
+                        <input type="date" value={(perShipDates[s.id] || {})[m.key] || ""} onChange={e => setPerShip(s.id, m.key, e.target.value)} style={dateInp} />
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!complete && (
+              <div style={{ marginTop: "14px", fontSize: "11px", color: T.amber, display: "flex", alignItems: "center", gap: "6px" }}>
+                <IcoWarn /> Every milestone needs a due date before you can assign.
+              </div>
+            )}
+          </div>
+
+          {error && (
+            <div style={{ flexShrink: 0, fontSize: "12px", color: T.red, margin: "0 24px 12px", padding: "10px 14px", background: T.redBg, border: `1px solid ${T.redBorder}`, borderRadius: "8px" }}>
+              {error}
+            </div>
+          )}
+
+          <ModalFooter>
+            <button onClick={() => { setError(null); setStep(conflictCount > 0 ? "conflict" : "preview"); }} style={{ ...outlineBtn(T.gray500, T.gray200, T.gray50) }}>← Back</button>
+            <button
+              onClick={handleAssign}
+              disabled={assigning || !complete}
+              style={{
+                ...solidBtn(complete ? T.blue : T.gray300, "#fff"),
+                padding: "9px 20px",
+                opacity: assigning ? 0.7 : 1,
+                cursor: complete && !assigning ? "pointer" : "not-allowed",
+              }}
+            >
+              {assigning ? "Assigning..." : `Assign to ${previewShipments.length} Shipment${previewShipments.length !== 1 ? "s" : ""}`}
             </button>
           </ModalFooter>
         </div>

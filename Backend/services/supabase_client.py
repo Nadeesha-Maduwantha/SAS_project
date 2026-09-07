@@ -33,3 +33,39 @@ class LazySupabaseClient:
 
 
 supabase = LazySupabaseClient()
+
+
+# ── transient-connection retry ────────────────────────────────────────────────
+# Supabase runs over a keep-alive HTTPS connection. When that socket has been
+# idle and the server (or a proxy) drops it, the next request reuses the dead
+# socket and Windows raises "[WinError 10054] An existing connection was forcibly
+# closed by the remote host" (other platforms: connection reset / broken pipe /
+# RemoteProtocolError). It's transient: dropping the cached client and retrying
+# on a fresh connection succeeds. Wrap read/execute calls in this.
+_TRANSIENT_MARKERS = (
+    '10054', 'forcibly closed', 'connection reset', 'connection aborted',
+    'broken pipe', 'server disconnected', 'remoteprotocolerror',
+    'connection closed', 'peer closed', 'econnreset',
+)
+
+
+def _is_transient(exc):
+    msg = str(exc).lower()
+    return any(m in msg for m in _TRANSIENT_MARKERS)
+
+
+def run_with_retry(fn, attempts=3):
+    """Run a Supabase call, resetting the client and retrying on a transient
+    dropped-connection error. `fn` should perform the query and return its result
+    (e.g. `lambda: supabase.table('x').select('*').execute()`)."""
+    last = None
+    for attempt in range(attempts):
+        try:
+            return fn()
+        except Exception as e:
+            last = e
+            if attempt < attempts - 1 and _is_transient(e):
+                supabase.reset()   # drop the dead connection; next call reconnects
+                continue
+            raise
+    raise last
