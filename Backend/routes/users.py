@@ -5,6 +5,7 @@ from services.supabase_service import get_supabase
 from utils.access_logger import log_access_event
 from utils.audit_logger import log_audit_action
 from utils.auth_helper import get_current_user
+from utils.password_policy import validate_password_complexity, record_password_history
 
 print("=== USERS.PY MODULE LOADED ===")  # ← TOP OF FILE outside function
 
@@ -21,9 +22,13 @@ def create_user():
         if not data.get('email') or not data.get('password'):
             return jsonify({'error': 'Email and password are required'}), 400
 
+        policy_error = validate_password_complexity(data.get('password'))
+        if policy_error:
+            return jsonify({'error': policy_error}), 400
+
         # A Super User may only create Sales/Operation accounts — Admin and
         # Super User accounts stay Admin-only. Requesters with no identifiable
-        # role (e.g. no/invalid token) aren't super users, so they aren't
+
         # restricted by this check specifically.
         requester_id, requester_role = get_current_user()
         if (requester_role or '').lower() == 'superuser':
@@ -69,9 +74,10 @@ def create_user():
         except Exception as table_err:
             print(f"Table Insert Failed: {str(table_err)}")
             traceback.print_exc()
-            return jsonify({'error': f'Profile Insert failed: {str(table_err)}'}), 400
+            return jsonify({'error': 'Failed to create user profile. Please try again.'}), 400
 
         print("=== STEP 4: Success ===")
+        record_password_history(user_id, data.get('password'))
         log_access_event('Create', status='Success', email_attempted=email, user_id=user_id)
 
         if requester_id:
@@ -95,16 +101,16 @@ def create_user():
     except Exception as e:
         print("=== ERROR ===")
         traceback.print_exc()
-        
-        # Pull out the exact message if Supabase provided one
-        error_message = str(e)
-        
-        # Provide a cleaner error message if it's the duplicate user error
-        if "User already registered" in error_message or "already exists" in error_message:
+
+        # Duplicate-email is the one case worth surfacing verbatim — it's
+        # actionable and reveals nothing the requester didn't already send.
+        # Everything else (DB/network/config errors) stays generic so we
+        # don't leak internal details to the browser's network tab.
+        raw_message = str(e)
+        if "User already registered" in raw_message or "already exists" in raw_message:
             error_message = "An account with this email already exists."
-            
+        else:
+            error_message = "Failed to create user. Please try again."
+
         return jsonify({'error': error_message}), 400
 
-# Note: DELETE /<user_id> is handled by routes/user_edit.py (the real
-# implementation — deletes from Supabase Auth + profiles, logs correctly).
-# A dead-stub duplicate of this route used to live here, shadowing it.

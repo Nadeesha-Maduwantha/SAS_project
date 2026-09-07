@@ -57,13 +57,18 @@ def _general_row_to_camel(row: dict) -> dict:
 @require_auth
 def get_password_policy():
     try:
+        _, requester_role = get_current_user()
+        if (requester_role or '').lower() != 'admin':
+            return jsonify({'error': 'Only admins can view the password policy'}), 403
+
         supabase = get_supabase()
         resp = supabase.table('password_policy_settings').select('*').eq('id', 1).execute()
         if not resp.data:
             return jsonify({'error': 'Password policy has not been initialized'}), 404
         return jsonify({'data': _row_to_camel(resp.data[0])}), 200
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"[SECURITY SETTINGS] get_password_policy failed: {e}")
+        return jsonify({'error': 'Failed to load password policy'}), 500
 
 
 @security_settings_bp.route('/password-policy', methods=['PUT'])
@@ -123,6 +128,10 @@ def update_password_policy():
 @security_settings_bp.route('/general', methods=['GET'])
 @require_auth
 def get_general_settings():
+    # Intentionally open to any authenticated user, not just admins —
+    # SessionTimeoutGuard (mounted for every role) reads this to enforce
+    # auto-logout/session-timeout app-wide. Restricting it to admins would
+    # silently break that for every non-admin user.
     try:
         supabase = get_supabase()
         resp = supabase.table('security_settings_general').select('*').eq('id', 1).execute()
@@ -130,7 +139,8 @@ def get_general_settings():
             return jsonify({'error': 'Security settings have not been initialized'}), 404
         return jsonify({'data': _general_row_to_camel(resp.data[0])}), 200
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"[SECURITY SETTINGS] get_general_settings failed: {e}")
+        return jsonify({'error': 'Failed to load security settings'}), 500
 
 
 @security_settings_bp.route('/general', methods=['PUT'])

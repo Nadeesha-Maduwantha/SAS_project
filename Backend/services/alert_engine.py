@@ -389,15 +389,40 @@ def previous_milestone(rows: list, row: dict):
 # ═════════════════════════════════════════════════════════════════════════════
 # §4 — fire conditions, recurrence, stop conditions, recipients
 # ═════════════════════════════════════════════════════════════════════════════
-def condition_passes(rule: dict, state: dict) -> bool:
+def condition_passes(rule: dict, state: dict, shipment: dict = None, milestone_key=None) -> bool:
     """
-    Contract §2: `if_not_recorded` / `if_comparison_true` / `if_missing` all gate
-    on the milestone still being outstanding — and they gate on the **combined**
-    result, not just the primary check. `always` ignores the checks entirely.
+    `always` fires regardless. `if_not_recorded` / `if_missing` gate on the
+    milestone still being outstanding (combined result).
+
+    `if_comparison_true` also gates on "outstanding" BY DEFAULT, but if the rule
+    carries its own field check (`condition_field`), that check is evaluated
+    instead — the alert fires only while (condition_field <op> condition_value)
+    HOLDS. This lets a rule watch a specific field (incl. a true/false flag),
+    independent of the milestone's own completion.
     """
     condition = ((rule or {}).get('condition') or 'always').strip()
     if condition == 'always':
         return True
+
+    if condition == 'if_comparison_true' and (rule or {}).get('condition_field'):
+        left = resolve_value(shipment or {}, milestone_key, rule.get('condition_field'))
+        op   = (rule.get('condition_operator') or 'has_value').strip()
+        val  = rule.get('condition_value')
+        if op == 'has_value':
+            return not is_empty(left)
+        if op == 'missing':
+            return is_empty(left)
+        if op == 'is_true':
+            return str(left).strip().lower() in ('true', '1', 'yes', 'y')
+        if op == 'is_false':
+            return is_empty(left) or str(left).strip().lower() in ('false', '0', 'no', 'n')
+        # equals / not_equals / contains / greater_than / less_than / date ops
+        return compare(left, op, val, val)
+
+    # "If missing" can watch a specific field too: fire while that field is empty.
+    if condition == 'if_missing' and (rule or {}).get('condition_field'):
+        return is_empty(resolve_value(shipment or {}, milestone_key, rule.get('condition_field')))
+
     if condition in ('if_not_recorded', 'if_comparison_true', 'if_missing'):
         return not state.get('satisfied', True)
     return True
@@ -673,7 +698,7 @@ def evaluate_row(row: dict, shipment: dict, siblings: list, now: datetime | None
         }
         if not occurrences:
             entry['skipped'] = 'not due yet' if due else 'no due date'
-        elif not condition_passes(rule, state):
+        elif not condition_passes(rule, state, shipment, key):
             entry['skipped'] = f"condition '{rule.get('condition')}' not met"
         planned.append(entry)
 
@@ -823,7 +848,7 @@ def run_alert_engine(dry_run: bool = False, shipment_id: str | None = None,
                                   watch_value(rule, shipment, key))
                     continue
 
-                if not condition_passes(rule, state):
+                if not condition_passes(rule, state, shipment, key):
                     result['skipped'] += 1
                     if not dry_run:
                         for i, dt in (pending if catch_up else pending[-1:]):
