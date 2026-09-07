@@ -74,7 +74,7 @@ def create_user():
         except Exception as table_err:
             print(f"Table Insert Failed: {str(table_err)}")
             traceback.print_exc()
-            return jsonify({'error': f'Profile Insert failed: {str(table_err)}'}), 400
+            return jsonify({'error': 'Failed to create user profile. Please try again.'}), 400
 
         print("=== STEP 4: Success ===")
         record_password_history(user_id, data.get('password'))
@@ -101,13 +101,16 @@ def create_user():
     except Exception as e:
         print("=== ERROR ===")
         traceback.print_exc()
-        
-        # Pull out the exact message if Supabase provided one
-        error_message = str(e)
-        
-        # Provide a cleaner error message if it's the duplicate user error
-        if "User already registered" in error_message or "already exists" in error_message:
+
+        # Duplicate-email is the one case worth surfacing verbatim — it's
+        # actionable and reveals nothing the requester didn't already send.
+        # Everything else (DB/network/config errors) stays generic so we
+        # don't leak internal details to the browser's network tab.
+        raw_message = str(e)
+        if "User already registered" in raw_message or "already exists" in raw_message:
             error_message = "An account with this email already exists."
-            
+        else:
+            error_message = "Failed to create user. Please try again."
+
         return jsonify({'error': error_message}), 400
 
