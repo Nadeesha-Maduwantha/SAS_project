@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import MapErrorBoundary from "@/app/components/MapErrorBoundary";
 
 const LeafletMap = dynamic(() => import("@/app/components/LeafletMap"), { ssr: false });
+
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:5000";
 
 // ── Design tokens ─────────────────────────────────────────────
 const T = {
@@ -36,76 +38,29 @@ const T = {
   mono:        "'JetBrains Mono', monospace",
 };
 
-const DEPARTMENTS = ["Operations", "Sales"];
+// Departments are freight modes, matching shipments.transport_mode and the
+// AIR/SEA department cards on the admin dashboard.
+const DEPARTMENTS = ["Air", "Sea"];
 
-const DEPT_DATA = {
-  Operations: {
-    color: "#2563EB", bg: "#EFF6FF", border: "#BFDBFE",
-    head: "Raveendra Perera", headEmail: "r.perera@dartglobal.com",
-    stats: { totalShipments: 42, activeShipments: 18, completedToday: 5, overdueAlerts: 3, pendingAlerts: 9, resolvedToday: 11, teamMembers: 8 },
-    team: [
-      { name: "Amal Perera",       role: "Senior Officer",  shipments: 6, alerts: 2, status: "active" },
-      { name: "Nimal Silva",        role: "Officer",          shipments: 4, alerts: 1, status: "active" },
-      { name: "Kasun Fernando",     role: "Officer",          shipments: 3, alerts: 3, status: "busy"   },
-      { name: "Dilini Jayawardena", role: "Junior Officer",   shipments: 2, alerts: 0, status: "active" },
-      { name: "Thilini Perera",     role: "Officer",          shipments: 3, alerts: 2, status: "active" },
-    ],
-    shipments: [
-      { id: "SHP-2025-0042", client: "Apex Electronics",   route: "LK → JP",  type: "Air", status: "overdue",  milestone: "Departure from Origin",    priority: "critical", eta: "2025-01-20", assignee: "Amal Perera"       },
-      { id: "SHP-2025-0038", client: "Oceanic Traders",    route: "LK → USA", type: "Sea", status: "on_track", milestone: "In Transit / En Route",    priority: "normal",   eta: "2025-01-25", assignee: "Nimal Silva"        },
-      { id: "SHP-2025-0035", client: "GlobalTech Ltd",     route: "LK → UK",  type: "Air", status: "on_track", milestone: "Export Customs Clearance", priority: "normal",   eta: "2025-01-22", assignee: "Kasun Fernando"     },
-      { id: "SHP-2025-0031", client: "Marine Supplies Co", route: "LK → AU",  type: "Sea", status: "at_risk",  milestone: "Cargo Ready Date",         priority: "high",     eta: "2025-01-28", assignee: "Thilini Perera"     },
-      { id: "SHP-2025-0028", client: "Spice Export House", route: "LK → DE",  type: "Air", status: "on_track", milestone: "Booking Confirmation",     priority: "normal",   eta: "2025-01-23", assignee: "Dilini Jayawardena" },
-      { id: "SHP-2025-0025", client: "Ceylon Textiles",    route: "LK → FR",  type: "Sea", status: "on_track", milestone: "Pickup from Shipper",      priority: "normal",   eta: "2025-01-30", assignee: "Amal Perera"        },
-      { id: "SHP-2025-0020", client: "TechParts Inc",      route: "LK → SG",  type: "Air", status: "at_risk",  milestone: "Import Customs Clearance", priority: "high",     eta: "2025-01-19", assignee: "Nimal Silva"        },
-      { id: "SHP-2025-0015", client: "Fresh Produce Ltd",  route: "LK → AE",  type: "Air", status: "overdue",  milestone: "Arrival at Destination",   priority: "critical", eta: "2025-01-18", assignee: "Kasun Fernando"     },
-    ],
-    mapPins: [
-      { lat: 6.9,   lng: 79.9,   id: "SHP-2025-0042", label: "Apex Electronics", status: "overdue",  route: "LK → JP"  },
-      { lat: 25.2,  lng: 55.3,   id: "SHP-2025-0038", label: "Oceanic Traders",  status: "on_track", route: "LK → UAE" },
-      { lat: 35.7,  lng: 140.4,  id: "SHP-2025-0035", label: "GlobalTech",       status: "on_track", route: "LK → JP"  },
-      { lat: -33.9, lng: 151.2,  id: "SHP-2025-0031", label: "Marine Supplies",  status: "at_risk",  route: "LK → AU"  },
-      { lat: 51.5,  lng: -0.1,   id: "SHP-2025-0028", label: "Spice Export",     status: "on_track", route: "LK → UK"  },
-      { lat: 48.9,  lng: 2.3,    id: "SHP-2025-0025", label: "Ceylon Textiles",  status: "on_track", route: "LK → FR"  },
-      { lat: 1.3,   lng: 103.8,  id: "SHP-2025-0020", label: "TechParts",        status: "at_risk",  route: "LK → SG"  },
-      { lat: 40.7,  lng: -74.0,  id: "SHP-2025-0015", label: "Fresh Produce",    status: "overdue",  route: "LK → USA" },
-    ],
-    routes: [
-      { from: [6.9, 79.9], to: [35.7,  140.4], id: "SHP-2025-0042", status: "overdue"  },
-      { from: [6.9, 79.9], to: [25.2,  55.3],  id: "SHP-2025-0038", status: "on_track" },
-      { from: [6.9, 79.9], to: [51.5,  -0.1],  id: "SHP-2025-0035", status: "on_track" },
-      { from: [6.9, 79.9], to: [-33.9, 151.2], id: "SHP-2025-0031", status: "at_risk"  },
-      { from: [6.9, 79.9], to: [48.9,  2.3],   id: "SHP-2025-0025", status: "on_track" },
-      { from: [6.9, 79.9], to: [1.3,   103.8], id: "SHP-2025-0020", status: "at_risk"  },
-      { from: [6.9, 79.9], to: [40.7,  -74.0], id: "SHP-2025-0015", status: "overdue"  },
-    ],
-  },
-  Sales: {
-    color: "#7C3AED", bg: "#F5F3FF", border: "#DDD6FE",
-    head: "Chamari Wickramasinghe", headEmail: "c.wickramasinghe@dartglobal.com",
-    stats: { totalShipments: 28, activeShipments: 12, completedToday: 3, overdueAlerts: 1, pendingAlerts: 5, resolvedToday: 7, teamMembers: 5 },
-    team: [
-      { name: "Samantha De Silva", role: "Senior Sales",  shipments: 5, alerts: 1, status: "active" },
-      { name: "Rohan Mendis",      role: "Sales Officer", shipments: 4, alerts: 2, status: "busy"   },
-      { name: "Priya Fernando",    role: "Sales Officer", shipments: 3, alerts: 0, status: "active" },
-    ],
-    shipments: [
-      { id: "SHP-2025-0040", client: "Colombo Exports", route: "LK → USA", type: "Air", status: "on_track", milestone: "Quotation Sent",      priority: "normal", eta: "2025-01-22", assignee: "Samantha De Silva" },
-      { id: "SHP-2025-0036", client: "Lanka Gems Ltd",  route: "LK → UAE", type: "Air", status: "at_risk",  milestone: "Client Confirmation", priority: "high",   eta: "2025-01-20", assignee: "Rohan Mendis"      },
-      { id: "SHP-2025-0030", client: "Herbal Plus",     route: "LK → DE",  type: "Sea", status: "on_track", milestone: "Invoice Issued",      priority: "normal", eta: "2025-01-28", assignee: "Priya Fernando"    },
-    ],
-    mapPins: [
-      { lat: 40.7, lng: -74.0, id: "SHP-2025-0040", label: "Colombo Exports", status: "on_track", route: "LK → USA" },
-      { lat: 25.2, lng: 55.3,  id: "SHP-2025-0036", label: "Lanka Gems",      status: "at_risk",  route: "LK → UAE" },
-      { lat: 48.9, lng: 2.3,   id: "SHP-2025-0030", label: "Herbal Plus",     status: "on_track", route: "LK → DE"  },
-    ],
-    routes: [
-      { from: [6.9, 79.9], to: [40.7, -74.0], id: "SHP-2025-0040", status: "on_track" },
-      { from: [6.9, 79.9], to: [25.2, 55.3],  id: "SHP-2025-0036", status: "at_risk"  },
-      { from: [6.9, 79.9], to: [48.9, 2.3],   id: "SHP-2025-0030", status: "on_track" },
-    ],
-  },
+const DEPT_THEME = {
+  Air: { color: "#2563EB", bg: "#EFF6FF", border: "#BFDBFE" },
+  Sea: { color: "#0E7490", bg: "#ECFEFF", border: "#A5F3FC" },
 };
+
+// Approximate country centroids [lat, lng] to place map pins from country codes
+// (shipments store no coordinates). ISO-2 codes + a few common aliases.
+const COUNTRY_CENTROIDS = {
+  LK:[7.9,80.8], IN:[22.0,79.0], US:[39.8,-98.6], USA:[39.8,-98.6],
+  GB:[54.0,-2.0], UK:[54.0,-2.0], AU:[-25.3,133.8], DE:[51.2,10.4],
+  FR:[46.2,2.2], SG:[1.35,103.8], AE:[24.0,54.0], UAE:[24.0,54.0],
+  JP:[36.2,138.3], CN:[35.9,104.2], NL:[52.1,5.3], IT:[42.8,12.8],
+  ES:[40.0,-3.7], CA:[56.1,-106.3], BR:[-14.2,-51.9], ZA:[-30.6,22.9],
+  SA:[23.9,45.1], QA:[25.3,51.2], KW:[29.3,47.5], MY:[4.2,101.9],
+  TH:[15.9,100.9], ID:[-0.8,113.9], VN:[14.1,108.3], KR:[35.9,127.8],
+  HK:[22.3,114.2], NZ:[-40.9,174.9], PK:[30.4,69.3], BD:[23.7,90.4],
+  EG:[26.8,30.8], TR:[38.9,35.2], BE:[50.5,4.5], SE:[60.1,18.6],
+};
+const cc = (code) => COUNTRY_CENTROIDS[(code || "").toUpperCase()] || null;
 
 const SHIP_STATUS = {
   on_track: { label: "On Track", color: T.green, bg: T.greenBg, border: T.greenBorder },
@@ -197,13 +152,43 @@ function ShipRow({ ship, router }) {
 export default function DepartmentOverviewPage() {
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const deptParam    = searchParams.get("dept") || "Operations";
+  const rawDept      = searchParams.get("dept") || "Air";
+  // Tolerate ?dept=AIR / air / "Air Freight" as well as the exact labels.
+  const deptParam    = DEPARTMENTS.find(d => rawDept.toUpperCase().includes(d.toUpperCase())) || "Air";
 
-  const [activeDept,  setActiveDept]  = useState(DEPARTMENTS.includes(deptParam) ? deptParam : "Operations");
+  const [activeDept,  setActiveDept]  = useState(deptParam);
   const [selectedPin, setSelectedPin] = useState(null);
   const [shipFilter,  setShipFilter]  = useState("all");
 
-  const dept          = DEPT_DATA[activeDept];
+  const [data,    setData]    = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`${API}/api/dashboard/department-overview?dept=${activeDept}`)
+      .then(r => r.json())
+      .then(res => setData(res.data ?? null))
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, [activeDept]);
+
+  const theme = DEPT_THEME[activeDept];
+  const dept = useMemo(() => {
+    const d = data || {};
+    const stats = { totalShipments: 0, activeShipments: 0, completedToday: 0, overdueAlerts: 0,
+                    pendingAlerts: 0, resolvedToday: 0, teamMembers: 0, ...(d.stats || {}) };
+    const shipments = d.shipments || [];
+    const mapPins = [], routes = [];
+    shipments.forEach(sh => {
+      const to = cc(sh.dest_cc), from = cc(sh.origin_cc) || cc("LK");
+      if (to) {
+        mapPins.push({ lat: to[0], lng: to[1], id: sh.id, label: sh.label || sh.client, status: sh.status, route: sh.route });
+        if (from) routes.push({ from, to, id: sh.id, status: sh.status });
+      }
+    });
+    return { ...theme, head: d.head, headEmail: d.headEmail, stats, team: d.team || [], shipments, mapPins, routes };
+  }, [data, theme]);
+
   const s             = dept.stats;
   const filteredShips = dept.shipments.filter(sh => shipFilter === "all" || sh.status === shipFilter);
   const pinnedShip    = selectedPin ? dept.shipments.find(sh => sh.id === selectedPin) : null;
@@ -237,7 +222,7 @@ export default function DepartmentOverviewPage() {
           {DEPARTMENTS.map(d => {
             const isActive = activeDept === d;
             return (
-              <button key={d} onClick={() => { setActiveDept(d); setSelectedPin(null); setShipFilter("all"); }} style={{ padding: "8px 20px", borderRadius: "8px", border: "none", fontSize: "13px", fontWeight: "600", cursor: "pointer", fontFamily: T.font, background: isActive ? T.cardBg : "transparent", color: isActive ? DEPT_DATA[d].color : T.gray500, boxShadow: isActive ? "0 1px 4px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>
+              <button key={d} onClick={() => { setActiveDept(d); setSelectedPin(null); setShipFilter("all"); }} style={{ padding: "8px 20px", borderRadius: "8px", border: "none", fontSize: "13px", fontWeight: "600", cursor: "pointer", fontFamily: T.font, background: isActive ? T.cardBg : "transparent", color: isActive ? DEPT_THEME[d].color : T.gray500, boxShadow: isActive ? "0 1px 4px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>
                 {d}
               </button>
             );

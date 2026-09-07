@@ -152,6 +152,10 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
   const [result,    setResult]    = useState(null); // { assigned, skipped }
   const [error,     setError]     = useState(null);
 
+  // Milestones whose due-date basis is "manual" — admin picks a date at assign time.
+  const [manualMilestones, setManualMilestones] = useState([]); // [{ key, name }]
+  const [manualDates,      setManualDates]      = useState({});  // { key: 'YYYY-MM-DD' }
+
   // ── Reset on open
   useEffect(() => {
     if (isOpen) {
@@ -167,8 +171,32 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
       setConflictStrategy("skip");
       setResult(null);
       setError(null);
+      setManualDates({});
     }
   }, [isOpen]);
+
+  // Load the template's milestones to find any with a "manual" due-date basis.
+  useEffect(() => {
+    if (!isOpen || !templateId) return;
+    fetch(`${BASE}/api/templates/${templateId}`)
+      .then(r => r.json())
+      .then(res => {
+        const tpl = res.data || {};
+        const links = [...(tpl.template_milestone_library || [])]
+          .sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0));
+        const out = [];
+        for (const link of links) {
+          const isLocal = link.is_local || !link.milestone_lib_id;
+          const cfg = isLocal ? (link.local_config || {}) : (link.milestone_library || {});
+          if (cfg && cfg.expected_date_source === "manual") {
+            const key = isLocal ? String(cfg.milestone_key || cfg.name || "") : String(link.milestone_lib_id);
+            out.push({ key, name: cfg.name || "Milestone" });
+          }
+        }
+        setManualMilestones(out);
+      })
+      .catch(() => setManualMilestones([]));
+  }, [isOpen, templateId]);
 
   if (!isOpen) return null;
 
@@ -248,6 +276,7 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
         body: JSON.stringify({
           shipment_ids:      previewShipments.map(s => s.id),
           conflict_strategy: conflictStrategy,
+          manual_due_dates:  manualDates,
         }),
       });
       const data = await res.json();
@@ -652,6 +681,29 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
                 ? `${previewShipments.length} shipment(s) will get the template — ${conflictCount} replaced, ${previewShipments.length - conflictCount} new.`
                 : `${previewShipments.length - conflictCount} shipment(s) will get the template, ${conflictCount} skipped.`}
             </div>
+
+            {/* Manual due dates — for milestones whose basis is "Set manually when assigning" */}
+            {manualMilestones.length > 0 && (
+              <div style={{ marginTop: "16px", padding: "12px 14px", background: T.amberBg, border: `1px solid ${T.amberBorder}`, borderRadius: "8px" }}>
+                <div style={{ fontSize: "12px", fontWeight: "700", color: T.gray900, marginBottom: "4px" }}>
+                  Set due dates for manual milestones
+                </div>
+                <div style={{ fontSize: "11px", color: T.gray500, marginBottom: "10px", lineHeight: "1.5" }}>
+                  These milestones use a manual due-date basis. The date you pick applies to all selected shipments.
+                </div>
+                {manualMilestones.map(m => (
+                  <div key={m.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginBottom: "6px" }}>
+                    <span style={{ fontSize: "12px", color: T.gray700 }}>{m.name}</span>
+                    <input
+                      type="date"
+                      value={manualDates[m.key] || ""}
+                      onChange={e => setManualDates(p => ({ ...p, [m.key]: e.target.value }))}
+                      style={{ fontSize: "12px", padding: "6px 8px", border: `1px solid ${T.gray300}`, borderRadius: "6px", fontFamily: T.font, color: T.gray900, background: T.cardBg }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {error && (

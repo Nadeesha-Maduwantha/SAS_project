@@ -1,30 +1,14 @@
-from supabase import create_client, Client
-from config import SUPABASE_URL, SUPABASE_KEY
+# Use the shared LAZY client so importing this module never opens a connection
+# (and never crashes at import time if env vars aren't loaded yet). It connects
+# on first actual use instead.
+from services.supabase_client import supabase
 
 
-def get_supabase() -> Client:
-    if not SUPABASE_URL or not SUPABASE_KEY:
-        raise ValueError("Missing Supabase URL or Key in environment variables.")
+def get_supabase():
+    """Back-compat for callers that expect a get_supabase() factory.
+    Returns the shared lazy client."""
+    return supabase
 
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
-
-
-supabase = get_supabase()
-
-def get_all_shipments():
-    response = supabase.table('shipments').select('*').execute()
-    return response.data
-
-supabase = get_supabase()
-
-def get_all_shipments():
-    response = supabase.table('shipments').select('*').execute()
-    return response.data
-    
-    print(f"Connecting to Supabase: {url}")
-    return create_client(url, key)
-
-supabase = get_supabase()
 
 def get_all_shipments():
     response = supabase.table('shipments').select('*').execute()

@@ -477,6 +477,9 @@ def assign_template_to_shipments(template_id):
         data              = request.get_json()
         shipment_ids      = data.get('shipment_ids', [])
         conflict_strategy = data.get('conflict_strategy', 'skip')  # 'skip' or 'replace'
+        # Per-milestone due dates for milestones whose basis is 'manual'.
+        # Keyed by milestone_lib_id (or milestone_key), value 'YYYY-MM-DD'.
+        manual_due_dates  = data.get('manual_due_dates', {}) or {}
  
         if not shipment_ids:
             return jsonify({'error': 'No shipments provided'}), 400
@@ -549,10 +552,17 @@ def assign_template_to_shipments(template_id):
             # All rows share the same key set (built by _snapshot_row), so a
             # single batched insert is safe here and far faster than one-by-one.
             shipment = shipments_map.get(shipment_id, {'id': shipment_id})
-            new_rows = [
-                _snapshot_row(shipment, template_id, cfg, rules, seq, lib_id)
-                for seq, (cfg, rules, lib_id) in enumerate(milestone_specs)
-            ]
+            new_rows = []
+            for seq, (cfg, rules, lib_id) in enumerate(milestone_specs):
+                row = _snapshot_row(shipment, template_id, cfg, rules, seq, lib_id)
+                # 'manual' basis: use the date the admin picked at assignment.
+                if cfg.get('expected_date_source') == 'manual':
+                    md = manual_due_dates.get(str(lib_id)) \
+                        or manual_due_dates.get(cfg.get('milestone_key') or '') \
+                        or manual_due_dates.get(cfg.get('name') or '')
+                    if md:
+                        row['due_date'] = md
+                new_rows.append(row)
 
             # Preserve prior progress on Replace: a milestone that already existed
             # (matched by identity) keeps its status / completed_date / due_date, so

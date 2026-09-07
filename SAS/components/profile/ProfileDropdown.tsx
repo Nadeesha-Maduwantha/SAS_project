@@ -3,23 +3,20 @@
 
 // =============================================================
 //  File: components/profile/ProfileDropdown.tsx
-//  Adds dark/light mode toggle switch to the dropdown.
 // =============================================================
 
 import { useState, useEffect, useRef } from 'react';
-import { User, LogOut, Sun, Moon } from 'lucide-react';
+import { User, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useTheme } from '@/contexts/ThemeContext';
-import { apiUrl } from '@/lib/api';
 
 export default function ProfileDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser]     = useState<{ full_name: string; role: string; email: string; avatarUrl: string | null }>(
     { full_name: '', role: '', email: '', avatarUrl: null }
   );
+  const [syncFailed, setSyncFailed] = useState(false);
   const dropdownRef         = useRef<HTMLDivElement>(null);
   const router              = useRouter();
-  const { isDark, toggleTheme } = useTheme();
 
   // Load cached user from localStorage immediately
   useEffect(() => {
@@ -60,9 +57,15 @@ export default function ProfileDropdown() {
             role:      data.user.role     || localStorage.getItem('user_role') || '',
             avatarUrl: data.user.avatarUrl || null,
           });
+          setSyncFailed(false);
+        } else {
+          // Falls back to whatever's cached in localStorage/state — this
+          // just flags that what's shown may be stale.
+          setSyncFailed(true);
         }
       } catch (err) {
         console.error('ProfileDropdown: failed to fetch user', err);
+        setSyncFailed(true);
       }
     };
     fetchProfile();
@@ -157,6 +160,15 @@ export default function ProfileDropdown() {
             </div>
           </div>
 
+          {syncFailed && (
+            <p
+              className="px-4 py-1.5 text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20"
+              title="Could not reach the server — showing your last cached profile info."
+            >
+              ⚠ Showing cached info — couldn't refresh from server
+            </p>
+          )}
+
           <hr className="border-gray-100 dark:border-slate-700 mx-2" />
 
           {/* Actions */}
@@ -172,34 +184,6 @@ export default function ProfileDropdown() {
               <User size={16} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
               My Profile
             </button>
-
-            {/* ── Dark / Light mode toggle ───────────────────── */}
-            <div className="flex items-center justify-between px-4 py-2.5">
-              <div className="flex items-center gap-3">
-                {isDark
-                  ? <Moon size={16} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
-                  : <Sun  size={16} className="text-slate-400 flex-shrink-0" />
-                }
-                <span className="text-[13px] text-slate-600 dark:text-slate-300">
-                  {isDark ? 'Dark Mode' : 'Light Mode'}
-                </span>
-              </div>
-
-              {/* Toggle switch */}
-              <button
-                onClick={toggleTheme}
-                aria-label="Toggle dark mode"
-                className={`relative inline-flex h-5 w-9 items-center rounded-full
-                            transition-colors duration-300 focus:outline-none
-                            ${isDark ? 'bg-blue-600' : 'bg-gray-200'}`}
-              >
-                <span
-                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow
-                              transition-transform duration-300
-                              ${isDark ? 'translate-x-4' : 'translate-x-1'}`}
-                />
-              </button>
-            </div>
 
           </div>
 

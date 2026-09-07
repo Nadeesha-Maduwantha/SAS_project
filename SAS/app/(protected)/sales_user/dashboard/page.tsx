@@ -2,6 +2,7 @@
 // The shipment alert feed was replaced by a personal notepad.
 import UserDashboardMetricCards from '@/components/shared/UserDashboardMetricCards';
 import NotePad from '@/components/shared/NotePad';
+import AlertFeedTable from '@/components/shared/AlertFeedTable';
 import PinnedTableStatCards from '@/components/shared/PinnedTableStatCard';
 
 export default function SalesDashboardPage() {
@@ -19,7 +20,7 @@ export default function SalesDashboardPage() {
       </h1>
 
       {/* My Shipments + My Alerts stat cards */}
-      <UserDashboardMetricCards />
+      <UserDashboardMetricCards scope="sales" />
 
       {/* Pinned custom table stat cards */}
       <PinnedTableStatCards />
@@ -27,6 +28,16 @@ export default function SalesDashboardPage() {
       {/* Personal notepad — private to the signed-in user */}
       <div style={{ marginTop: 14 }}>
         <NotePad title="My Notes" subtitle="Private to you — link a note to one of your shipments" />
+      </div>
+
+      {/* Scoped alert feed — overdue / delayed milestones for this user */}
+      <div style={{ marginTop: 14 }}>
+        <AlertFeedTable
+          title="My Shipment Alert Feed"
+          apiBase="http://localhost:5000"
+          maxRows={8}
+          scope="sales"
+        />
       </div>
     </div>
   );

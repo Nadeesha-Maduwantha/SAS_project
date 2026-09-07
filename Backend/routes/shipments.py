@@ -165,40 +165,17 @@ def get_shipment_stats():
     All optional; with none of them the totals cover every shipment.
     """
     try:
-        query = (
-            supabase.table('shipments')
-            .select('id, milestones, llm_identified_type')
-        )
+        from services.scope import read_scope, allowed_shipment_ids
+        role, email, dept = read_scope(request.args)
+        allowed = allowed_shipment_ids(role, email, dept)   # None = all
+        if allowed is not None and not allowed:
+            return jsonify({"data": {'total': 0, 'pending': 0, 'delivered': 0, 'delayed': 0}}), 200
 
-        # ilike, not eq — transport_mode is stored as both 'AIR' and 'Air'.
-        mode = (request.args.get('mode') or '').strip().upper()
-        if mode in ('AIR', 'SEA'):
-            query = query.ilike('transport_mode', mode)
-
-        sales_email = (request.args.get('sales_user_email') or '').strip()
-        if sales_email:
-            query = query.ilike('sales_user_email', sales_email)
-
-        # An operation user is assigned to milestones, not to shipments, so
-        # resolve their milestones to shipment ids first.
-        assigned_email = (request.args.get('assigned_email') or '').strip()
-        if assigned_email:
-            ms_response = (
-                supabase.table('shipment_milestones')
-                .select('shipment_id')
-                .ilike('assigned_email', assigned_email)
-                .execute()
-            )
-            shipment_ids = list({
-                m['shipment_id'] for m in (ms_response.data or []) if m.get('shipment_id')
-            })
-            if not shipment_ids:
-                return jsonify({
-                    "data": {'total': 0, 'pending': 0, 'delivered': 0, 'delayed': 0}
-                }), 200
-            query = query.in_('id', shipment_ids)
-
-        shipments = query.execute().data or []
+        q = supabase.table('shipments').select('id, milestones, llm_identified_type')
+        if allowed is not None:
+            q = q.in_('id', list(allowed))
+        response = q.execute()
+        shipments = response.data or []
 
         stats = {
             'total': len(shipments),
@@ -442,7 +419,13 @@ def get_all_milestones():
     Milestone.status is one of completed | overdue | delayed | pending.
     """
     try:
-        shipments_res = (
+        from services.scope import read_scope, allowed_shipment_ids
+        role, email, dept = read_scope(request.args)
+        allowed = allowed_shipment_ids(role, email, dept)   # None = all
+        if allowed is not None and not allowed:
+            return jsonify({"data": []}), 200
+
+        q = (
             supabase.table('shipments')
             .select(
                 'id, job_number, house_bill_number, transport_mode, branch,'
@@ -450,11 +433,13 @@ def get_all_milestones():
                 'origin_city, origin_country_code,'
                 'destination_city, destination_country_code,'
                 'current_stage, carrier, is_priority,'
-                'created_by_name, created_by_email, sales_user_name'
+                'created_by_name, created_by_email, sales_user_email, sales_user_name'
             )
             .order('created_at', desc=True)
-            .execute()
         )
+        if allowed is not None:
+            q = q.in_('id', list(allowed))
+        shipments_res = q.execute()
         shipments = shipments_res.data or []
         if not shipments:
             return jsonify({"data": []}), 200

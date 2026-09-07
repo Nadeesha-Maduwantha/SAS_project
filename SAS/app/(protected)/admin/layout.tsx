@@ -23,7 +23,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       {/*
         Invisible click-catcher overlay.
         Renders only when nav is expanded.
-        Sits between the nav (z-index 100) and page content (z-index 0).
+        Sits between the nav (z-index 1000) and page content (z-index 0).
         Clicking it collapses the nav without triggering page interactions.
       */}
       {expanded && (
@@ -32,7 +32,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           style={{
             position:   'fixed',
             inset:      0,
-            zIndex:     99,
+            zIndex:     999,
             background: 'transparent',
             cursor:     'default',
           }}
