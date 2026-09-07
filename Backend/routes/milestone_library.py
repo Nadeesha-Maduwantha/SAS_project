@@ -217,6 +217,9 @@ def create_library_milestone():
                 'stop_condition_field':  rule.get('stop_condition_field'),
                 'stop_condition_type':   rule.get('stop_condition_type'),
                 'stop_condition_value':  rule.get('stop_condition_value'),
+                'condition_field':       rule.get('condition_field'),
+                'condition_operator':    rule.get('condition_operator'),
+                'condition_value':       rule.get('condition_value'),
                 'is_active':             True,
             }))
 
@@ -315,6 +318,9 @@ def update_library_milestone(milestone_id):
                     'stop_condition_field':  rule.get('stop_condition_field'),
                     'stop_condition_type':   rule.get('stop_condition_type'),
                     'stop_condition_value':  rule.get('stop_condition_value'),
+                    'condition_field':       rule.get('condition_field'),
+                    'condition_operator':    rule.get('condition_operator'),
+                    'condition_value':       rule.get('condition_value'),
                     'is_active':             True,
                 }))
             supabase.table('milestone_alert_rules').insert(rule_rows).execute()

@@ -33,6 +33,7 @@ from routes.field_map import field_map_bp
 from routes.system_settings import system_settings_bp
 from routes.field_definitions import field_definitions_bp
 from routes.field_watch import field_watch_bp
+from routes.department_overview import department_overview_bp
 from routes.alert_engine_routes import alert_engine_bp
 from routes.sales_digest_routes import sales_digest_bp
 
@@ -290,6 +291,7 @@ app.register_blueprint(alert_engine_bp)
 app.register_blueprint(sales_digest_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(field_watch_bp)
+app.register_blueprint(department_overview_bp)
 
 @app.route("/health")
 def health_check():
