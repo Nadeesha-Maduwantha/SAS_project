@@ -629,7 +629,8 @@ def assign_template_to_shipments(template_id):
             # Check for existing milestones on this shipment
             existing = (
                 supabase.table('shipment_milestones')
-                .select('id, name, milestone_lib_id, status, completed_date, due_date, milestone_snapshot')
+                .select('id, name, milestone_lib_id, status, completed_date, due_date, '
+                        'milestone_snapshot, assigned_to, assigned_email')
                 .eq('shipment_id', shipment_id)
                 .execute()
             )
@@ -686,6 +687,12 @@ def assign_template_to_shipments(template_id):
             # (matched by identity) keeps its status / completed_date / due_date, so
             # a previously overdue, delayed or completed milestone is NOT reset to a
             # fresh 'pending' just because the template was re-assigned.
+            #
+            # The responsible person is preserved the same way. _snapshot_row
+            # defaults assigned_to/assigned_email to the shipment's created_by,
+            # which would otherwise overwrite a person the admin picked by hand
+            # (PATCH /api/milestones/<id>) — and blank the field entirely on
+            # shipments that carry no created_by_email.
             if conflict_strategy == 'replace' and existing.data:
                 prev = {_identity(m): m for m in existing.data}
                 for row in new_rows:
@@ -696,6 +703,10 @@ def assign_template_to_shipments(template_id):
                         row['completed_date'] = old.get('completed_date')
                         if old.get('due_date'):
                             row['due_date'] = old['due_date']
+                        if old.get('assigned_email'):
+                            row['assigned_email'] = old['assigned_email']
+                        if old.get('assigned_to'):
+                            row['assigned_to'] = old['assigned_to']
 
             if new_rows:
                 supabase.table('shipment_milestones').insert(new_rows).execute()
