@@ -16,7 +16,7 @@ const STAGE_PROGRESS_MAP: Record<string, number> = {
   'Booking Approval':             15,
   'Shipment Approval':            25,
   'Delivery Date':                45,
-  'Delivered to CFS':             65,
+  'Delivered to CFS':             100,
   'Import Delivery Instructions': 80,
   'Delivered':                    100,
   'Delayed':                      40,

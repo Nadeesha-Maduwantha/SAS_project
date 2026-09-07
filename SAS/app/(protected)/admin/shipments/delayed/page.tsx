@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
 import { AlertTriangle, Flag, Clock, FileText } from 'lucide-react'
 import { getDelayedShipments, getDelayedStats } from '@/lib/services/shipment.service'
 import { ShipmentStatusBadge } from '@/components/shipments/ShipmentStatusBadge'
@@ -12,6 +11,8 @@ import { ShipmentFilter } from '@/components/shipments/ShipmentFilter'
 import { exportDelayedShipmentsPDF } from '@/lib/Utils/exportPDF'
 import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
 import ShipmentDetailModal from '@/components/shipments/ShipmentDetailModal'
+import EmailComposeModal from '@/components/EmailComposeModal'
+import { AlertData } from '@/components/AlertDetailsModal'
 import { ShipmentCard } from '@/components/shipments/ShipmentCard'
 import { ShipmentViewToggle, ShipmentView } from '@/components/shipments/ShipmentViewToggle'
 import {
@@ -40,10 +41,27 @@ const DEFAULT_STATS: DelayedStats = {
   customsIssues: 0,
 }
 
+// Build the email-compose payload from a shipment row (used by "Take Action").
+function buildEmail(shipment: Shipment): AlertData {
+  const stage  = shipment.llmIdentifiedType ?? shipment.currentStage ?? 'Unknown'
+  const pickup = shipment.pickupDateStatus ?? '—'
+  const delayed = String(pickup).toLowerCase().includes('delay')
+  return {
+    id:            shipment.jobNumber ?? shipment.id,
+    shipment_id:   shipment.id,
+    client:        shipment.consigneeName ?? 'Customer',
+    priority:      delayed ? 'Critical' : 'Medium',
+    milestone:     String(stage),
+    milestoneIcon: null,
+    issue:         `Shipment ${shipment.jobNumber ?? shipment.id} — current stage "${stage}", pickup status "${pickup}".`,
+    delay:         shipment.delayDays ? `${shipment.delayDays} day${shipment.delayDays !== 1 ? 's' : ''}` : null,
+    status:        'Get Action',
+  }
+}
+
 //Component
 
 export default function DelayedShipmentsPage() {
-  const router = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
   const [shipments, setShipments] = useState<Shipment[]>([])
 
@@ -59,6 +77,7 @@ export default function DelayedShipmentsPage() {
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>(DEFAULT_FILTERS)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null)
+  const [emailData, setEmailData] = useState<AlertData | null>(null)
   const [view, setView] = useState<ShipmentView>('table')
 
   // To fetching data
@@ -122,7 +141,7 @@ export default function DelayedShipmentsPage() {
       <button
         onClick={(e) => {
           e.stopPropagation()
-          router.push(`/admin/shipments/${shipment.id}/action`)
+          setEmailData(buildEmail(shipment))
         }}
         className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
       >
@@ -324,6 +343,12 @@ export default function DelayedShipmentsPage() {
         isOpen={!!selectedShipment}
         onClose={() => setSelectedShipment(null)}
         shipment={selectedShipment}
+      />
+
+      <EmailComposeModal
+        isOpen={!!emailData}
+        onClose={() => setEmailData(null)}
+        alertData={emailData}
       />
     </div>
   )

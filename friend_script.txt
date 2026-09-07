@@ -1,0 +1,65 @@
+===== PAGE 1 =====
+    DURDANS HOSPITAL LIMS — SIMPLIFIED DEMO SCRIPT 
+Presenter: Minothma Sithumini 
+Total Time: Exactly 4 Minutes (Comfortable Speaking Pace: ~480 words) 
+Part 1 – Introduction [0:00 – 0:20] 
+"Good morning, and thank you Bimakshi. I am Minothma Sithumini, and my contribution covers Pre-
+Analytical Accessioning, Analytical MLT Processing, and Internal Quality Control. 
+Let me walk you through the live workflow, starting with sample accessioning." 
+Part 2 – Sample Accessioning & Details [0:20 – 0:50] 
+[Open Lab Reception → Reception Worklist] 
+"This is the Sample Accessioning Dashboard. At the top, stat cards display our 3-Tier Priority Queue: 
+STAT, Urgent, and Normal — ensuring emergency ICU samples are prioritized immediately. 
+Below, receptionists can search by barcode or patient ID, and filter by priority or test type. 
+[Click Details on a sample] 
+Clicking Details opens the specimen's Chain-of-Custody View, tracking collection time, phlebotomist, 
+container type (like this SST Gold), and patient demographics for complete traceability. 
+Now, let's click Verify Sample to begin quality checks." 
+Part 3 – Pre-Analytical Quality Verification [0:50 – 1:35] 
+[Open Quality Verification] 
+"This is our ISO 15189 5-Point Quality Verification Gate. It verifies: 
+• Barcode legibility, 
+• Correct container, 
+• Volume adequacy (≥ 3 mL), 
+• Specimen integrity (no hemolysis or clots), and 
+• Collection window. 
+If the barcode is damaged, we can click Print Barcode to reprint without duplicating records. 
+If any check fails (e.g., Hemolysis), clicking Reject Sample captures standardized CAP rejection codes 
+and triggers an automatic recollection request to the phlebotomist. 
+(Click Accept and Queue for Analysis) When all 5 checks pass, clicking Accept transitions the specimen 
+directly into the MLT worklist. 
+[Briefly mention Logs] 
+We also support Accessioning Logs with Excel Export for daily audit reporting." 
+ 
+ 
+===== PAGE 2 =====
+Part 4 – MLT Worklist & CDS Result Entry [1:35 – 2:30] 
+[Switch to MLT → Sample Worklist → Click Open on a sample] 
+"Moving to the Analytical Phase, the MLT Sample Worklist organizes pending tests by STAT priority. 
+Opening a sample brings us into Result Entry: As results are entered, our Clinical Decision Support 
+Engine evaluates reference ranges and auto-flags values — Normal in green, High in orange, and 
+dangerous values trigger CRITICAL HIGH panic alerts. 
+Beside the results, an automated Delta-Check Algorithm (Δ% ≥ 40%) compares today's value against the 
+patient's historical baseline to intercept specimen mix-ups. 
+I also select the analyzer (e.g., Cobas e411) and can add technical notes. In line with ISO 15189, Save 
+Draft saves partial work without locking, while Submit for Verification validates all fields and legally 
+locks the record for supervisor verification." 
+Part 5 – QC Dashboard & Instrument Telemetry [2:30 – 3:20] 
+[Switch to QC Dashboard] 
+"To ensure analytical precision, here is the Internal Quality Control (IQC) Dashboard, powered by a 
+Westgard Multi-Rules Engine (1₂ₛ, 1₃ₛ, 2₂ₛ with Z-scores). 
+[Click Audit history toggle] 
+Technologists can toggle between Today's active runs and the Full Audit History with exact calendar 
+dates and timestamps. 
+[Switch to Instruments] 
+On the Instrument Telemetry Hub, we eliminated all static mock data. Analyzer statuses, daily test 
+counts (Tests today), and analyte-level QC statuses are calculated 100% live from PostgreSQL database 
+aggregations with background auto-polling." 
+Part 6 – All Worklist & Handoff [3:20 – 4:00] 
+[Switch to All Worklist] 
+"Finally, the All Worklist provides a cross-department radar across the entire laboratory. Supervisors 
+can track any sample's real-time journey through Collected, Accepted, Entered, or Dispatched states 
+with full history logs. 
+Overall, my contribution establishes a traceable, ISO-compliant, and mathematically verified pipeline 
+from reception to diagnostic release. 
+Thank you. I'll now hand over to Lasith, who will continue the demo with his part." 

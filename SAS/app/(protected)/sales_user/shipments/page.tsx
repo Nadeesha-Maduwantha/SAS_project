@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
 import { Package, Truck, AlertTriangle, CheckCircle } from 'lucide-react'
 import { getShipmentsBySalesUser } from '@/lib/services/shipment.service'
 import { ShipmentStatusBadge } from '@/components/shipments/ShipmentStatusBadge'
@@ -10,8 +9,6 @@ import { ShipmentPagination } from '@/components/shipments/ShipmentPagination'
 import { ShipmentFilter } from '@/components/shipments/ShipmentFilter'
 import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
 import ShipmentDetailModal from '@/components/shipments/ShipmentDetailModal'
-import EmailComposeModal from '@/components/EmailComposeModal'
-import { AlertData } from '@/components/AlertDetailsModal'
 import { ShipmentCard } from '@/components/shipments/ShipmentCard'
 import { ShipmentViewToggle, ShipmentView } from '@/components/shipments/ShipmentViewToggle'
 import { exportAllShipmentsPDF } from '@/lib/Utils/exportPDF'
@@ -52,27 +49,7 @@ function formatPickupDate(date: string | undefined): string {
 
 //Component
 
-// Build the email-compose payload from a shipment row (used by "Take Action").
-function buildEmail(shipment: Shipment): AlertData {
-  const stage  = shipment.llmIdentifiedType ?? shipment.currentStage ?? 'Unknown'
-  const pickup = shipment.pickupDateStatus ?? '—'
-  const delayed = String(pickup).toLowerCase().includes('delay')
-  return {
-    id:            shipment.jobNumber ?? shipment.id,
-    shipment_id:   shipment.id,
-    client:        shipment.consigneeName ?? 'Customer',
-    priority:      delayed ? 'Critical' : 'Medium',
-    milestone:     String(stage),
-    milestoneIcon: null,
-    issue:         `Shipment ${shipment.jobNumber ?? shipment.id} — current stage "${stage}", pickup status "${pickup}".`,
-    delay:         shipment.delayDays ? `${shipment.delayDays} day${shipment.delayDays !== 1 ? 's' : ''}` : null,
-    status:        'Get Action',
-  }
-}
-
 export default function SalesUserShipmentsPage() {
-  const router = useRouter()
-
   // staffCode and name come from useAuth() instead of hardcoded
   // module-level constants (SALES_USER_STAFF_CODE / SALES_USER_NAME).
   // When auth teammate connects real sessions, only useAuth.ts changes —
@@ -189,26 +166,6 @@ export default function SalesUserShipmentsPage() {
     </div>
   )
 
-  // Shared "Take Action" button — used by both the table row and the card
-  // footer. stopPropagation keeps it from also triggering the row/card click
-  // (which opens the detail modal).
-  function renderAction(shipment: Shipment) {
-    if (shipment.llmIdentifiedType?.toLowerCase().includes('delivered')) {
-      return <span className="text-xs text-gray-400 font-medium">Archive</span>
-    }
-    return (
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          router.push(`/sales_user/shipments/${shipment.id}/action`)
-        }}
-        className="px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-      >
-        Take Action
-      </button>
-    )
-  }
-
   //Render
   return (
     <div className="p-6 max-w-[1400px]">
@@ -305,13 +262,12 @@ export default function SalesUserShipmentsPage() {
                   <th className="text-left px-5 py-3">Transport Mode</th>
                   <th className="text-left px-5 py-3">Pickup Date</th>
                   <th className="text-left px-5 py-3">Pickup Status</th>
-                  <th className="text-left px-5 py-3">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {paginated.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-5 py-10 text-center text-sm text-gray-400">
+                    <td colSpan={6} className="px-5 py-10 text-center text-sm text-gray-400">
                       No shipments found
                     </td>
                   </tr>
@@ -409,11 +365,6 @@ export default function SalesUserShipmentsPage() {
                         })() : <span className="text-xs text-gray-400">—</span>}
                       </td>
 
-                      {/* Action */}
-                      <td className="px-5 py-3.5">
-                        {renderAction(shipment)}
-                      </td>
-
                     </tr>
                   )
                 })}
@@ -431,7 +382,6 @@ export default function SalesUserShipmentsPage() {
                     key={shipment.id}
                     shipment={shipment}
                     onClick={() => setSelectedShipment(shipment)}
-                    actionSlot={renderAction(shipment)}
                   />
                 ))}
               </div>

@@ -35,7 +35,7 @@ function formatPickupDate(date: string | undefined): string {
   })
 }
 
-//Component 
+//Component
 
 export default function SuperUserArchiveShipmentsPage() {
   // department comes from useAuth() instead of a hardcoded
@@ -97,7 +97,7 @@ export default function SuperUserArchiveShipmentsPage() {
     </div>
   )
 
-  //Render 
+  //Render
   return (
     <div className="p-6">
 
