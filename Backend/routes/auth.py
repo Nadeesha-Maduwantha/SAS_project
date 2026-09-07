@@ -4,6 +4,7 @@ from services.supabase_service import get_supabase
 from services.security_settings_service import get_login_security_settings
 from utils.auth_helper import require_auth, get_current_user
 from utils.access_logger import log_access_event
+from utils.departments import normalize_department, is_super_user
 from datetime import datetime, timedelta, timezone
 import os
 
@@ -146,6 +147,17 @@ def login():
             'password': password
         })
         user_id = str(response.user.id)
+
+        # A super user runs exactly one freight desk and the whole dashboard is
+        # built from it, so with no Air/Sea department there is nothing to show.
+        # Refuse the login rather than landing them on an empty dashboard.
+        # Checked after authentication so it cannot be used to probe accounts.
+        if profile_data and is_super_user(profile_data.get('role')):
+            if normalize_department(profile_data.get('department')) is None:
+                return jsonify({
+                    'error': 'Your super user account has no Air or Sea department set. '
+                             'Ask an administrator to set it before logging in.'
+                }), 403
 
         # 3. SAFELY RESET FAILED ATTEMPTS / LOCK STATE ON SUCCESS
         if profile_data and (

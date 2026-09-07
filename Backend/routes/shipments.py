@@ -140,7 +140,8 @@ def get_archived_shipments_by_department(mode):
         response = (
             supabase.table('shipments')
             .select('*')
-            .eq('transport_mode', mode.upper())
+            # ilike, not eq — transport_mode is stored as both 'AIR' and 'Air'.
+            .ilike('transport_mode', mode)
             .order('created_at', desc=True)
             .execute()
         )
@@ -155,14 +156,49 @@ def get_shipment_stats():
     """
     select only the columns needed for counting instead of select('*').
     Fetching all columns of all rows just to count them wastes bandwidth.
+
+    ?mode=AIR|SEA           one freight desk — a super user only sees their own
+    ?sales_user_email=<e>    shipments owned by one sales user
+    ?assigned_email=<e>      shipments with a milestone assigned to this person
+                             (operation users own milestones, not shipments)
+
+    All optional; with none of them the totals cover every shipment.
     """
     try:
-        response = (
+        query = (
             supabase.table('shipments')
             .select('id, milestones, llm_identified_type')
-            .execute()
         )
-        shipments = response.data or []
+
+        # ilike, not eq — transport_mode is stored as both 'AIR' and 'Air'.
+        mode = (request.args.get('mode') or '').strip().upper()
+        if mode in ('AIR', 'SEA'):
+            query = query.ilike('transport_mode', mode)
+
+        sales_email = (request.args.get('sales_user_email') or '').strip()
+        if sales_email:
+            query = query.ilike('sales_user_email', sales_email)
+
+        # An operation user is assigned to milestones, not to shipments, so
+        # resolve their milestones to shipment ids first.
+        assigned_email = (request.args.get('assigned_email') or '').strip()
+        if assigned_email:
+            ms_response = (
+                supabase.table('shipment_milestones')
+                .select('shipment_id')
+                .ilike('assigned_email', assigned_email)
+                .execute()
+            )
+            shipment_ids = list({
+                m['shipment_id'] for m in (ms_response.data or []) if m.get('shipment_id')
+            })
+            if not shipment_ids:
+                return jsonify({
+                    "data": {'total': 0, 'pending': 0, 'delivered': 0, 'delayed': 0}
+                }), 200
+            query = query.in_('id', shipment_ids)
+
+        shipments = query.execute().data or []
 
         stats = {
             'total': len(shipments),
@@ -243,7 +279,9 @@ def get_department_stats(mode):
         response = (
             supabase.table('shipments')
             .select('milestones, llm_identified_type, llm_note')
-            .eq('transport_mode', mode.upper())
+            # ilike, not eq — transport_mode is stored as both 'AIR' and 'Air',
+            # and eq('AIR') silently drops the odd-cased rows.
+            .ilike('transport_mode', mode)
             .execute()
         )
         shipments = response.data or []
@@ -277,14 +315,22 @@ def get_branch_stats():
 
     Branches with no delays are still returned so the caller can show
     the full picture rather than only the bad ones.
+
+    ?mode=AIR|SEA restricts the breakdown to one freight desk — a super user
+    only ever sees their own. Omitted or unrecognised means all shipments.
     """
     try:
-        response = (
+        query = (
             supabase.table('shipments')
             .select('branch, milestones, llm_identified_type')
-            .execute()
         )
-        shipments = response.data or []
+
+        # ilike, not eq — transport_mode is stored as both 'AIR' and 'Air'.
+        mode = (request.args.get('mode') or '').strip().upper()
+        if mode in ('AIR', 'SEA'):
+            query = query.ilike('transport_mode', mode)
+
+        shipments = query.execute().data or []
 
         totals: dict[str, int] = {}
         delayed: dict[str, int] = {}
@@ -323,7 +369,8 @@ def get_shipments_by_department(mode):
         response = (
             supabase.table('shipments')
             .select('*')
-            .eq('transport_mode', mode.upper())
+            # ilike, not eq — transport_mode is stored as both 'AIR' and 'Air'.
+            .ilike('transport_mode', mode)
             .not_.ilike('llm_identified_type', '%delivered%')
             .order('created_at', desc=True)
             .execute()
