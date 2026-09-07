@@ -8,6 +8,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { User, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { apiUrl } from '@/lib/api';
 
 export default function ProfileDropdown() {
   const [isOpen, setIsOpen] = useState(false);

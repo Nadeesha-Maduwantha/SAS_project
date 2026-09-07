@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Bell, AlertTriangle, KeyRound, ShieldAlert, Monitor } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 type NotificationType = 'failed_login' | 'password_changed' | 'permission_changed' | 'new_device_login';
 
@@ -52,7 +53,7 @@ export default function NotificationsDropdown() {
       const token = localStorage.getItem('access_token');
       if (!token) return;
       try {
-        const res = await fetch('http://localhost:5000/api/notifications', {
+        const res = await fetch(apiUrl('/api/notifications'), {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         });
         const data = await res.json();

@@ -29,13 +29,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { NotebookPen, Plus, Package } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { normalizeRole } from '@/lib/roles';
+import { apiUrl, authHeaders } from '@/lib/api';
 import '@/styles/AdminStyles/FeedTable.css';
 import '@/styles/AdminStyles/NotePad.css';
-
-const API =
-  process.env.NEXT_PUBLIC_API_URL ??
-  process.env.NEXT_PUBLIC_BACKEND_URL ??
-  'http://127.0.0.1:5000';
 
 type Note = {
   id:                  string;
@@ -63,11 +59,6 @@ function formatWhen(iso: string): string {
   return d.toLocaleString('en-US', {
     month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit',
   });
-}
-
-function authHeaders() {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
-  return { Authorization: `Bearer ${token}` };
 }
 
 /**
@@ -115,7 +106,7 @@ export default function NotePad({
     if (!email) { setLoading(false); return; }
     try {
       setError(null);
-      const res = await fetch(`${API}/api/notes?email=${encodeURIComponent(email)}`, {
+      const res = await fetch(apiUrl(`/api/notes?email=${encodeURIComponent(email)}`), {
         cache: 'no-store',
       });
       const json = await res.json();
@@ -140,7 +131,7 @@ export default function NotePad({
     if (!query) { setShipments([]); return; }
 
     let cancelled = false;
-    fetch(`${API}/api/shipments${query}`, { headers: authHeaders(), cache: 'no-store' })
+    fetch(apiUrl(`/api/shipments${query}`), { headers: authHeaders(), cache: 'no-store' })
       .then(r => r.json())
       .then(json => {
         if (cancelled) return;
@@ -182,8 +173,8 @@ export default function NotePad({
       const isNew = editing === 'new';
       const res = await fetch(
         isNew
-          ? `${API}/api/notes`
-          : `${API}/api/notes/${(editing as Note).id}?email=${encodeURIComponent(email)}`,
+          ? apiUrl('/api/notes')
+          : apiUrl(`/api/notes/${(editing as Note).id}?email=${encodeURIComponent(email)}`),
         {
           method: isNew ? 'POST' : 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -219,7 +210,7 @@ export default function NotePad({
 
     try {
       const res = await fetch(
-        `${API}/api/notes/${editing.id}?email=${encodeURIComponent(email)}`,
+        apiUrl(`/api/notes/${editing.id}?email=${encodeURIComponent(email)}`),
         { method: 'DELETE' },
       );
       const json = await res.json();

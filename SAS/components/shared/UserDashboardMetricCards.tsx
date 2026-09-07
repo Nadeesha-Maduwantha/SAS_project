@@ -4,26 +4,19 @@
 //  UserDashboardMetricCards.tsx
 //  Path: components/shared/UserDashboardMetricCards.tsx
 //
-//  Stat cards for Sales + Operations dashboards, scoped to the signed-in user.
+//  Stat cards for Sales + Operations dashboards, scoped to the viewer.
 //
-//  The two roles own shipments differently:
-//    operation user — assigned to individual milestones (assigned_email)
-//    sales user     — owns the shipment itself (sales_user_email)
-//  so the query param depends on the role, not just the email.
+//  Both endpoints do the scoping server-side from ?role=&email=
+//  (or &department= for a super user) — see Backend/services/scope.py.
+//  The card just passes that query string through.
 // =============================================================
 
 import { useState, useEffect } from 'react';
 import { Package, AlertTriangle, CheckCircle2, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
-
-const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+import { apiUrl, authHeaders } from '@/lib/api';
 
 type Scope = 'admin' | 'operation' | 'sales' | 'super';
-
-function authHeaders() {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
-  return { Authorization: `Bearer ${token}` };
-}
 
 // Build the ?role=&email=&department= scope query for the current viewer.
 function scopeQuery(scope: Scope | undefined, u: { email?: string; department?: string }) {
@@ -61,30 +54,16 @@ function StatRow({ icon, label, value, color = 'var(--gray-900)' }: {
 
 // ── My Shipments card ──────────────────────────────────────────────────────────
 function MyShipmentsCard({ qs }: { qs: string }) {
-  const { email, role } = useAuth();
   const [stats,   setStats]   = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const query = ownershipQuery(role, email, 'sales_user_email');
-    fetch(`${API}/api/shipments/stats${query}${qs}`, { headers: authHeaders() })
+    fetch(apiUrl(`/api/shipments/stats${qs}`), { headers: authHeaders() })
       .then(r => r.json())
       .then(d => setStats(d.data))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [role, email]);
-
-  const total     = stats?.total     ?? 0;
-  const completed = stats?.delivered ?? 0;
-  const delayed   = stats?.delayed   ?? 0;
-  // Whatever is neither finished nor flagged late is still moving.
-  const active    = Math.max(0, total - completed - delayed);
-
-  const slices = [
-    { label: 'Completed', value: completed, color: '#10B981' },
-    { label: 'Active',    value: active,    color: '#3B82F6' },
-    { label: 'Delayed',   value: delayed,   color: '#EF4444' },
-  ];
+  }, [qs]);
 
   return (
     <div style={card}>
@@ -119,17 +98,12 @@ function MyShipmentsCard({ qs }: { qs: string }) {
 }
 
 // ── My Alerts card ─────────────────────────────────────────────────────────────
-// Mirrors the three stat cards at the top of the alerts page — High Priority,
-// Pending Review and Resolved — reading the same /api/alerts rows so the
-// dashboard and that page can never disagree.
-function MyAlertsCard() {
-  const { email, role } = useAuth();
-  const [stats,   setStats]   = useState<{ high: number; pending: number; resolved: number } | null>(null);
+function MyAlertsCard({ qs }: { qs: string }) {
+  const [count,   setCount]   = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const query = ownershipQuery(role, email, 'email');
-    fetch(`${API}/api/alerts${query}`, { headers: authHeaders() })
+    fetch(apiUrl(`/api/alerts/active${qs}`), { headers: authHeaders() })
       .then(r => r.json())
       .then(d => {
         const groups: any[] = d.data || [];
@@ -138,15 +112,7 @@ function MyAlertsCard() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [role, email]);
-
-  const high = stats?.high ?? 0;
-
-  const rows = [
-    { label: 'High Priority', value: high,                 color: 'var(--c-chart-5)' },
-    { label: 'Pending Review', value: stats?.pending ?? 0, color: 'var(--c-chart-4)' },
-    { label: 'Resolved',      value: stats?.resolved ?? 0, color: 'var(--c-chart-3)' },
-  ];
+  }, [qs]);
 
   return (
     <div style={card}>

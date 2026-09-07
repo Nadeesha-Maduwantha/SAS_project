@@ -6,6 +6,7 @@ import PersonalInformation from "./PersonalInformation";
 import SecuritySettings from "./SecuritySettings";
 import { PasswordChange } from "@/types/profile";
 import AppDialog, { AppDialogState } from "@/components/shared/AppDialog";
+import { apiUrl } from "@/lib/api";
 
 interface UserProfile {
   fullName: string;
