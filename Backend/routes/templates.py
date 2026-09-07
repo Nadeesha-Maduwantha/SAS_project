@@ -62,27 +62,61 @@ def _compute_due_date(cfg, shipment):
     return d.isoformat() if d else None
 
 
-def _resolve_manual_due(manual_due_dates, shipment_id, lib_id, cfg):
-    """Resolve the admin-picked due date for a 'manual' milestone.
+def _resolve_manual(manual_due_dates, shipment_id, lib_id, cfg):
+    """Resolve what the admin chose at assign time for a 'manual' milestone.
 
-    Accepts two payload shapes:
-      • shared     → { "<mkey>": "YYYY-MM-DD" }               (same date for all)
-      • per-ship   → { "<shipment_id>": { "<mkey>": "..." } }  (date per shipment)
-    A per-shipment entry wins; if it's missing this milestone, fall back to a
-    shared entry with the same key. `mkey` may be the lib_id, milestone_key,
-    or the milestone name.
+    The admin can pick any due-date basis at assignment (same options as the
+    milestone builder), so the payload per milestone can be:
+      • rich object → { "basis": "manual"|"another_field"|"days_after_creation"|
+                        "after_previous_milestone",
+                        "date": "YYYY-MM-DD",              (basis 'manual', shared)
+                        "per_shipment": { "<sid>": "..." },(basis 'manual', per-ship)
+                        "field": "<column>", "offset": <int> }  (field/relative bases)
+      • legacy string      → "YYYY-MM-DD"                 (treated as basis 'manual')
+      • legacy per-ship    → { "<sid>": { "<mkey>": "..." } }
+
+    Returns a normalized dict: {basis, due_date, field, offset}. basis is None
+    when nothing was provided for this milestone.
     """
     keys = [str(lib_id), cfg.get('milestone_key') or '', cfg.get('name') or '']
-    per_ship = manual_due_dates.get(shipment_id)
-    sources = []
-    if isinstance(per_ship, dict):
-        sources.append(per_ship)
-    sources.append(manual_due_dates)  # shared fallback
-    for src in sources:
+
+    # 1) Rich object keyed by milestone.
+    for k in keys:
+        v = manual_due_dates.get(k)
+        if isinstance(v, dict) and 'basis' in v:
+            basis = v.get('basis') or 'manual'
+            if basis == 'manual':
+                due = (v.get('per_shipment') or {}).get(shipment_id) or v.get('date')
+                return {'basis': 'manual', 'due_date': due, 'field': None, 'offset': 0}
+            return {'basis': basis, 'due_date': None,
+                    'field': v.get('field'), 'offset': v.get('offset') or 0}
+
+    # 2) Legacy per-shipment nested map.
+    ps = manual_due_dates.get(shipment_id)
+    if isinstance(ps, dict):
         for k in keys:
-            if k and src.get(k):
-                return src[k]
-    return None
+            if ps.get(k):
+                return {'basis': 'manual', 'due_date': ps[k], 'field': None, 'offset': 0}
+
+    # 3) Legacy shared string.
+    for k in keys:
+        v = manual_due_dates.get(k)
+        if isinstance(v, str) and v:
+            return {'basis': 'manual', 'due_date': v, 'field': None, 'offset': 0}
+
+    return {'basis': None, 'due_date': None, 'field': None, 'offset': 0}
+
+
+def _manual_missing(resolved, cfg):
+    """True when a 'manual' milestone still lacks a usable due-date choice."""
+    basis = resolved.get('basis')
+    if basis is None:
+        return True
+    if basis == 'manual':
+        return not resolved.get('due_date')
+    if basis == 'another_field':
+        return not resolved.get('field')  # needs a reference field
+    return False  # days_after_creation / after_previous_milestone → offset only
 
 
 def _identity(row):
@@ -465,7 +499,12 @@ def preview_assignment(template_id):
         _MODE = {'air_import': 'air', 'air_export': 'air', 'sea_import': 'sea', 'sea_export': 'sea'}
         _DIR  = {'air_import': 'import', 'air_export': 'export', 'sea_import': 'import', 'sea_export': 'export'}
 
-        if assign_type in _MODE:
+        # Freight mode only — we don't have reliable import/export direction data
+        # (st_description is mostly empty), so assignment is by transport_mode.
+        if assign_type in ('air', 'sea'):
+            query = query.ilike('transport_mode', assign_type)
+
+        elif assign_type in _MODE:  # legacy air_import/sea_export ids, still supported
             query = (query
                      .ilike('transport_mode', _MODE[assign_type])
                      .ilike('st_description', f"%{_DIR[assign_type]}%"))
@@ -574,7 +613,8 @@ def assign_template_to_shipments(template_id):
             missing = set()
             for sid in targets:
                 for cfg, lib_id in manual_specs:
-                    if not _resolve_manual_due(manual_due_dates, sid, lib_id, cfg):
+                    resolved = _resolve_manual(manual_due_dates, sid, lib_id, cfg)
+                    if _manual_missing(resolved, cfg):
                         missing.add(cfg.get('name') or 'Milestone')
             if missing:
                 return jsonify({'error':
@@ -623,12 +663,23 @@ def assign_template_to_shipments(template_id):
             new_rows = []
             for seq, (cfg, rules, lib_id) in enumerate(milestone_specs):
                 row = _snapshot_row(shipment, template_id, cfg, rules, seq, lib_id)
-                # 'manual' basis: use the date the admin picked at assignment
-                # (shared across shipments, or per-shipment — see resolver).
+                # 'manual' basis: apply what the admin chose at assignment. They
+                # can pick a fixed date (shared or per-shipment) OR another basis
+                # (a date field / days-after-creation / after-previous-milestone),
+                # in which case we rewrite the snapshot's due-basis so the normal
+                # status recompute resolves the deadline at runtime.
                 if cfg.get('expected_date_source') == 'manual':
-                    md = _resolve_manual_due(manual_due_dates, shipment_id, lib_id, cfg)
-                    if md:
-                        row['due_date'] = md
+                    resolved = _resolve_manual(manual_due_dates, shipment_id, lib_id, cfg)
+                    if resolved['basis'] == 'manual':
+                        if resolved['due_date']:
+                            row['due_date'] = resolved['due_date']
+                    elif resolved['basis']:
+                        snap = row['milestone_snapshot']
+                        snap['expected_date_source'] = resolved['basis']
+                        snap['expected_date_field']  = resolved['field']
+                        snap['expected_date_offset'] = resolved['offset']
+                        # Compute now where possible; after_previous resolves later.
+                        row['due_date'] = _compute_due_date(snap, shipment)
                 new_rows.append(row)
 
             # Preserve prior progress on Replace: a milestone that already existed

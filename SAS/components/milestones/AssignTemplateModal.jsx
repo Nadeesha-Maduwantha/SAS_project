@@ -16,6 +16,16 @@
 
 import { useState, useEffect } from "react";
 import { T, solidBtn, outlineBtn, ghostBtn } from "@/styles/tokens";
+import FieldSelector from "@/components/milestones/MilestoneBuilder/FieldSelector";
+
+// Due-date bases the admin can pick per manual milestone at assign time —
+// mirrors the milestone builder's "When is this milestone due?" options.
+const DUE_BASES = [
+  { value: "manual",                   label: "Specific date" },
+  { value: "another_field",            label: "From a date field" },
+  { value: "days_after_creation",      label: "Days after shipment created" },
+  { value: "after_previous_milestone", label: "After previous milestone" },
+];
 
 const BASE = "http://127.0.0.1:5000";
 
@@ -28,12 +38,10 @@ const IcoWarn   = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="no
 // ── Assignment type config ─────────────────────────────────────────────────────
 const ASSIGN_TYPES = [
   {
-    group: "Standard Types",
+    group: "Freight Mode",
     items: [
-      { id: "air_import", label: "Air Import",  desc: "Air freight arriving in Sri Lanka"  },
-      { id: "air_export", label: "Air Export",  desc: "Air freight departing Sri Lanka"    },
-      { id: "sea_import", label: "Sea Import",  desc: "Sea freight arriving in Sri Lanka"  },
-      { id: "sea_export", label: "Sea Export",  desc: "Sea freight departing Sri Lanka"    },
+      { id: "air", label: "Air Freight", desc: "All air freight shipments" },
+      { id: "sea", label: "Sea Freight", desc: "All sea freight shipments" },
     ],
   },
   {
@@ -131,7 +139,7 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
   const [step, setStep] = useState("type");
 
   // Step 1 state
-  const [assignType,    setAssignType]    = useState("air_import");
+  const [assignType,    setAssignType]    = useState("air");
   const [clientFilter,  setClientFilter]  = useState("");
   const [branchFilter,  setBranchFilter]  = useState("");
 
@@ -154,15 +162,15 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
 
   // Milestones whose due-date basis is "manual" — admin picks a date at assign time.
   const [manualMilestones, setManualMilestones] = useState([]); // [{ key, name }]
-  const [manualDates,      setManualDates]      = useState({});  // shared: { key: 'YYYY-MM-DD' }
-  const [dateMode,         setDateMode]         = useState("shared"); // 'shared' | 'per_shipment'
-  const [perShipDates,     setPerShipDates]     = useState({});  // { shipment_id: { key: 'YYYY-MM-DD' } }
+  // Per-milestone due-date config keyed by milestone key:
+  //   { basis, field, offset, mode:'shared'|'per_shipment', date, perShip:{sid:date} }
+  const [mConfig, setMConfig] = useState({});
 
   // ── Reset on open
   useEffect(() => {
     if (isOpen) {
       setStep("type");
-      setAssignType("air_import");
+      setAssignType("air");
       setClientFilter("");
       setBranchFilter("");
       setAllShipments([]);
@@ -173,9 +181,7 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
       setConflictStrategy("skip");
       setResult(null);
       setError(null);
-      setManualDates({});
-      setDateMode("shared");
-      setPerShipDates({});
+      setMConfig({});
     }
   }, [isOpen]);
 
@@ -227,12 +233,44 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
     ? previewShipments
     : previewShipments.filter(s => !s.has_milestones);
 
-  // Every manual milestone must have a date before assigning.
-  const datesComplete = () => {
-    if (manualMilestones.length === 0) return true;
-    if (dateMode === "shared") return manualMilestones.every(m => manualDates[m.key]);
-    return targetShipments.every(s =>
-      manualMilestones.every(m => (perShipDates[s.id] || {})[m.key]));
+  // Per-milestone config helpers.
+  const cfgFor = (key) => mConfig[key] || { basis: "manual", field: "", offset: 0, mode: "shared", date: "", perShip: {} };
+  const setCfg = (key, patch) => setMConfig(p => ({ ...p, [key]: { ...cfgFor(key), ...patch } }));
+  const setPerShip = (key, sid, v) => {
+    const c = cfgFor(key);
+    setCfg(key, { perShip: { ...(c.perShip || {}), [sid]: v } });
+  };
+
+  // A single manual milestone's config is complete?
+  const milestoneComplete = (m) => {
+    const c = cfgFor(m.key);
+    if (c.basis === "manual") {
+      return c.mode === "per_shipment"
+        ? targetShipments.every(s => (c.perShip || {})[s.id])
+        : !!c.date;
+    }
+    if (c.basis === "another_field") return !!c.field;
+    return true; // days_after_creation / after_previous_milestone need only an offset
+  };
+
+  // Every manual milestone must be fully configured before assigning.
+  const datesComplete = () =>
+    manualMilestones.length === 0 || manualMilestones.every(milestoneComplete);
+
+  // Build the manual_due_dates payload the backend expects.
+  const buildManualPayload = () => {
+    const out = {};
+    for (const m of manualMilestones) {
+      const c = cfgFor(m.key);
+      if (c.basis === "manual") {
+        out[m.key] = c.mode === "per_shipment"
+          ? { basis: "manual", per_shipment: c.perShip || {} }
+          : { basis: "manual", date: c.date };
+      } else {
+        out[m.key] = { basis: c.basis, field: c.field || null, offset: Number(c.offset) || 0 };
+      }
+    }
+    return out;
   };
 
   // After conflicts are handled (or if there are none), collect manual dates
@@ -301,8 +339,8 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
         body: JSON.stringify({
           shipment_ids:      previewShipments.map(s => s.id),
           conflict_strategy: conflictStrategy,
-          // Shared → flat { key: date }; per-shipment → { shipment_id: { key: date } }.
-          manual_due_dates:  dateMode === "per_shipment" ? perShipDates : manualDates,
+          // Per-milestone: { key: { basis, date|per_shipment|field+offset } }.
+          manual_due_dates:  buildManualPayload(),
         }),
       });
       const data = await res.json();
@@ -754,86 +792,107 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
   // ══════════════════════════════════════════════════════════════
   if (step === "dates") {
     const complete = datesComplete();
-    const setShared  = (key, v) => setManualDates(p => ({ ...p, [key]: v }));
-    const setPerShip = (sid, key, v) =>
-      setPerShipDates(p => ({ ...p, [sid]: { ...(p[sid] || {}), [key]: v } }));
     const dateInp = { fontSize: "12px", padding: "6px 8px", border: `1px solid ${T.gray300}`, borderRadius: "6px", fontFamily: T.font, color: T.gray900, background: T.cardBg };
+    const numInp  = { ...dateInp, width: "70px" };
+    const selInp  = { fontSize: "12px", padding: "6px 8px", border: `1px solid ${T.gray300}`, borderRadius: "6px", fontFamily: T.font, color: T.gray900, background: T.cardBg };
 
     return (
       <div style={OVERLAY}>
-        <div style={{ ...baseCard, width: "560px" }}>
+        <div style={{ ...baseCard, width: "760px", maxWidth: "96vw", height: "82vh", maxHeight: "90vh" }}>
           <ModalHeader
             title="Set Due Dates"
-            subtitle={`${manualMilestones.length} manual milestone${manualMilestones.length !== 1 ? "s" : ""} need a due date before assigning`}
+            subtitle={`Choose how each manual milestone's deadline is set for the ${targetShipments.length} shipment${targetShipments.length !== 1 ? "s" : ""} being assigned`}
             onClose={onClose}
           />
 
           <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
-            {/* Mode toggle */}
-            <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
-              {[
-                { val: "shared",       label: "Same date for all", desc: "One date per milestone, applied to every shipment." },
-                { val: "per_shipment", label: "Per shipment",      desc: "A separate date per shipment." },
-              ].map(opt => {
-                const sel = dateMode === opt.val;
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {manualMilestones.map(m => {
+                const c = cfgFor(m.key);
+                const ok = milestoneComplete(m);
                 return (
-                  <div key={opt.val} onClick={() => setDateMode(opt.val)}
-                    style={{
-                      flex: 1, padding: "10px 12px", cursor: "pointer",
-                      border: `1.5px solid ${sel ? T.blue : T.gray200}`, borderRadius: "10px",
-                      background: sel ? T.blueBg : T.cardBg, transition: "all 0.13s",
-                    }}
-                  >
-                    <div style={{ fontSize: "12px", fontWeight: "700", color: sel ? T.blue : T.gray900 }}>{opt.label}</div>
-                    <div style={{ fontSize: "11px", color: T.gray500, marginTop: "2px", lineHeight: "1.4" }}>{opt.desc}</div>
+                  <div key={m.key} style={{ border: `1px solid ${ok ? T.gray200 : T.amberBorder}`, borderRadius: "10px", padding: "12px 14px", background: ok ? T.cardBg : T.amberBg }}>
+                    <div style={{ fontSize: "13px", fontWeight: "700", color: T.gray900, marginBottom: "8px" }}>
+                      {m.name} {!ok && <span style={{ color: T.red }}>*</span>}
+                    </div>
+
+                    {/* Basis selector */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                      <span style={{ fontSize: "11px", color: T.gray500 }}>Due date basis</span>
+                      <select value={c.basis} onChange={e => setCfg(m.key, { basis: e.target.value })} style={selInp}>
+                        {DUE_BASES.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+                      </select>
+                    </div>
+
+                    {/* Specific date */}
+                    {c.basis === "manual" && (
+                      <div>
+                        <div style={{ display: "flex", gap: "6px", marginBottom: "8px" }}>
+                          {[
+                            { val: "shared",       label: "Same for all" },
+                            { val: "per_shipment", label: "Per shipment" },
+                          ].map(opt => {
+                            const sel = (c.mode || "shared") === opt.val;
+                            return (
+                              <button key={opt.val} type="button" onClick={() => setCfg(m.key, { mode: opt.val })}
+                                style={{ fontSize: "11px", fontWeight: "600", padding: "4px 10px", borderRadius: "6px", cursor: "pointer",
+                                  border: `1px solid ${sel ? T.blue : T.gray200}`, background: sel ? T.blueBg : T.cardBg, color: sel ? T.blue : T.gray600 }}>
+                                {opt.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {(c.mode || "shared") === "shared" ? (
+                          <input type="date" value={c.date || ""} onChange={e => setCfg(m.key, { date: e.target.value })} style={dateInp} />
+                        ) : targetShipments.length === 0 ? (
+                          <div style={{ fontSize: "11px", color: T.gray400 }}>No shipments will receive the template.</div>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                            {targetShipments.map(s => (
+                              <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
+                                <span style={{ fontSize: "11px", color: T.gray600, fontFamily: T.mono }}>{s.job_number ?? s.id.slice(0, 8)}</span>
+                                <input type="date" value={(c.perShip || {})[s.id] || ""} onChange={e => setPerShip(m.key, s.id, e.target.value)} style={dateInp} />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* From a date field */}
+                    {c.basis === "another_field" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        <FieldSelector value={c.field || ""} onChange={key => setCfg(m.key, { field: key })} placeholder="Select a date field…" filter="date" size="sm" />
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <input type="number" value={c.offset ?? 0} onChange={e => setCfg(m.key, { offset: parseInt(e.target.value) || 0 })} style={numInp} />
+                          <span style={{ fontSize: "11px", color: T.gray500 }}>days after that field (0 = on that date, negative = before)</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Days after creation */}
+                    {c.basis === "days_after_creation" && (
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <input type="number" min="0" value={c.offset ?? 0} onChange={e => setCfg(m.key, { offset: parseInt(e.target.value) || 0 })} style={numInp} />
+                        <span style={{ fontSize: "11px", color: T.gray500 }}>days after the shipment is created</span>
+                      </div>
+                    )}
+
+                    {/* After previous milestone */}
+                    {c.basis === "after_previous_milestone" && (
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <input type="number" min="0" value={c.offset ?? 0} onChange={e => setCfg(m.key, { offset: parseInt(e.target.value) || 0 })} style={numInp} />
+                        <span style={{ fontSize: "11px", color: T.gray500 }}>days after the previous milestone completes (resolved per shipment)</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
 
-            {/* Shared: one input per milestone */}
-            {dateMode === "shared" && (
-              <div style={{ border: `1px solid ${T.gray200}`, borderRadius: "10px", padding: "12px 14px" }}>
-                {manualMilestones.map(m => (
-                  <div key={m.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginBottom: "8px" }}>
-                    <span style={{ fontSize: "12px", color: T.gray700 }}>
-                      {m.name} <span style={{ color: T.red }}>*</span>
-                    </span>
-                    <input type="date" value={manualDates[m.key] || ""} onChange={e => setShared(m.key, e.target.value)} style={dateInp} />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Per shipment: a card per shipment with all milestone inputs */}
-            {dateMode === "per_shipment" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                {targetShipments.length === 0 ? (
-                  <div style={{ fontSize: "12px", color: T.gray400, padding: "16px", textAlign: "center" }}>
-                    No shipments will receive the template.
-                  </div>
-                ) : targetShipments.map(s => (
-                  <div key={s.id} style={{ border: `1px solid ${T.gray200}`, borderRadius: "10px", padding: "12px 14px" }}>
-                    <div style={{ fontSize: "12px", fontWeight: "700", color: T.gray900, fontFamily: T.mono, marginBottom: "8px" }}>
-                      {s.job_number ?? s.id.slice(0, 8)}
-                      <span style={{ marginLeft: "8px", fontWeight: "500", fontFamily: T.font, color: T.gray500 }}>{s.consignee_name ?? "—"}</span>
-                    </div>
-                    {manualMilestones.map(m => (
-                      <div key={m.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginBottom: "6px" }}>
-                        <span style={{ fontSize: "12px", color: T.gray700 }}>
-                          {m.name} <span style={{ color: T.red }}>*</span>
-                        </span>
-                        <input type="date" value={(perShipDates[s.id] || {})[m.key] || ""} onChange={e => setPerShip(s.id, m.key, e.target.value)} style={dateInp} />
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
-
             {!complete && (
               <div style={{ marginTop: "14px", fontSize: "11px", color: T.amber, display: "flex", alignItems: "center", gap: "6px" }}>
-                <IcoWarn /> Every milestone needs a due date before you can assign.
+                <IcoWarn /> Finish configuring every manual milestone before you can assign.
               </div>
             )}
           </div>

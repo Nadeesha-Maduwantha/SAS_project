@@ -51,7 +51,17 @@ _TRANSIENT_MARKERS = (
 
 def _is_transient(exc):
     msg = str(exc).lower()
-    return any(m in msg for m in _TRANSIENT_MARKERS)
+    if any(m in msg for m in _TRANSIENT_MARKERS):
+        return True
+    # Fall back to the exception's origin/type: httpx/httpcore transport-level
+    # errors (ConnectError, ReadError, RemoteProtocolError, connect/read
+    # timeouts, pool disconnects) are all safe to retry on a fresh connection.
+    mod = type(exc).__module__ or ''
+    name = type(exc).__name__.lower()
+    if mod.startswith(('httpx', 'httpcore', 'urllib3', 'requests')):
+        if any(k in name for k in ('connect', 'read', 'protocol', 'timeout', 'disconnect', 'pool', 'remote')):
+            return True
+    return False
 
 
 def run_with_retry(fn, attempts=3):
