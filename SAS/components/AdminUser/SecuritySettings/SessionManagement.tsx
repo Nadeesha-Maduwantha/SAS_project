@@ -54,7 +54,7 @@ const SessionManagementSection: React.FC<SessionManagementProps> = ({ data, onCh
       <div className="space-y-2">
         {[
           { key: "autoLogoutOnInactivity",      label: "Auto-logout on inactivity" },
-          { key: "requireReauthForSensitive",   label: "Require re-authentication for sensitive actions" },
+          
           { key: "rememberDevice",              label: "Remember device for 30 days" },
         ].map((item) => (
           <label key={item.key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">

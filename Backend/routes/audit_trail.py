@@ -1,13 +1,19 @@
 from flask import Blueprint, request, jsonify
 from services.supabase_service import get_supabase
+from utils.auth_helper import require_auth, get_current_user
 import traceback
 import json
 
 bp = Blueprint('audit_trail', __name__, url_prefix='/api/audit-trail')
 
 @bp.route('/', methods=['GET'])
+@require_auth
 def get_audit_logs():
     try:
+        _, requester_role = get_current_user()
+        if (requester_role or '').lower() != 'admin':
+            return jsonify({'error': 'Only admins can view the audit trail'}), 403
+
         supabase = get_supabase()
         
         # 1. Fetch raw logs
@@ -96,9 +102,14 @@ def get_audit_logs():
 
 
 @bp.route('/', methods=['POST'])
+@require_auth
 def create_audit_log():
     """ Endpoint to manually create a new audit log entry """
     try:
+        _, requester_role = get_current_user()
+        if (requester_role or '').lower() != 'admin':
+            return jsonify({'error': 'Only admins can create audit log entries'}), 403
+
         data = request.json
         if not data:
             return jsonify({'error': 'Request body is empty'}), 400

@@ -5,6 +5,7 @@ import ProfileCard from "./ProfileCard";
 import PersonalInformation from "./PersonalInformation";
 import SecuritySettings from "./SecuritySettings";
 import { PasswordChange } from "@/types/profile";
+import AppDialog, { AppDialogState } from "@/components/shared/AppDialog";
 
 interface UserProfile {
   fullName: string;
@@ -37,6 +38,8 @@ export default function ProfilePage({ user }: ProfilePageProps) {
     memberSince: "Recently",
     profileImage: null,
   });
+
+  const [dialog, setDialog] = useState<AppDialogState | null>(null);
 
   // When the real 'user' data comes in from the API, update ALL the fields!
   useEffect(() => {
@@ -78,7 +81,7 @@ export default function ProfilePage({ user }: ProfilePageProps) {
         ...prev,
         ...updatedData,
       }));
-      alert("Profile updated successfully!");
+      setDialog({ variant: 'success', title: 'Profile updated', message: 'Your profile was updated successfully.' });
     } catch (error) {
       console.error(error);
       throw error; // Rethrow to let PersonalInformation know it failed
@@ -125,16 +128,22 @@ export default function ProfilePage({ user }: ProfilePageProps) {
 
       if (!response.ok) {
         const errorData = await response.json();
-        alert(`Failed: ${errorData.error}`);
+        setDialog({ variant: 'error', title: 'Password change failed', message: errorData.error || 'Please try again.' });
         return;
       }
 
-      alert("Password changed successfully! Please log in again.");
-      localStorage.removeItem('access_token');
-      window.location.href = '/';
+      setDialog({
+        variant: 'success',
+        title: 'Password changed',
+        message: 'Password changed successfully! Please log in again.',
+        onConfirm: () => {
+          localStorage.removeItem('access_token');
+          window.location.href = '/';
+        },
+      });
     } catch (error) {
       console.error(error);
-      alert("Failed to change password.");
+      setDialog({ variant: 'error', title: 'Password change failed', message: 'Failed to change password.' });
     }
   };
 
@@ -164,6 +173,8 @@ export default function ProfilePage({ user }: ProfilePageProps) {
           </div>
         </div>
       </div>
+
+      <AppDialog dialog={dialog} onClose={() => setDialog(null)} />
     </div>
   );
 }

@@ -2,18 +2,24 @@
 
 from flask import Blueprint, jsonify, request
 from services.supabase_service import get_supabase
+from utils.auth_helper import require_auth, get_current_user
 
 # Create a Flask Blueprint for access logs
 access_logs_bp = Blueprint('access_logs', __name__)
 
 @access_logs_bp.route('', methods=['GET'], strict_slashes=False)
 @access_logs_bp.route('/', methods=['GET'], strict_slashes=False)
+@require_auth
 def get_access_logs():
     """
     Fetch access logs from the database.
     Supports optional limit to prevent fetching massive amounts of data at once.
     """
     try:
+        _, requester_role = get_current_user()
+        if (requester_role or '').lower() != 'admin':
+            return jsonify({'success': False, 'error': 'Only admins can view access logs'}), 403
+
         # Get the Supabase client instance
         supabase = get_supabase()
         

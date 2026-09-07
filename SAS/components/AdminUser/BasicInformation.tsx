@@ -4,12 +4,30 @@ import { UserFormData } from '@/types';
 interface BasicInformationProps {
   formData: UserFormData;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  /** Role of the person using this form. A Super User may only assign Sales
+   * User / Operation User roles (matches the backend's enforcement in
+   * user_edit.py) — Admin and Super User options are hidden for them instead
+   * of just being rejected on save. */
+  viewerRole?: string;
 }
 
-const departments = ['Sea', 'Air'];
-const roles = ['Custom Configuration', 'Admin', 'Super User', 'Operation User','Sales User'];
+const departments = [
+  { value: 'sea', label: 'Sea' },
+  { value: 'air', label: 'Air' },
+];
+const roles = [
+  { value: 'admin', label: 'Admin' },
+  { value: 'superuser', label: 'Super User' },
+  { value: 'salesuser', label: 'Sales User' },
+  { value: 'operationuser', label: 'Operation User' },
+];
+const SUPERUSER_ASSIGNABLE_ROLES = new Set(['salesuser', 'operationuser']);
 
-const BasicInformation: React.FC<BasicInformationProps> = ({ formData, onChange }) => {
+const BasicInformation: React.FC<BasicInformationProps> = ({ formData, onChange, viewerRole }) => {
+  const visibleRoles = viewerRole?.toLowerCase() === 'superuser'
+    ? roles.filter((role) => SUPERUSER_ASSIGNABLE_ROLES.has(role.value))
+    : roles;
+
   return (
     <div className="flex flex-col gap-4">
       {/* Section Title */}
@@ -62,7 +80,7 @@ const BasicInformation: React.FC<BasicInformationProps> = ({ formData, onChange 
         >
           <option value="">Select Department</option>
           {departments.map((dept) => (
-            <option key={dept} value={dept}>{dept}</option>
+            <option key={dept.value} value={dept.value}>{dept.label}</option>
           ))}
         </select>
       </div>
@@ -76,8 +94,9 @@ const BasicInformation: React.FC<BasicInformationProps> = ({ formData, onChange 
           onChange={onChange}
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-600 outline-none focus:border-blue-400 transition bg-white"
         >
-          {roles.map((role) => (
-            <option key={role} value={role}>{role}</option>
+          <option value="">Custom Configuration</option>
+          {visibleRoles.map((role) => (
+            <option key={role.value} value={role.value}>{role.label}</option>
           ))}
         </select>
         <p className="text-xs text-gray-400 mt-1">
