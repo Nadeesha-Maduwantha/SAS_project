@@ -20,12 +20,16 @@ export default function AdminTopBar() {
             onClick={() => router.push('/admin/dashboard')}
             title="Go to dashboard"
           >
+            {/* The logo is 820x447, so width and height must keep that
+                ratio — squaring them makes the browser's height:auto
+                disagree with the height attribute. Both sides are 'auto'
+                here so the wrapper is free to size it. */}
             <Image
               src="/images/company-logo.png"
               alt="Company Logo"
               width={32}
-              height={32}
-              style={{ objectFit: 'contain', borderRadius: 5 }}
+              height={17}
+              style={{ width: 'auto', height: 'auto', maxWidth: 32, maxHeight: 32, objectFit: 'contain', borderRadius: 5 }}
             />
           </div>
           <span className="admin-topbar__title">Dart Global Logistic SAS System</span>
