@@ -6,6 +6,7 @@ from datetime import datetime
 # Import the helpers from auth_helper or define them if they aren't globally accessible.
 # Since we need them for access logs, we can import them from the auth route (or move them to utils)
 from routes.auth import get_location_from_ip, get_device_info
+from utils.password_policy import validate_password_complexity, is_password_reused, record_password_history
 
 bp = Blueprint('change_password', __name__, url_prefix='/api/change-password')
 
@@ -24,6 +25,13 @@ def change_password():
         if not new_password:
             return jsonify({'error': 'New password is required'}), 400
 
+        policy_error = validate_password_complexity(new_password)
+        if policy_error:
+            return jsonify({'error': policy_error}), 400
+
+        if is_password_reused(user_id, new_password):
+            return jsonify({'error': 'You cannot reuse one of your last 5 passwords.'}), 400
+
         # Get the actual token from the request header
         auth_header = request.headers.get('Authorization')
         token = auth_header.split(' ')[1]
@@ -41,6 +49,8 @@ def change_password():
         
         # Step 3: Clear the backend session so it doesn't leak into other API calls
         supabase.auth.sign_out()
+
+        record_password_history(user_id, new_password)
 
         # Log the password change action
         try:

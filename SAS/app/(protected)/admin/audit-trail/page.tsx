@@ -9,6 +9,7 @@ import { AuditTrailEvent, AuditFilters, AuditTrailStatsData } from "@/types/audi
 export default function AuditTrailPage() {
   const [events, setEvents] = useState<AuditTrailEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<AuditFilters>({
     module: "all",
@@ -21,19 +22,25 @@ export default function AuditTrailPage() {
     const fetchAuditLogs = async () => {
       try {
         setIsLoading(true);
+        setFetchError(null);
+        const token = localStorage.getItem('access_token');
         // Replace with your actual backend URL if different
-        const response = await fetch('http://127.0.0.1:5000/api/audit-trail/');
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch audit logs');
-        }
-        
+        const response = await fetch('http://127.0.0.1:5000/api/audit-trail/', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+
         const json = await response.json();
+
+        if (!response.ok) {
+          throw new Error(json.error || 'Failed to fetch audit logs');
+        }
+
         if (json.data) {
           setEvents(json.data);
         }
       } catch (error) {
         console.error("Error fetching audit logs:", error);
+        setFetchError(error instanceof Error ? error.message : 'Failed to fetch audit logs');
       } finally {
         setIsLoading(false);
       }
@@ -110,6 +117,17 @@ export default function AuditTrailPage() {
     setCurrentPage(1);
   }, [filters]);
 
+  // Wraps a field in quotes and escapes embedded quotes whenever it contains
+  // a comma, quote, or newline — otherwise a comma inside e.g. the "Details"
+  // description would silently shift every column after it.
+  const csvField = (value: unknown) => {
+    const str = String(value ?? "");
+    if (/[",\n]/.test(str)) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
   const handleExport = () => {
     // Convert filtered events to CSV format
     const csvContent = [
@@ -123,7 +141,7 @@ export default function AuditTrailPage() {
         event.details,
         event.severity
       ])
-    ].map(row => row.join(",")).join("\n");
+    ].map(row => row.map(csvField).join(",")).join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
@@ -156,6 +174,12 @@ export default function AuditTrailPage() {
             Export Audit
           </button>
         </div>
+
+        {fetchError && (
+          <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-lg text-sm font-medium border border-red-100">
+            {fetchError}
+          </div>
+        )}
 
         {isLoading ? (
           <div className="text-center py-10 text-gray-500">Loading audit trail...</div>
