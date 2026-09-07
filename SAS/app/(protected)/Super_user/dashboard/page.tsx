@@ -3,6 +3,7 @@
 // The Department Alert Feed was replaced by the branch delay breakdown.
 import SuperDashboardAnalytics from '@/components/SuperUser/SuperDashboardAnalytics';
 import SuperBranchDelayCard from '@/components/SuperUser/SuperBranchDelayCard';
+import AlertFeedTable from '@/components/shared/AlertFeedTable';
 import PinnedTableStatCards from '@/components/shared/PinnedTableStatCard';
 
 export default function SuperDashboardPage() {
@@ -27,6 +28,16 @@ export default function SuperDashboardPage() {
 
       {/* Where the delays sit, by branch */}
       <SuperBranchDelayCard />
+
+      {/* Scoped alert feed — overdue / delayed milestones for this department */}
+      <div style={{ marginTop: 14 }}>
+        <AlertFeedTable
+          title="Department Alert Feed"
+          apiBase="http://localhost:5000"
+          maxRows={8}
+          scope="super"
+        />
+      </div>
     </div>
   );
 }

@@ -1,12 +1,14 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import {
   X, Printer, Truck, Calendar,
   MapPin, User, Mail, Phone, Box, Brain
 } from 'lucide-react'
 import { ShipmentStatusBadge } from '@/components/shipments/ShipmentStatusBadge'
 import { ShipmentMap } from '@/components/shipments/ShipmentMap'
+import ShipmentMilestonesModal from '@/components/Shipmentmilestonesmodal'
 import { exportShipmentDetailPDF } from '@/lib/Utils/exportPDF'
 import { Shipment } from '@/types'
 
@@ -53,10 +55,37 @@ interface ShipmentDetailModalProps {
   shipment: Shipment | null
 }
 
+const DETAIL_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5000'
+
 export default function ShipmentDetailModal({ isOpen, onClose, shipment }: ShipmentDetailModalProps) {
   const router = useRouter()
 
+  // Real milestones for this shipment (replaces the old hardcoded list).
+  const [milestones, setMilestones] = useState<any[]>([])
+  const [showMilestones, setShowMilestones] = useState(false)
+  useEffect(() => {
+    if (!isOpen || !shipment?.id) { setMilestones([]); return }
+    let cancelled = false
+    fetch(`${DETAIL_API}/api/shipments/${shipment.id}`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(j => { if (!cancelled) setMilestones(j?.data?.milestones ?? []) })
+      .catch(() => { if (!cancelled) setMilestones([]) })
+    return () => { cancelled = true }
+  }, [isOpen, shipment?.id])
+
   if (!isOpen || !shipment) return null
+
+  // "Previous Milestones" = completed ones, most-recent first.
+  const fmtMs = (iso: string | null | undefined) =>
+    iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
+  const previousMilestones = [...milestones]
+    .filter((m: any) => m.status === 'completed' || m.completed_date)
+    .sort((a: any, b: any) => new Date(b.completed_date ?? b.due_date ?? 0).getTime() - new Date(a.completed_date ?? a.due_date ?? 0).getTime())
+    .map((m: any) => ({
+      title: m.name ?? 'Milestone',
+      time:  fmtMs(m.completed_date ?? m.due_date),
+      note:  m.notes ?? '',
+    }))
 
   const progress = getProgressPercent(shipment.llmIdentifiedType, shipment.currentStage)
 
@@ -83,6 +112,7 @@ export default function ShipmentDetailModal({ isOpen, onClose, shipment }: Shipm
   }
 
   return (
+    <>
     <div
       style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -354,19 +384,19 @@ export default function ShipmentDetailModal({ isOpen, onClose, shipment }: Shipm
             {/* RIGHT COLUMN */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-              {/* Previous Milestones — placeholder, not wired to real data yet */}
+              {/* Previous Milestones — real completed milestones for this shipment */}
               <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                   <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: 0 }}>Previous Milestones</h3>
                 </div>
 
+                {previousMilestones.length === 0 ? (
+                  <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0' }}>
+                    No completed milestones recorded for this shipment yet.
+                  </p>
+                ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                  {[
-                    { title: 'Departed Chicago O\'Hare', time: 'Oct 23, 2023 - 08:45 PM', note: 'Flight LH431 en route to Munich for transfer.' },
-                    { title: 'Picked up from Shipper', time: 'Oct 22, 2023 - 02:30 PM', note: 'Driver: Mike Johnson. Condition: Good.' },
-                    { title: 'Label Created', time: 'Oct 22, 2023 - 09:15 AM', note: 'Shipping information received.' },
-                    { title: 'Order Placed', time: 'Oct 21, 2023 - 04:00 PM', note: '' },
-                  ].map((m, i, arr) => (
+                  {previousMilestones.map((m, i, arr) => (
                     <div key={i} style={{ display: 'flex', gap: '12px' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
                         <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#bfdbfe', border: '2px solid #93c5fd', marginTop: '2px', flexShrink: 0 }} />
@@ -380,9 +410,10 @@ export default function ShipmentDetailModal({ isOpen, onClose, shipment }: Shipm
                     </div>
                   ))}
                 </div>
+                )}
 
                 <button
-                  onClick={goToMilestones}
+                  onClick={() => setShowMilestones(true)}
                   style={{
                     width: '100%', marginTop: '14px', padding: '8px 12px',
                     background: '#fefce8', border: '1px solid #fde68a',
@@ -457,5 +488,14 @@ export default function ShipmentDetailModal({ isOpen, onClose, shipment }: Shipm
         </div>
       </div>
     </div>
+
+    {/* Milestone detail popup — opens on the current active milestone */}
+    <ShipmentMilestonesModal
+      isOpen={showMilestones}
+      onClose={() => setShowMilestones(false)}
+      shipmentId={shipment.id}
+      apiBase={DETAIL_API}
+    />
+    </>
   )
 }

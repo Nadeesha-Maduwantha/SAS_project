@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   LayoutGrid, FileText, Bell, Settings,
@@ -55,7 +55,18 @@ export default function SuperLeftNavBar({ topOffset = 57, alertsCount = 0 }: {
 }) {
   const router   = useRouter();
   const pathname = usePathname();
-  const { expanded, toggle, expand } = useNav();
+  const { expanded, toggle, expand, collapse } = useNav();
+
+  // Collapse the expanded nav when the user clicks anywhere outside it.
+  const navRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!expanded) return;
+    const onDown = (e: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) collapse();
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [expanded, collapse]);
 
   // Show labels only after slide animation completes (340ms = 0.35s CSS transition)
   const [fullyExpanded, setFullyExpanded] = useState(false);
@@ -115,7 +126,7 @@ export default function SuperLeftNavBar({ topOffset = 57, alertsCount = 0 }: {
 
   // ── Expanded ─────────────────────────────────────────────────────────────────
   return (
-    <div className="admin-nav-container expanded" style={containerStyle}>
+    <div ref={navRef} className="admin-nav-container expanded" style={containerStyle}>
       <div className="nav-top-row">
         <button className="nav-toggle-btn-expanded" onClick={toggle} title="Collapse sidebar">
           <Menu size={18} />
