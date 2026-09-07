@@ -38,11 +38,13 @@ const T = {
   mono:        "'JetBrains Mono', monospace",
 };
 
-const DEPARTMENTS = ["Operations", "Sales"];
+// Departments are freight modes, matching shipments.transport_mode and the
+// AIR/SEA department cards on the admin dashboard.
+const DEPARTMENTS = ["Air", "Sea"];
 
 const DEPT_THEME = {
-  Operations: { color: "#2563EB", bg: "#EFF6FF", border: "#BFDBFE" },
-  Sales:      { color: "#7C3AED", bg: "#F5F3FF", border: "#DDD6FE" },
+  Air: { color: "#2563EB", bg: "#EFF6FF", border: "#BFDBFE" },
+  Sea: { color: "#0E7490", bg: "#ECFEFF", border: "#A5F3FC" },
 };
 
 // Approximate country centroids [lat, lng] to place map pins from country codes
@@ -150,9 +152,11 @@ function ShipRow({ ship, router }) {
 export default function DepartmentOverviewPage() {
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const deptParam    = searchParams.get("dept") || "Operations";
+  const rawDept      = searchParams.get("dept") || "Air";
+  // Tolerate ?dept=AIR / air / "Air Freight" as well as the exact labels.
+  const deptParam    = DEPARTMENTS.find(d => rawDept.toUpperCase().includes(d.toUpperCase())) || "Air";
 
-  const [activeDept,  setActiveDept]  = useState(DEPARTMENTS.includes(deptParam) ? deptParam : "Operations");
+  const [activeDept,  setActiveDept]  = useState(deptParam);
   const [selectedPin, setSelectedPin] = useState(null);
   const [shipFilter,  setShipFilter]  = useState("all");
 

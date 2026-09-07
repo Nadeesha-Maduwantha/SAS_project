@@ -2,20 +2,32 @@
 department_overview.py — aggregates the admin Department Overview page from real
 data (profiles + shipments + shipment_milestones).
 
-A "department" here is a role group:
-  Operations -> users whose role contains 'operation'; their shipments are the
-                ones they created (created_by_email).
-  Sales      -> users whose role contains 'sales'; their shipments are the ones
-                where sales_user_email is theirs.
+A "department" here is a freight mode, matching how the rest of the app already
+models departments (shipments.transport_mode, /api/shipments/department/<mode>,
+the AIR/SEA department cards on the admin dashboard, the department filter in
+routes/alerts.py):
+
+  AIR -> shipments whose transport_mode is AIR
+  SEA -> shipments whose transport_mode is SEA
+
+The team for a department is derived from the department's own shipments —
+whoever created one, is the sales owner of one, or is assigned a milestone on
+one. profiles.department is free text and unreliable, so it is not used for
+membership; transport_mode is the source of truth.
 
 Per shipment we derive: status (on_track / at_risk / overdue), the current
 milestone, priority, eta, route (origin->dest country codes), mode and assignee.
 The frontend turns the country codes into map coordinates.
 """
 
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone
 
 from services.supabase_client import supabase
+
+
+# Freight modes that count as departments, in the order the UI shows them.
+DEPARTMENTS = ('AIR', 'SEA')
+DEFAULT_DEPARTMENT = 'AIR'
 
 
 def _today():
@@ -34,39 +46,31 @@ def _parse_date(v):
             return None
 
 
-def _role_matches(role, dept):
-    r = (role or '').lower()
-    return ('operation' in r) if dept == 'Operations' else ('sales' in r)
+def _email(v):
+    return (v or '').strip().lower()
+
+
+def normalize_department(dept):
+    """Accept 'air', 'Air', 'AIR', 'Air Freight' -> 'AIR'. Unknown -> default."""
+    d = (dept or '').strip().upper()
+    for mode in DEPARTMENTS:
+        if mode in d:
+            return mode
+    return DEFAULT_DEPARTMENT
 
 
 def build_department_overview(dept):
-    dept = 'Sales' if (dept or '').lower().startswith('sales') else 'Operations'
+    mode = normalize_department(dept)
 
-    # ── team (from profiles) ─────────────────────────────────────────────────
-    profiles = (supabase.table('profiles')
-                .select('id, full_name, email, role').execute()).data or []
-    team_profiles = [p for p in profiles if _role_matches(p.get('role'), dept)]
-    team_emails = {(p.get('email') or '').lower() for p in team_profiles if p.get('email')}
-
-    # department head = a super user of this side, else first team member
-    head = next((p for p in profiles if 'super' in (p.get('role') or '').lower()), None) \
-        or (team_profiles[0] if team_profiles else None)
-
-    # ── shipments for this department ────────────────────────────────────────
+    # ── shipments for this department (by freight mode) ──────────────────────
+    # transport_mode is stored uppercase elsewhere in the app, but tolerate
+    # rows saved as 'Air'/'air' rather than silently dropping them.
     ships = (supabase.table('shipments').select('*')
+             .in_('transport_mode', [mode, mode.title(), mode.lower()])
              .order('created_at', desc=True).limit(300).execute()).data or []
 
-    email_col = 'created_by_email' if dept == 'Operations' else 'sales_user_email'
-    name_col  = 'created_by_name'  if dept == 'Operations' else 'sales_user_name'
-
-    def in_dept(s):
-        e = (s.get(email_col) or '').lower()
-        return (e in team_emails) if team_emails else bool(e)
-
-    dept_ships = [s for s in ships if in_dept(s)]
-
     # ── milestones for those shipments ───────────────────────────────────────
-    ids = [s['id'] for s in dept_ships]
+    ids = [s['id'] for s in ships]
     ms_by_ship = {}
     for i in range(0, len(ids), 100):
         rows = (supabase.table('shipment_milestones')
@@ -74,6 +78,24 @@ def build_department_overview(dept):
                 .in_('shipment_id', ids[i:i + 100]).order('sequence_order').execute()).data or []
         for m in rows:
             ms_by_ship.setdefault(m['shipment_id'], []).append(m)
+
+    # ── team: everyone who appears on this department's shipments ────────────
+    dept_emails = set()
+    for s in ships:
+        for col in ('created_by_email', 'sales_user_email'):
+            e = _email(s.get(col))
+            if e:
+                dept_emails.add(e)
+    for mils in ms_by_ship.values():
+        for m in mils:
+            e = _email(m.get('assigned_email'))
+            if e:
+                dept_emails.add(e)
+
+    profiles = (supabase.table('profiles')
+                .select('id, full_name, email, role, department').execute()).data or []
+    profile_by_email = {_email(p.get('email')): p for p in profiles if p.get('email')}
+    team_profiles = [profile_by_email[e] for e in sorted(dept_emails) if e in profile_by_email]
 
     today = _today()
 
@@ -100,9 +122,9 @@ def build_department_overview(dept):
 
     shipments_out = []
     overdue_alerts = pending_alerts = completed_today = 0
-    per_member = {e: {'shipments': 0, 'alerts': 0} for e in team_emails}
+    per_member = {e: {'shipments': 0, 'alerts': 0} for e in dept_emails}
 
-    for s in dept_ships:
+    for s in ships:
         mils = ms_by_ship.get(s['id'], [])
         status = ship_status(mils)
         o_cc = s.get('origin_country_code') or 'LK'
@@ -113,12 +135,12 @@ def build_department_overview(dept):
             'route':     f"{o_cc} -> {d_cc}",
             'origin_cc': o_cc,
             'dest_cc':   d_cc,
-            'type':      (s.get('transport_mode') or '').title() or '—',
+            'type':      (s.get('transport_mode') or mode).title(),
             'status':    status,
             'milestone': current_milestone(mils, s),
             'priority':  priority(s, status),
             'eta':       (str(eta(s))[:10] if eta(s) else '—'),
-            'assignee':  s.get(name_col) or '—',
+            'assignee':  s.get('sales_user_name') or s.get('created_by_name') or '—',
             'label':     s.get('consignee_name') or (s.get('job_number') or '—'),
         })
         # counts
@@ -129,20 +151,21 @@ def build_department_overview(dept):
                 pending_alerts += 1
             if m.get('status') == 'completed' and _parse_date(m.get('completed_date')) == today:
                 completed_today += 1
-            ae = (m.get('assigned_email') or '').lower()
+            ae = _email(m.get('assigned_email'))
             if ae in per_member and m.get('status') in ('overdue', 'delayed'):
                 per_member[ae]['alerts'] += 1
-        ae = (s.get(email_col) or '').lower()
-        if ae in per_member:
-            per_member[ae]['shipments'] += 1
+        # a shipment counts toward its sales owner, else whoever created it
+        owner = _email(s.get('sales_user_email')) or _email(s.get('created_by_email'))
+        if owner in per_member:
+            per_member[owner]['shipments'] += 1
 
     def is_active(s):
         t = (s.get('llm_identified_type') or '').lower()
         return 'deliver' not in t
 
     stats = {
-        'totalShipments':  len(dept_ships),
-        'activeShipments': sum(1 for s in dept_ships if is_active(s)),
+        'totalShipments':  len(ships),
+        'activeShipments': sum(1 for s in ships if is_active(s)),
         'completedToday':  completed_today,
         'overdueAlerts':   overdue_alerts,
         'pendingAlerts':   pending_alerts,
@@ -152,7 +175,7 @@ def build_department_overview(dept):
 
     team_out = []
     for p in team_profiles:
-        e = (p.get('email') or '').lower()
+        e = _email(p.get('email'))
         c = per_member.get(e, {'shipments': 0, 'alerts': 0})
         team_out.append({
             'name':      p.get('full_name') or (p.get('email') or 'User'),
@@ -163,8 +186,18 @@ def build_department_overview(dept):
         })
     team_out.sort(key=lambda t: (-t['shipments'], t['name']))
 
+    # department head: a super user working this mode, else the busiest member
+    head = next((p for p in team_profiles if 'super' in (p.get('role') or '').lower()), None)
+    if not head and team_out:
+        head = profile_by_email.get(
+            next((e for e in dept_emails
+                  if e in profile_by_email
+                  and (profile_by_email[e].get('full_name') or profile_by_email[e].get('email')) == team_out[0]['name']),
+                 None))
+
     return {
-        'department': dept,
+        'department': mode.title(),   # 'Air' / 'Sea'
+        'mode':       mode,           # 'AIR' / 'SEA'
         'head':       (head or {}).get('full_name'),
         'headEmail':  (head or {}).get('email'),
         'stats':      stats,
