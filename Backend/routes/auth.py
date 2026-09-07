@@ -175,15 +175,89 @@ def login():
             # is_locked with no expiry recorded — treat as still locked (safe default).
             return jsonify({'error': 'Account is locked. Please contact an admin to unlock.'}), 403
 
+    # Records a failed attempt and applies lockout rules. Only ever called
+    # from the credential-check except block below — never for a server-side
+    # bug that happens after Supabase has already confirmed the password was
+    # correct (that used to lock out users with the right password whenever
+    # unrelated code after login crashed, e.g. the is_new_ip NameError).
+    def _record_failed_login():
+        if profile_data:
+            if is_probation_attempt:
+                # Failed the one-shot probation attempt after a temporary lockout expired
+                # -> lock permanently, requires an admin/superuser to unlock.
+                try:
+                    supabase.table('profiles').update({
+                        'permanently_locked': True,
+                        'is_locked': True,
+                        'locked_until': None,
+                    }).eq('email', email).execute()
+                except Exception:
+                    pass
+
+                if login_restrictions['send_suspicious_alerts']:
+                    _send_suspicious_login_alert(
+                        email,
+                        'Repeated failed login attempts on your account have permanently locked it.'
+                    )
+
+                return jsonify({'error': 'Account permanently locked due to a failed login after the temporary lockout period. Contact an admin to unlock it.'}), 403
+
+            current_attempts = profile_data.get('failed_attempts', 0) + 1
+            login_security = get_login_security_settings()
+            max_attempts = login_security['max_failed_attempts']
+            lockout_minutes = login_security['lockout_duration_minutes']
+            is_locked = current_attempts >= max_attempts
+
+            update_payload = {'failed_attempts': current_attempts, 'is_locked': is_locked}
+            if is_locked:
+                update_payload['locked_until'] = (now + timedelta(minutes=lockout_minutes)).isoformat()
+
+            try:
+                supabase.table('profiles').update(update_payload).eq('email', email).execute()
+            except Exception:
+                pass
+
+            if is_locked:
+                if login_restrictions['send_suspicious_alerts']:
+                    _send_suspicious_login_alert(
+                        email,
+                        f'{max_attempts} consecutive failed login attempts on your account have triggered a temporary lockout.'
+                    )
+                return jsonify({'error': f'Account locked for {lockout_minutes} minutes due to {max_attempts} consecutive failed login attempts.'}), 403
+
+        # LOG FAILED ACCESS
+        try:
+            supabase.table('access_logs').insert({
+                'action': 'Failed Login Attempt',
+                'ip_address': request.remote_addr or 'Unknown',
+                'location': get_location_from_ip(request.remote_addr),
+                'device': get_device_info(request.user_agent),
+                'status': 'Failed',
+                'email_attempted': email,
+                'timestamp': datetime.utcnow().isoformat()
+            }).execute()
+        except Exception:
+            pass
+
+        return jsonify({'error': 'Invalid credentials'}), 401
+
+    # 2. AUTHENTICATE USER — the only step that determines "wrong credentials".
+    # A failure here is a genuine bad email/password and counts toward lockout.
     try:
-        # 2. AUTHENTICATE USER
         response = supabase.auth.sign_in_with_password({
             'email': email,
             'password': password
         })
         user_id = str(response.user.id)
+    except Exception as e:
+        print(f"[LOGIN] Authentication failed for {email}: {e}")
+        return _record_failed_login()
 
-        # 3. SAFELY RESET FAILED ATTEMPTS / LOCK STATE ON SUCCESS
+    # 3. Everything below only runs once Supabase has confirmed the password
+    # was correct. A failure here is a server-side bug, not bad credentials —
+    # it must NOT lock the account or be reported as "Invalid credentials".
+    try:
+        # 3a. SAFELY RESET FAILED ATTEMPTS / LOCK STATE ON SUCCESS
         if profile_data and (
             profile_data.get('failed_attempts', 0) > 0
             or profile_data.get('is_locked')
@@ -293,66 +367,14 @@ def login():
         }), 200
 
     except Exception as e:
-        # 4. SAFELY HANDLE THE FAILED ATTEMPT
-        if profile_data:
-            if is_probation_attempt:
-                # Failed the one-shot probation attempt after a temporary lockout expired
-                # -> lock permanently, requires an admin/superuser to unlock.
-                try:
-                    supabase.table('profiles').update({
-                        'permanently_locked': True,
-                        'is_locked': True,
-                        'locked_until': None,
-                    }).eq('email', email).execute()
-                except Exception:
-                    pass
-
-                if login_restrictions['send_suspicious_alerts']:
-                    _send_suspicious_login_alert(
-                        email,
-                        'Repeated failed login attempts on your account have permanently locked it.'
-                    )
-
-                return jsonify({'error': 'Account permanently locked due to a failed login after the temporary lockout period. Contact an admin to unlock it.'}), 403
-
-            current_attempts = profile_data.get('failed_attempts', 0) + 1
-            login_security = get_login_security_settings()
-            max_attempts = login_security['max_failed_attempts']
-            lockout_minutes = login_security['lockout_duration_minutes']
-            is_locked = current_attempts >= max_attempts
-
-            update_payload = {'failed_attempts': current_attempts, 'is_locked': is_locked}
-            if is_locked:
-                update_payload['locked_until'] = (now + timedelta(minutes=lockout_minutes)).isoformat()
-
-            try:
-                supabase.table('profiles').update(update_payload).eq('email', email).execute()
-            except Exception:
-                pass
-
-            if is_locked:
-                if login_restrictions['send_suspicious_alerts']:
-                    _send_suspicious_login_alert(
-                        email,
-                        f'{max_attempts} consecutive failed login attempts on your account have triggered a temporary lockout.'
-                    )
-                return jsonify({'error': f'Account locked for {lockout_minutes} minutes due to {max_attempts} consecutive failed login attempts.'}), 403
-
-        # LOG FAILED ACCESS
-        try:
-            supabase.table('access_logs').insert({
-                'action': 'Failed Login Attempt',
-                'ip_address': request.remote_addr or 'Unknown',
-                'location': get_location_from_ip(request.remote_addr),
-                'device': get_device_info(request.user_agent),
-                'status': 'Failed',
-                'email_attempted': email,
-                'timestamp': datetime.utcnow().isoformat()
-            }).execute()
-        except Exception as log_err:
-            pass
-
-        return jsonify({'error': 'Invalid credentials'}), 401
+        # Authentication already succeeded at this point — this is our bug
+        # (e.g. a NameError, a DB hiccup, an email-service outage), not a
+        # wrong password. Report it plainly and leave the lockout counter
+        # untouched so a correct password is never penalized for a server error.
+        print(f"[LOGIN] Unexpected error after successful authentication for {email}: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Something went wrong completing your login. Please try again.'}), 500
 
 
 @bp.route('/verify-otp', methods=['POST'])
@@ -552,16 +574,20 @@ def get_me():
 
 @bp.route('/forgot-password', methods=['POST'])
 def forgot_password():
-    data = request.json
+    data = request.json or {}
     email = data.get('email')
 
     if not email:
         return jsonify({'error': 'Email is required'}), 400
 
-    supabase = get_supabase()
-    supabase.auth.reset_password_email(
-        email,
-        {'redirect_to': reset_redirect},
-    )
+    try:
+        supabase = get_supabase()
+        supabase.auth.reset_password_email(
+            email,
+            {'redirect_to': reset_redirect},
+        )
+    except Exception as e:
+        print(f"[FORGOT PASSWORD] Failed to send reset email to {email}: {e}")
+        return jsonify({'error': 'Could not send the reset email right now. Please try again shortly.'}), 500
 
     return jsonify({'message': 'Password reset email sent'}), 200
