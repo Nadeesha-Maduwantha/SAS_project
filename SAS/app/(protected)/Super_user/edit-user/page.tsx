@@ -20,7 +20,7 @@ const EditUserPage: React.FC = () => {
     fullName: '',
     email: '',
     department: '',
-    role: 'Custom Configuration',
+    role: '',
     userAction: '',
     resetPassword: false,
     unlockAccount: false,
@@ -52,7 +52,7 @@ const EditUserPage: React.FC = () => {
           fullName: data.user.fullName || '',
           email: data.user.email || '',
           department: data.user.department || '',
-          role: data.user.role || 'Custom Configuration',
+          role: data.user.role || '',
           userAction: '',
           resetPassword: false,
           unlockAccount: false,
@@ -66,7 +66,7 @@ const EditUserPage: React.FC = () => {
           fullName: '',
           email: '',
           department: '',
-          role: 'Custom Configuration',
+          role: '',
           userAction: '',
           resetPassword: false,
           unlockAccount: false,
@@ -165,7 +165,7 @@ const EditUserPage: React.FC = () => {
           fullName: '',
           email: '',
           department: '',
-          role: 'Custom Configuration',
+          role: '',
           userAction: '',
           resetPassword: false,
           unlockAccount: false,
@@ -219,7 +219,7 @@ const EditUserPage: React.FC = () => {
       fullName: '',
       email: '',
       department: '',
-      role: 'Custom Configuration',
+      role: '',
       userAction: '',
       resetPassword: false,
       unlockAccount: false,
@@ -279,7 +279,7 @@ const EditUserPage: React.FC = () => {
         {/* Main Card - Only show if user is found */}
         {formData.id && (
           <div className="bg-white rounded-xl p-8 grid grid-cols-2 gap-8 mb-6">
-            <BasicInformation formData={formData} onChange={handleInputChange} />
+            <BasicInformation formData={formData} onChange={handleInputChange} viewerRole="superuser" />
             <AccountManagement
               formData={formData}
               onChange={handleInputChange}
