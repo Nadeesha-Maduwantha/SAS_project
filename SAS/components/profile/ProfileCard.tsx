@@ -123,7 +123,7 @@ export default function ProfileCard({ profile, onAvatarUpload }: ProfileCardProp
       {/* Profile Info */}
       <div className="text-center mb-6">
         <h2 className="text-xl font-bold text-gray-800 mb-1">
-          {profile.fullName}
+          {profile.fullName || 'No Name Set'}
         </h2>
         <p className="text-sm font-medium text-blue-600 bg-blue-100 inline-block px-3 py-1 rounded-full mb-3">
           {profile.role}

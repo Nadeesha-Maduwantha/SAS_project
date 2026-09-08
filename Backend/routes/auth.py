@@ -592,9 +592,9 @@ def get_me():
         return jsonify({
             'user': {
                 'id': user_data.get('id'),
-                'fullName': user_data.get('full_name') or 'No Name Set',
+                'fullName': user_data.get('full_name') or '',
                 'email': user_data.get('email') or '',
-                'phoneNumber': user_data.get('phoneNumber') or 'Not Set',
+                'phoneNumber': user_data.get('phoneNumber') or '',
                 'department': user_data.get('department') or 'General',
                 'role': user_data.get('role') or 'user',
                 'status': 'Active', 

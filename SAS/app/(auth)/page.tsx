@@ -190,7 +190,7 @@ export default function LoginPage() {
           Previously the content div was NOT a flex child with h-full,
           so justify-between had nothing to work against and collapsed to top.
         */}
-        <div className="relative z-10 flex flex-col justify-between w-full h-full p-12 text-white">
+        <div className="relative z-10 flex flex-col w-full h-full p-12 text-white">
 
           {/* Top — logo / system name */}
           <div>
@@ -199,40 +199,28 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Middle — main brand copy */}
-          <div className="max-w-xl">
-            <h1 className="text-5xl font-extrabold leading-tight mb-6 tracking-tight">
-              Dart Global<br />Logistic
-            </h1>
-            <p className="text-lg text-blue-100 leading-relaxed">
-              Secure, real-time alert management for global supply chains.
-              Monitor critical shipments, resolve anomalies instantly, and maintain
-              operational integrity with the SAS Platform.
-            </p>
+          {/* Middle — main brand copy, vertically centered in remaining space */}
+          <div className="flex-1 flex items-center">
+            <div className="max-w-xl">
+              <h1 className="text-5xl font-extrabold leading-tight mb-6 tracking-tight">
+                Dart Global<br />Logistic
+              </h1>
+              <p className="text-lg text-blue-100 leading-relaxed">
+                Secure, real-time alert management for global supply chains.
+                Monitor critical shipments, resolve anomalies instantly, and maintain
+                operational integrity with the SAS Platform.
+              </p>
 
-            {/* Feature pills */}
-            <div className="flex flex-wrap gap-3 mt-8">
-              {['Real-time Alerts', 'SOC2 Compliant', 'End-to-End Encrypted'].map(f => (
-                <span key={f} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
-                  style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)' }}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
-                  {f}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Bottom — stats */}
-          <div className="grid grid-cols-2 gap-10 max-w-sm">
-            <div>
-              <div className="text-4xl font-extrabold mb-1 tracking-tight">99.9%</div>
-              <div className="text-blue-200 text-sm font-medium">Uptime Reliability</div>
-              <div className="mt-1 text-xs text-blue-300">SOC2 Compliant</div>
-            </div>
-            <div>
-              <div className="text-4xl font-extrabold mb-1 tracking-tight">&lt; 200ms</div>
-              <div className="text-blue-200 text-sm font-medium">Alert Latency</div>
-              <div className="mt-1 text-xs text-blue-300">End-to-End Encrypted</div>
+              {/* Feature pills */}
+              <div className="flex flex-wrap gap-3 mt-8">
+                {['Real-time Alerts', 'SOC2 Compliant', 'End-to-End Encrypted'].map(f => (
+                  <span key={f} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
+                    style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                    {f}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
