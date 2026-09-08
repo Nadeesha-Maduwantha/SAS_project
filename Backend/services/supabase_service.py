@@ -1,5 +1,5 @@
 from supabase import create_client, Client
-from config import SUPABASE_URL, SUPABASE_KEY
+from config import SUPABASE_URL, SUPABASE_KEY, SUPABASE_SERVICE_ROLE_KEY
 
 
 def get_supabase() -> Client:
@@ -7,6 +7,17 @@ def get_supabase() -> Client:
         raise ValueError("Missing Supabase URL or Key in environment variables.")
 
     return create_client(SUPABASE_URL, SUPABASE_KEY)
+
+
+def get_supabase_admin() -> Client:
+    """Client authenticated with the service-role key. Required for
+    auth.admin.* calls and for table writes that must bypass RLS (the anon
+    key used by get_supabase() silently no-ops writes RLS denies instead of
+    raising, e.g. deleting a profile row)."""
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        raise ValueError("Missing Supabase URL or Service Role Key in environment variables.")
+
+    return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 
 supabase = get_supabase()
