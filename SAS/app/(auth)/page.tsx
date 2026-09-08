@@ -55,9 +55,18 @@ export default function LoginPage() {
       const response = await fetch('http://127.0.0.1:5000/api/auth/login', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ email, password }),
+        body:    JSON.stringify({
+          email,
+          password,
+          remember_device: rememberDevice,
+          remember_device_token: localStorage.getItem('remember_device_token'),
+        }),
       });
       const data = await response.json();
+
+      if (data.remember_device_token) {
+        localStorage.setItem('remember_device_token', data.remember_device_token);
+      }
 
       if (response.ok && data.twoFactorRequired) {
         setStage('otp');
@@ -89,9 +98,13 @@ export default function LoginPage() {
       const response = await fetch('http://127.0.0.1:5000/api/auth/verify-otp', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ email, code: otpCode }),
+        body:    JSON.stringify({ email, code: otpCode, remember_device: rememberDevice }),
       });
       const data = await response.json();
+
+      if (data.remember_device_token) {
+        localStorage.setItem('remember_device_token', data.remember_device_token);
+      }
 
       if (response.ok && data.passwordExpired) {
         setPendingToken(data.access_token);
