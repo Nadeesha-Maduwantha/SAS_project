@@ -19,6 +19,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ??
+  process.env.NEXT_PUBLIC_BACKEND_URL ??
+  'http://127.0.0.1:5000';
+
 // Build the ?role=&email=&department= scope query for the current viewer.
 function scopeQuery(scope: string | undefined, user: { email?: string; department?: string }) {
   if (!scope || scope === 'admin') return '';

@@ -33,8 +33,7 @@ export default function SalesDashboardPage() {
       {/* Scoped alert feed — overdue / delayed milestones for this user */}
       <div style={{ marginTop: 14 }}>
         <AlertFeedTable
-          title="My Shipment Alert Feed"
-          apiBase="http://localhost:5000"
+          title="My Alert Feed"
           maxRows={8}
           scope="sales"
         />
