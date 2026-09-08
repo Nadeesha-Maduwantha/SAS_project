@@ -8,10 +8,12 @@ from services.security_settings_service import (
     is_two_factor_required_for_admins,
     is_new_device_login_notification_enabled,
     get_login_restriction_settings,
+    get_max_concurrent_sessions,
 )
 from utils.auth_helper import require_auth, get_current_user
 from utils.access_logger import log_access_event, is_new_device, is_new_ip
 from utils.password_policy import is_password_expired
+from utils.session_manager import count_active_sessions, register_session, remove_session
 from datetime import datetime, timedelta, timezone
 import hashlib
 import secrets
@@ -292,6 +294,17 @@ def login():
             log_access_event('2FA Code Sent', status='Success', email_attempted=email, user_id=user_id)
             return jsonify({'message': 'Verification code required', 'twoFactorRequired': True, 'email': email}), 200
 
+        # 3c. CONCURRENT SESSION LIMIT — Security Settings -> Session
+        # Management -> 'Max concurrent sessions'. Checked here (password
+        # correct, no pending 2FA) since this is the first point a real
+        # session is actually about to be granted.
+        max_concurrent = get_max_concurrent_sessions()
+        if max_concurrent is not None and count_active_sessions(user_id) >= max_concurrent:
+            return jsonify({
+                'error': f'You have reached the maximum of {max_concurrent} active session(s). '
+                         f'Log out from another device and try again.'
+            }), 403
+
         # LOG SUCCESSFUL ACCESS
         # Checked BEFORE inserting this login's own access_logs row below —
         # otherwise that row would already be there to match against itself.
@@ -319,6 +332,8 @@ def login():
             'role': actual_role,
             'department': profile_data.get('department') if profile_data else None
         }
+
+        register_session(user_id, response.session.access_token, ip_address=ip_address, device=device)
 
         if is_password_expired(profile_data.get('password_changed_at') if profile_data else None):
             return jsonify({
@@ -439,6 +454,16 @@ def verify_otp():
     except Exception:
         pass
 
+    # CONCURRENT SESSION LIMIT — same check as the direct-login path; this is
+    # the equivalent "about to grant a real session" point when 2FA was
+    # required instead.
+    max_concurrent = get_max_concurrent_sessions()
+    if max_concurrent is not None and count_active_sessions(user_id) >= max_concurrent:
+        return jsonify({
+            'error': f'You have reached the maximum of {max_concurrent} active session(s). '
+                     f'Log out from another device and try again.'
+        }), 403
+
     # Checked BEFORE log_access_event('Login', ...) inserts this login's own
     # access_logs row below — otherwise that row would match against itself.
     device = get_device_info(request.user_agent)
@@ -455,6 +480,8 @@ def verify_otp():
         'role': profile_data.get('role', 'user'),
         'department': profile_data.get('department'),
     }
+
+    register_session(user_id, access_token, ip_address=request.remote_addr, device=device)
 
     if is_password_expired(profile_data.get('password_changed_at')):
         return jsonify({
@@ -488,6 +515,11 @@ def logout():
             except Exception:
                 pass
             log_access_event('Logout', status='Success', email_attempted=email, user_id=user_id)
+
+        # Free this session's slot against 'Max concurrent sessions'.
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            remove_session(auth_header.split(' ')[1])
 
         supabase.auth.sign_out()
         return jsonify({'message': 'Logout successful'}), 200

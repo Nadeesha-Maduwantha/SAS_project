@@ -29,6 +29,16 @@ export default function SessionTimeoutGuard({ children }: { children: React.Reac
     let cancelled = false;
 
     const logout = () => {
+      // Best-effort: free this session's slot against 'Max concurrent
+      // sessions' server-side. The local session is cleared regardless of
+      // whether this succeeds.
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        fetch(`${FLASK_API}/api/auth/logout`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => {});
+      }
       clearSession();
       router.push('/?session=timeout');
     };
