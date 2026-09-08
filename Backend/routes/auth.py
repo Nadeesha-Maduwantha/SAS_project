@@ -67,38 +67,6 @@ def get_device_info(user_agent):
     return f"{browser} on {platform}".title()
 
 
-# DEBUG ENDPOINT - Remove this after testing
-@bp.route('/debug', methods=['GET', 'POST'])
-def debug():
-    """Debug endpoint to check token and headers"""
-    print("[DEBUG ENDPOINT] Called")
-    auth_header = request.headers.get('Authorization')
-    print(f"[DEBUG] Authorization header: {bool(auth_header)}")
-    
-    if auth_header and auth_header.startswith('Bearer '):
-        token = auth_header.split(' ')[1]
-        print(f"[DEBUG] Token length: {len(token)}")
-        try:
-            decoded = jwt.decode(token, options={"verify_signature": False})
-            print(f"[DEBUG] Token decoded successfully")
-            print(f"[DEBUG] Token claims: {list(decoded.keys())}")
-            print(f"[DEBUG] User ID (sub): {decoded.get('sub')}")
-            return jsonify({
-                'status': 'ok',
-                'token_valid': True,
-                'token_keys': list(decoded.keys()),
-                'user_id': decoded.get('sub')
-            }), 200
-        except Exception as e:
-            print(f"[DEBUG] Token decode failed: {str(e)}")
-            return jsonify({
-                'status': 'error',
-                'error': str(e)
-            }), 400
-    
-    return jsonify({'status': 'no_token'}), 400
-
-
 @bp.route('/signup', methods=['POST'])
 def signup():
     try:

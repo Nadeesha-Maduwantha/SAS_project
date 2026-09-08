@@ -115,17 +115,17 @@ export default function ProfileDropdown() {
       {/* ── Trigger ─────────────────────────────────────────── */}
       <div
         onClick={() => setIsOpen(o => !o)}
-        className="flex items-center gap-3 cursor-pointer p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+        className="flex items-center gap-3 cursor-pointer p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
       >
         <div
           className="w-9 h-9 rounded-full bg-slate-200 bg-cover bg-center flex-shrink-0"
           style={{ backgroundImage: `url('${avatarUrl}')` }}
         />
         <div className="hidden md:flex flex-col items-start leading-tight">
-          <span className="text-sm font-semibold text-gray-800 dark:text-slate-100">
+          <span className="text-sm font-semibold text-gray-800">
             {user.full_name}
           </span>
-          <span className="text-xs text-gray-500 dark:text-slate-400">
+          <span className="text-xs text-gray-500">
             {formatRole(user.role)}
           </span>
         </div>
@@ -134,27 +134,23 @@ export default function ProfileDropdown() {
       {/* ── Dropdown ────────────────────────────────────────── */}
       {isOpen && (
         <div className="absolute right-0 mt-3 w-[270px] rounded-xl shadow-xl border z-50
-                        bg-white border-gray-100
-                        dark:bg-slate-800 dark:border-slate-700">
+                        bg-white border-gray-100">
 
           {/* User info header */}
           <div className="p-4 flex items-center gap-3 rounded-t-xl
-                          bg-slate-50/60 dark:bg-slate-700/60">
+                          bg-slate-50/60">
             <div
               className="w-12 h-12 rounded-full flex-shrink-0 bg-cover bg-center"
               style={{ backgroundImage: `url('${avatarUrl}')` }}
             />
             <div className="overflow-hidden">
-              <h3 className="text-[14px] font-semibold truncate
-                             text-slate-800 dark:text-slate-100">
+              <h3 className="text-[14px] font-semibold truncate text-slate-800">
                 {user.full_name}
               </h3>
-              <p className="text-[12px] truncate mt-0.5
-                            text-slate-500 dark:text-slate-400">
+              <p className="text-[12px] truncate mt-0.5 text-slate-500">
                 {formatRole(user.role)}
               </p>
-              <p className="text-[11px] truncate mt-0.5
-                            text-slate-400 dark:text-slate-500">
+              <p className="text-[11px] truncate mt-0.5 text-slate-400">
                 {user.email}
               </p>
             </div>
@@ -162,14 +158,14 @@ export default function ProfileDropdown() {
 
           {syncFailed && (
             <p
-              className="px-4 py-1.5 text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20"
+              className="px-4 py-1.5 text-[11px] text-amber-600 bg-amber-50"
               title="Could not reach the server — showing your last cached profile info."
             >
               ⚠ Showing cached info — couldn't refresh from server
             </p>
           )}
 
-          <hr className="border-gray-100 dark:border-slate-700 mx-2" />
+          <hr className="border-gray-100 mx-2" />
 
           {/* Actions */}
           <div className="py-1.5">
@@ -178,26 +174,24 @@ export default function ProfileDropdown() {
             <button
               onClick={() => { setIsOpen(false); router.push(`${basePath}/profile`); }}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] transition-colors
-                         text-slate-600 hover:bg-slate-50
-                         dark:text-slate-300 dark:hover:bg-slate-700/60"
+                         text-slate-600 hover:bg-slate-50"
             >
-              <User size={16} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
+              <User size={16} className="text-slate-400 flex-shrink-0" />
               My Profile
             </button>
 
           </div>
 
-          <hr className="border-gray-100 dark:border-slate-700 mx-2" />
+          <hr className="border-gray-100 mx-2" />
 
           {/* Logout */}
           <div className="py-1.5 mb-1">
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium transition-colors
-                         text-red-600 hover:bg-red-50
-                         dark:text-red-400 dark:hover:bg-red-900/20"
+                         text-red-600 hover:bg-red-50"
             >
-              <LogOut size={16} className="text-red-500 dark:text-red-400 flex-shrink-0" />
+              <LogOut size={16} className="text-red-500 flex-shrink-0" />
               Logout
             </button>
           </div>

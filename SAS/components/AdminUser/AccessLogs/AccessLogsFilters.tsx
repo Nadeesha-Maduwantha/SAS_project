@@ -37,6 +37,7 @@ export default function AccessLogsFilters({
           >
             <option value="all">All Users</option>
             <option value="admin">Admin</option>
+            <option value="superuser">Super User</option>
             <option value="sales">Sales</option>
             <option value="operation">Operation</option>
           </select>

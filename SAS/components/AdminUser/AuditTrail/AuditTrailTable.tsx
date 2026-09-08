@@ -19,6 +19,15 @@ function formatTimestamp(ts: string): string {
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()} ${hours}.${minutes}${ampm}`;
 }
 
+// Returns up to `maxButtons` page numbers, sliding the window to keep `current` visible.
+function getVisiblePages(current: number, total: number, maxButtons: number): number[] {
+  if (total <= maxButtons) return Array.from({ length: total }, (_, i) => i + 1);
+  let start = Math.max(1, current - Math.floor(maxButtons / 2));
+  const end = Math.min(total, start + maxButtons - 1);
+  start = Math.max(1, end - maxButtons + 1);
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+}
+
 export default function AuditTrailTable({
   events,
   currentPage,
@@ -30,6 +39,7 @@ export default function AuditTrailTable({
   const endIndex = Math.min(startIndex + resultsPerPage, events.length);
   const paginatedEvents = events.slice(startIndex, endIndex);
   const totalPages = Math.ceil(events.length / resultsPerPage);
+  const visiblePages = getVisiblePages(currentPage, totalPages, 5);
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -146,7 +156,7 @@ export default function AuditTrailTable({
           >
             Previous
           </button>
-          {totalPages > 0 && Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((page) => (
+          {totalPages > 0 && visiblePages.map((page) => (
             <button
               key={page}
               onClick={() => onPageChange(page)}
