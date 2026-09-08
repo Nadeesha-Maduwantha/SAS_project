@@ -13,7 +13,7 @@ import { useAuth } from '@/lib/hooks/useAuth';
 function scopeQuery(scope: string | undefined, u: { email?: string; department?: string }) {
   if (!scope || scope === 'admin') return '';
   const p = new URLSearchParams({ role: scope });
-  if (scope === 'super') p.set('department', u.department ?? '');
+  if (scope === 'super') { p.set('department', u.department ?? ''); p.set('email', u.email ?? ''); }
   else p.set('email', u.email ?? '');
   return `?${p.toString()}`;
 }
