@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { CheckCircle } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 import { getArchivedShipments } from '@/lib/services/shipment.service'
 import { ShipmentStatusBadge } from '@/components/shipments/ShipmentStatusBadge'
 import { ShipmentPagination } from '@/components/shipments/ShipmentPagination'
@@ -10,60 +9,69 @@ import { Shipment } from '@/types'
 import { ShipmentFilter } from '@/components/shipments/ShipmentFilter'
 import { exportArchivedShipmentsPDF } from '@/lib/Utils/exportPDF'
 import { ShipmentSearch } from '@/components/shipments/ShipmentSearch'
+import ShipmentDetailModal from '@/components/shipments/ShipmentDetailModal'
+import { ShipmentCard } from '@/components/shipments/ShipmentCard'
+import { ShipmentViewToggle, ShipmentView } from '@/components/shipments/ShipmentViewToggle'
+import { FilterGroup,
+  buildModeOptions,
+  TRANSPORT_MODE_STYLES,
+  PICKUP_STATUS_STYLES,
+} from '@/constants/shipment.constants'
 
-function formatDate(date: Date | null | undefined) {
-  if (!date) return '—'
-  return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+//  Constants 
+// filterGroups, PAGE_SIZE and DEFAULT_FILTERS moved outside the component
+// so they are not recreated on every render.
+const PAGE_SIZE = 10
+
+const DEFAULT_FILTERS: Record<string, string> = {
+  transportMode: '',
+  currentStage: '',
 }
 
+// Archive page only shows delivered variants — kept as a named constant
+// so the label/value pairs are not scattered as inline strings.
+const ARCHIVED_STAGE_OPTIONS: FilterGroup['options'] = [
+  { label: 'Delivered',        value: 'Delivered'        },
+  { label: 'Delivered to CFS', value: 'Delivered to CFS' }, 
+]
+
+// filterGroups moved inside the component (as a useMemo) because the
+// department options are now derived from the loaded shipments.
+
+
+
+// Component for the archived shipments page.
+
 export default function ArchivedShipmentsPage() {
-  const router = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
   const [shipments, setShipments] = useState<Shipment[]>([])
+
+  // Department options derived from the loaded data — dropdown never offers
+  // a mode with no rows. Archive "By Type" stays a fixed list (delivered
+  // variants only). Memoized: rebuilt only when data changes.
+  const filterGroups: FilterGroup[] = useMemo(() => [
+    { label: 'By Department', key: 'transportMode', options: buildModeOptions(shipments) },
+    { label: 'By Type',       key: 'currentStage',  options: ARCHIVED_STAGE_OPTIONS },
+  ], [shipments])
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({
-    transportMode: '',
-    currentStage: '',
-  })
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>(DEFAULT_FILTERS)
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null)
+  const [view, setView] = useState<ShipmentView>('table')
 
-  const filteredShipments = shipments.filter((s) => {
-    if (activeFilters.transportMode && s.transportMode !== activeFilters.transportMode) return false
-    if (activeFilters.currentStage &&
-      s.llmIdentifiedType !== activeFilters.currentStage) return false
-    if (searchQuery && !s.cargowiseId.toLowerCase().includes(searchQuery.toLowerCase())) return false
-    return true
-  })
-
-  const filterGroups = [
-    {
-      label: 'By Department',
-      key: 'transportMode',
-      options: [
-        { label: 'Air Freight', value: 'AIR' },
-        { label: 'Sea Freight', value: 'SEA' },
-        { label: 'Road Freight', value: 'ROAD' },
-      ],
-    },
-    {
-      label: 'By Type',
-      key: 'currentStage',
-      options: [
-        { label: 'Delivered', value: 'Delivered' },
-        { label: 'Delivered to CFS warehouse', value: 'Delivered to CFS warehouse' },
-      ],
-    },
-  ]
-
+  // To fetching archived shipments from the backend API.
   useEffect(() => {
     async function fetchData() {
       try {
         setLoading(true)
         const data = await getArchivedShipments()
         setShipments(data)
-      } catch {
-        setError('Failed to load archived shipments')
+      } catch (err) {
+        // FIXED: error was swallowed — now logged for debugging
+        console.error('Failed to load archived shipments:', err)
+        setError('Failed to load archived shipments. Please try again.')
       } finally {
         setLoading(false)
       }
@@ -71,6 +79,15 @@ export default function ArchivedShipmentsPage() {
     fetchData()
   }, [])
 
+  // To apply filters and search query on the shipments list.
+  const filteredShipments = shipments.filter((s) => {
+    if (activeFilters.transportMode && s.transportMode !== activeFilters.transportMode) return false
+    if (activeFilters.currentStage && s.llmIdentifiedType !== activeFilters.currentStage) return false
+    if (searchQuery && !s.cargowiseId.toLowerCase().includes(searchQuery.toLowerCase())) return false
+    return true
+  })
+
+  // To show loading and error states.
   if (loading) return (
     <div className="p-6 flex items-center justify-center h-64">
       <p className="text-gray-500 text-sm">Loading archived shipments...</p>
@@ -83,6 +100,7 @@ export default function ArchivedShipmentsPage() {
     </div>
   )
 
+  // To render the main table with filters, search, and pagination.
   return (
     <div className="p-6">
       <div className="mb-5">
@@ -104,140 +122,155 @@ export default function ArchivedShipmentsPage() {
             onFilterChange={(key, value) =>
               setActiveFilters((prev) => ({ ...prev, [key]: value }))
             }
-            onClearAll={() => setActiveFilters({ transportMode: '', currentStage: '' })}
+            onClearAll={() => setActiveFilters(DEFAULT_FILTERS)}
           />
           <button
             onClick={() => exportArchivedShipmentsPDF(filteredShipments)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
             Export PDF
           </button>
+          <ShipmentViewToggle view={view} onChange={setView} />
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-y border-gray-100 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                <th className="text-left px-5 py-3">Shipment ID</th>
-                <th className="text-left px-5 py-3">Consignee</th>
-                <th className="text-left px-5 py-3">Status</th>
-                <th className="text-left px-5 py-3">Transport Mode</th>
-                <th className="text-left px-5 py-3">Pickup Status</th>
-                <th className="text-left px-5 py-3">AI Note</th>
-                <th className="text-left px-5 py-3">Details</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filteredShipments.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-sm text-gray-400">
-                    No archived shipments found
-                  </td>
+        {view === 'table' ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-y border-gray-200 bg-gray-50 text-[11px] font-semibold [&>th]:font-semibold text-gray-500 uppercase tracking-[0.06em]">
+                  <th className="text-left px-5 py-3">Shipment ID</th>
+                  <th className="text-left px-5 py-3">Consignee</th>
+                  <th className="text-left px-5 py-3">Status</th>
+                  <th className="text-left px-5 py-3">Transport Mode</th>
+                  <th className="text-left px-5 py-3">Pickup Status</th>
+                  <th className="text-left px-5 py-3">AI Note</th>
                 </tr>
-              ) : filteredShipments.map((shipment) => (
-                <tr key={shipment.id} className="hover:bg-gray-50 transition-colors">
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredShipments.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-10 text-center text-sm text-gray-400">
+                      No archived shipments found
+                    </td>
+                  </tr>
+                ) : filteredShipments.map((shipment) => (
+                  <tr
+                    key={shipment.id}
+                    onClick={() => setSelectedShipment(shipment)}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
 
-                  {/* Shipment ID */}
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">#{shipment.cargowiseId}</p>
-                        {shipment.branch && (
-                          <p className="text-xs text-gray-400 mt-0.5">Branch: {shipment.branch}</p>
-                        )}
+                    {/* Shipment ID */}
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-mono font-bold text-gray-900">{shipment.cargowiseId}</p>
+                          {shipment.branch && (
+                            <p className="text-xs text-gray-400 mt-0.5">Branch: {shipment.branch}</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </td>
+                    </td>
 
-                  {/* Consignee */}
-                  <td className="px-5 py-3.5">
-                    <p className="text-sm font-medium text-gray-900">
-                      {shipment.consigneeName ?? '—'}
-                    </p>
-                    {shipment.gcCode && (
-                      <p className="text-xs text-gray-400 mt-0.5">{shipment.gcCode}</p>
-                    )}
-                  </td>
-
-                  {/* Status */}
-                  <td className="px-5 py-3.5">
-                    <ShipmentStatusBadge status={shipment.llmIdentifiedType ?? shipment.currentStage} />
-                    {shipment.stNoteText && (
-                      <p className="text-xs text-gray-400 mt-1 max-w-xs truncate">
-                        {shipment.stNoteText}
+                    {/* Consignee */}
+                    <td className="px-5 py-3.5">
+                      <p className="text-sm font-medium text-gray-900">
+                        {shipment.consigneeName ?? '—'}
                       </p>
-                    )}
-                  </td>
+                      {shipment.gcCode && (
+                        <p className="text-xs text-gray-400 mt-0.5">{shipment.gcCode}</p>
+                      )}
+                    </td>
 
-                  {/* Transport Mode */}
-                  <td className="px-5 py-3.5">
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center',
-                      padding: '3px 10px', borderRadius: '9999px',
-                      fontSize: '12px', fontWeight: 600,
-                      background: shipment.transportMode === 'AIR' ? '#fef3c7' :
-                                  shipment.transportMode === 'ROAD' ? '#f0fdf4' : '#eff6ff',
-                      color: shipment.transportMode === 'AIR' ? '#92400e' :
-                             shipment.transportMode === 'ROAD' ? '#166534' : '#1e40af',
-                    }}>
-                      {shipment.transportMode ?? '—'}
-                    </span>
-                  </td>
+                    {/* Status */}
+                    <td className="px-5 py-3.5">
+                      <ShipmentStatusBadge status={shipment.llmIdentifiedType ?? shipment.currentStage} />
+                      {shipment.stNoteText && (
+                        <p className="text-xs text-gray-400 mt-1 max-w-xs truncate">
+                          {shipment.stNoteText}
+                        </p>
+                      )}
+                    </td>
 
-                  {/* Pickup Status */}
-                  <td className="px-5 py-3.5">
-                    {shipment.pickupDateStatus ? (
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center',
-                        padding: '3px 10px', borderRadius: '9999px',
-                        fontSize: '12px', fontWeight: 600,
-                        background: shipment.pickupDateStatus === 'Future' ? '#eff6ff' :
-                                    shipment.pickupDateStatus === 'Past' ? '#fef2f2' : '#f0fdf4',
-                        color: shipment.pickupDateStatus === 'Future' ? '#1d4ed8' :
-                               shipment.pickupDateStatus === 'Past' ? '#dc2626' : '#16a34a',
-                      }}>
-                        {shipment.pickupDateStatus}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-400">—</span>
-                    )}
-                  </td>
+                    {/* Transport Mode */}
 
-                  {/* AI Note */}
-                  <td className="px-5 py-3.5">
-                    <p className="text-xs text-gray-600 max-w-xs truncate">
-                      {shipment.llmNote ?? '—'}
-                    </p>
-                  </td>
+                    <td className="px-5 py-3.5">
+                      {shipment.transportMode ? (() => {
+                        const modeStyle = TRANSPORT_MODE_STYLES[shipment.transportMode] ?? {
+                          bg: 'bg-gray-100', text: 'text-gray-600',
+                        }
+                        return (
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${modeStyle.bg} ${modeStyle.text}`}>
+                            {shipment.transportMode}
+                          </span>
+                        )
+                      })() : <span className="text-xs text-gray-400">—</span>}
+                    </td>
 
-                  {/* Details */}
-                  <td className="px-5 py-3.5">
-                    <button
-                      onClick={() => router.push(`/admin/shipments/${shipment.id}?from=/admin/shipments/archive`)}
-                      className="text-xs font-medium text-blue-600 hover:underline"
-                    >
-                      View Details
-                    </button>
-                  </td>
+                    {/* Pickup Status */}
+                    <td className="px-5 py-3.5">
+                      {shipment.pickupDateStatus ? (() => {
+                        const pickupStyle = PICKUP_STATUS_STYLES[shipment.pickupDateStatus] ?? {
+                          bg: 'bg-gray-50', text: 'text-gray-600',
+                        }
+                        return (
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${pickupStyle.bg} ${pickupStyle.text}`}>
+                            {shipment.pickupDateStatus}
+                          </span>
+                        )
+                      })() : <span className="text-xs text-gray-400">—</span>}
+                    </td>
 
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    {/* AI Note */}
+                    <td className="px-5 py-3.5">
+                      <p className="text-xs text-gray-600 max-w-xs truncate">
+                        {shipment.llmNote ?? '—'}
+                      </p>
+                    </td>
 
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="p-5">
+            {filteredShipments.length === 0 ? (
+              <p className="text-center text-sm text-gray-400 py-10">No archived shipments found</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredShipments.map((shipment) => (
+                  <ShipmentCard
+                    key={shipment.id}
+                    shipment={shipment}
+                    onClick={() => setSelectedShipment(shipment)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* To Pagination: PAGE_SIZE constant used instead of magic number 10 */}
         <ShipmentPagination
           currentPage={currentPage}
           totalResults={filteredShipments.length}
-          totalPages={Math.ceil(filteredShipments.length / 10)}
-          pageSize={10}
+          totalPages={Math.ceil(filteredShipments.length / PAGE_SIZE)}
+          pageSize={PAGE_SIZE}
           onPageChange={setCurrentPage}
         />
       </div>
+
+      <ShipmentDetailModal
+        isOpen={!!selectedShipment}
+        onClose={() => setSelectedShipment(null)}
+        shipment={selectedShipment}
+      />
     </div>
   )
 }

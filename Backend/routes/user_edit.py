@@ -3,11 +3,18 @@ from services.supabase_service import get_supabase
 from datetime import datetime
 import traceback
 from utils.audit_logger import log_audit_action
-from utils.auth_helper import get_current_user  # Used to get the user who is doing the edit
+from utils.access_logger import log_access_event
+from utils.auth_helper import get_current_user, require_auth  # Used to get the user who is doing the edit
 
 bp = Blueprint('user_edit', __name__, url_prefix='/api/users')
 
+# Roles a Super User is allowed to manage. Admin and Super User accounts are
+# off-limits to a Super User — only an Admin may touch those.
+SUPERUSER_MANAGEABLE_ROLES = {'salesuser', 'operationuser'}
+
+
 @bp.route('/search', methods=['GET'])
+@require_auth
 def search_user():
     try:
         email = request.args.get('email')
@@ -15,26 +22,33 @@ def search_user():
             return jsonify({'error': 'Email parameter is required'}), 400
 
         supabase = get_supabase()
-        
+
         # Search the profiles table by email
         result = supabase.table('profiles').select('*').eq('email', email).execute()
-        
+
         if not result.data:
             return jsonify({'error': 'User not found'}), 404
 
         profile = result.data[0]
-        
+
+        # A Super User may only look up Sales/Operation accounts — Admin and
+        # Super User profiles are none of their business.
+        _, requester_role = get_current_user()
+        target_role = (profile.get('role') or '').lower()
+        if (requester_role or '').lower() == 'superuser' and target_role not in SUPERUSER_MANAGEABLE_ROLES:
+            return jsonify({'error': 'Super Users can only manage Sales User or Operation User accounts'}), 403
+
         # --- NEW LOGIC: DETERMINE USER ACTION STATE FROM DB ---
         # If is_blocked is True, the checkbox should reflect 'block', else 'unblock'
         is_blocked = profile.get('is_blocked', False)
         user_action_state = 'block' if is_blocked else 'unblock'
-        
+
         user_data = {
             'id': profile.get('id'),
             'fullName': profile.get('full_name', ''),
             'email': profile.get('email', ''),
             'department': profile.get('department', ''),
-            'role': profile.get('role', 'Custom Configuration'),
+            'role': profile.get('role', ''),
             'userAction': user_action_state, # <--- Updated to match DB state
             'unlockAccount': False
         }
@@ -43,27 +57,45 @@ def search_user():
 
     except Exception as e:
         traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Failed to search for user. Please try again.'}), 500
 
 
 @bp.route('/<user_id>', methods=['PUT'])
+@require_auth
 def update_user(user_id):
     try:
         data = request.json
         supabase = get_supabase()
-        
+
         # Get the ID of the person making the change
         requester_id, requester_role = get_current_user()
+        requester_role_lower = (requester_role or '').lower()
+
+        if requester_role_lower not in ('admin', 'superuser'):
+            return jsonify({'error': 'Forbidden'}), 403
+
+        # A Super User may only edit Sales/Operation accounts, and may not
+        # promote anyone into Admin or Super User. Admin has no such limit.
+        if requester_role_lower == 'superuser':
+            target = supabase.table('profiles').select('role').eq('id', user_id).execute()
+            if not target.data:
+                return jsonify({'error': 'User not found'}), 404
+            current_target_role = (target.data[0].get('role') or '').lower()
+            if current_target_role not in SUPERUSER_MANAGEABLE_ROLES:
+                return jsonify({'error': 'Super Users can only manage Sales User or Operation User accounts'}), 403
+            new_role = (data.get('role') or '').lower() if 'role' in data else None
+            if new_role and new_role not in SUPERUSER_MANAGEABLE_ROLES:
+                return jsonify({'error': 'Super Users can only assign Sales User or Operation User roles'}), 403
 
         # Build update payload dynamically based on what was sent
         update_data = {}
-        if 'fullName' in data: 
+        if 'fullName' in data:
             update_data['full_name'] = data['fullName']
-        if 'department' in data: 
+        if 'department' in data:
             update_data['department'] = data['department']
-        if 'role' in data: 
+        if 'role' in data:
             update_data['role'] = data['role']
-            
+
         # --- NEW LOGIC: HANDLE BLOCK / UNBLOCK ACCOUNT ---
         if 'userAction' in data:
             if data['userAction'] == 'block':
@@ -71,34 +103,54 @@ def update_user(user_id):
             elif data['userAction'] == 'unblock':
                 update_data['is_blocked'] = False
                 
-        # Handle 'unlockAccount' (from failed logins) Action if checked
+        # Handle 'unlockAccount' (from failed logins) Action if checked —
+        # only admin/superuser may unlock an account.
         if data.get('unlockAccount'):
+            if (requester_role or '').lower() not in ('admin', 'superuser'):
+                return jsonify({'error': 'Only admins or super users can unlock an account'}), 403
             update_data['is_locked'] = False
             update_data['failed_attempts'] = 0
+            update_data['locked_until'] = None
+            update_data['permanently_locked'] = False
 
         if update_data:
             update_data['updated_at'] = datetime.now().isoformat()
             supabase.table('profiles').update(update_data).eq('id', user_id).execute()
-            
+
             # --- ADD THIS: LOG TO AUDIT TRAIL ---
             if requester_id:
-                # Assuming 2 is the ID for "Update" action in your action_types table
-                # Assuming 1 is the ID for "User Management" entity in your entity_types table
+                # Prefer the name this update just set; otherwise look up the
+                # current one, so the audit/notification text reads with a
+                # name instead of a raw user_id.
+                display_name = update_data.get('full_name')
+                if not display_name:
+                    try:
+                        existing = supabase.table('profiles').select('full_name').eq('id', user_id).execute()
+                        if existing.data:
+                            display_name = existing.data[0].get('full_name')
+                    except Exception:
+                        pass
+                display_name = display_name or 'Unknown User'
+
+                # action_type_id=2 -> UPDATE, entity_type_id=2 -> User Profile
+                # (matches public.action_types / public.entity_types)
                 log_audit_action(
-                    user_id=requester_id, 
-                    action_type_id=2, 
-                    entity_type_id=1, 
+                    user_id=requester_id,
+                    action_type_id=2,
+                    entity_type_id=2,
                     entity_id=user_id,
-                    new_value=update_data, 
-                    description=f"Updated user profile for ID: {user_id}"
+                    new_value=update_data,
+                    description=f"Updated user profile for {display_name}"
                 )
+
+            log_access_event('Update', status='Success', email_attempted=data.get('email'), user_id=user_id)
 
         return jsonify({'message': 'User updated successfully'}), 200
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Failed to update user. Please try again.'}), 500
 
 
 @bp.route('/<user_id>', methods=['DELETE'])
@@ -155,17 +207,22 @@ def delete_user(user_id):
         
         # Log to audit trail
         try:
-            # Assuming 3 is "Delete" and 1 is "User Management"
+            # action_type_id=3 -> DELETE, entity_type_id=2 -> User Profile
+            # (matches public.action_types / public.entity_types)
             log_audit_action(
                 user_id=requester_id,
                 action_type_id=3,
-                entity_type_id=1,
+                entity_type_id=2,
                 entity_id=user_id,
                 description=f"Deleted user {target_email} ({target_role})"
             )
         except Exception as audit_err:
             print(f"Warning - Could not log to audit trail: {str(audit_err)}")
-        
+
+        # No user_id here — the profile row was just deleted, and access_logs.user_id
+        # references profiles(id), so email_attempted is the only reliable identifier left.
+        log_access_event('Delete', status='Success', email_attempted=target_email)
+
         return jsonify({
             'message': 'User deleted successfully',
             'deleted_user': {

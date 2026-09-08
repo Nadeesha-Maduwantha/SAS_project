@@ -8,19 +8,21 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.97.0",
-    "lucide-react": "latest",
-    "next": "^16.0.0",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "leaflet": "^1.9.4",
+    "lucide-react": "^1.34.0",
+    "next": "^16.3.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-leaflet": "^5.0.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "@types/react": "^18.0.0",
-    "autoprefixer": "^10.0.0",
-    "postcss": "^8.0.0",
-    "tailwindcss": "^3.0.0",
-    "typescript": "^5.0.0"
+    "@types/leaflet": "^1.9.21",
+    "@types/node": "^20.19.43",
+    "@types/react": "^18.3.31",
+    "autoprefixer": "^10.5.4",
+    "postcss": "^8.5.26",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.9.3"
   },
   "keywords": [],
   "author": "",
@@ -29,12 +31,5 @@
   "bugs": {
     "url": "https://github.com/Nadeesha-Maduwantha/SAS_project/issues"
   },
-  "homepage": "https://github.com/Nadeesha-Maduwantha/SAS_project#readme",
-  "dependencies": {
-    "leaflet": "^1.9.4",
-    "react-leaflet": "^5.0.0"
-  },
-  "devDependencies": {
-    "@types/leaflet": "^1.9.21"
-  }
+  "homepage": "https://github.com/Nadeesha-Maduwantha/SAS_project#readme"
 }

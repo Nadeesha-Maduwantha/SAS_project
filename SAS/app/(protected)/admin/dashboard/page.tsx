@@ -1,30 +1,21 @@
 "use client";
+import { useState, useEffect } from 'react';
 import AdminHeader from '@/components/AdminUser/AdminHeader';
-import StatCard from '@/components/AdminUser/StatCard';
-import ShipmentFeed from '@/components/AdminUser/ShipmentFeed';
-import type { ShipmentFeedItem } from '@/components/AdminUser/ShipmentFeed';
+import AdminOverviewMetricCards from '@/components/AdminUser/AdminOverviewMetricCards';
+import AdminDashboardAnalytics from '@/components/AdminUser/AdminDashboardAnalytics';
+import AlertFeedTable from '@/components/shared/AlertFeedTable';
+import PinnedTableStatCards from '@/components/shared/PinnedTableStatCard';
 import ProgressLogs from '@/components/AdminUser/ProgressLogs';
 import SystemTechnicalLogs from '@/components/AdminUser/SystemTechnicalLogs';
-import { useEffect, useState } from "react";
-import { ShieldCheck, Users, BellRing, Mail } from 'lucide-react';
+import ShipmentFeed, { type ShipmentFeedItem } from '@/components/AdminUser/ShipmentFeed';
+import SyncSummaryCard from '@/components/AdminUser/SyncSummaryCard';
 import '@/styles/AdminStyles/AdminLayout.css';
 
-import SyncSummaryCard from '@/components/AdminUser/SyncSummaryCard';
-
-// ─── Sync Status Data ───
-const MOCK_SYNC_STATUS = {
-  lastSyncTime: '2026-02-22T08:00:00',
-  status: 'partial' as 'success' | 'failed' | 'partial',
-  recordsUpdated: 142,
-  validationErrors: 3,
-};
-
-
-
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5000';
 
 async function fetchDashboardData<T>(url: string, fallback: T): Promise<T> {
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { cache: 'no-store' });
     const payload = await response.json();
 
     if (!response.ok) {
@@ -34,7 +25,7 @@ async function fetchDashboardData<T>(url: string, fallback: T): Promise<T> {
 
     return payload.data ?? fallback;
   } catch (error) {
-    console.error(error);
+    console.error('Dashboard fetch failed:', error);
     return fallback;
   }
 }
@@ -50,17 +41,17 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     fetchDashboardData(
-      "http://127.0.0.1:5001/api/dashboard/admin/shipment-feed",
+      `${API}/api/dashboard/admin/shipment-feed`,
       []
     ).then(setShipments);
 
     fetchDashboardData(
-      "http://127.0.0.1:5001/api/dashboard/admin/metrics",
+      `${API}/api/dashboard/admin/metrics`,
       {
-        total_users: 0,
-        active_alerts: 0,
-        total_emails: 0,
-        success_rate: 0,
+      total_users: 0,
+      active_alerts: 0,
+      total_emails: 0,
+      success_rate: 0,
       }
     ).then(setMetrics);
   }, []);
@@ -69,34 +60,28 @@ export default function AdminDashboardPage() {
     <div className="admin-inner">
       <AdminHeader />
 
-      <div className="stats-grid">
-        <StatCard
-          title="Milestone Success Rate"
-          value={`${metrics.success_rate}%`}
-          icon={<ShieldCheck size={16} />}
-        />
+      {/* Admin overview stat cards */}
+      <AdminOverviewMetricCards />
 
-        <StatCard
-          title="Total Users"
-          value={metrics.total_users.toString()}
-          icon={<Users size={16} />}
-        />
+      <AdminDashboardAnalytics />
 
-        <StatCard
-          title="Active Alerts"
-          value={metrics.active_alerts.toString()}
-          icon={<BellRing size={16} />}
-        />
+      {/* Pinned custom table cards — only if user has pinned tables */}
+      <PinnedTableStatCards />
 
-        <StatCard
-          title="Total Generated Emails"
-          value={metrics.total_emails.toString()}
-          icon={<Mail size={16} />}
+      {/* Scoped alert feed — all overdue / delayed milestones + field mismatches */}
+      <div className="section-gap">
+        <AlertFeedTable
+          title="Admin Shipment Alert Feed"
+          apiBase={API}
+          maxRows={8}
+          showFieldDelayed
+          scope="admin"
         />
       </div>
+
       <div className="bottom-grid">
         <ProgressLogs />
-        <SyncSummaryCard syncData={MOCK_SYNC_STATUS} />
+        <SyncSummaryCard />
       </div>
       <div className="section-gap">
         <ShipmentFeed data={shipments} />

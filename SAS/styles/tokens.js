@@ -2,96 +2,103 @@
 //  SAS Project — Shared Design Tokens
 //  Path: styles/tokens.js
 //
+//  Colors are CSS variables (defined in app/globals.css for light
+//  and html.dark). Every inline style built from these tokens flips
+//  automatically in dark mode — no per-component work needed.
+//
 //  Import in any page or component:
 //    import { T, solidBtn, outlineBtn, ghostBtn, inp, lbl } from "@/styles/tokens";
 // =============================================================
 
 export const T = {
 
-  // --- Page & surface -------------------------------------------
-  pageBg:           "#F0F2F5",
-  cardBg:           "#FFFFFF",
-  cardBorder:       "1px solid #E5E7EB",
-  cardRadius:       "14px",
-  cardShadow:       "0 1px 6px rgba(0,0,0,0.07)",
-  cardShadowHover:  "0 4px 16px rgba(0,0,0,0.10)",
+  // ── Page & surface ────────────────────────────────────────
+  pageBg:          "var(--page-bg)",
+  cardBg:          "var(--card-bg)",
+  cardBorder:      "1px solid var(--card-border-color)",
+  cardRadius:      "14px",
+  cardShadow:      "var(--card-shadow)",
+  cardShadowHover: "var(--card-shadow-hover)",
 
-  // --- Primary blue ---------------------------------------------
-  blue:             "#2563EB",
-  blueMid:          "#3B82F6",
-  blueBg:           "#EFF6FF",
-  blueBorder:       "#BFDBFE",
+  // ── Primary blue ──────────────────────────────────────────
+  blue:        "var(--blue)",
+  blueMid:     "var(--blue-mid)",
+  blueBg:      "var(--blue-bg)",
+  blueBorder:  "var(--blue-border)",
+  blueDark:    "var(--blue-dark)",
 
-  // --- Danger red -----------------------------------------------
-  red:              "#EF4444",
-  redBg:            "#FEF2F2",
-  redBorder:        "#FECACA",
+  // ── Danger red ────────────────────────────────────────────
+  red:         "var(--red)",
+  redBg:       "var(--red-bg)",
+  redBorder:   "var(--red-border)",
 
-  // --- Warning amber --------------------------------------------
-  amber:            "#D97706",
-  amberBg:          "#FFFBEB",
-  amberBorder:      "#FDE68A",
+  // ── Warning amber ─────────────────────────────────────────
+  amber:       "var(--amber)",
+  amberBg:     "var(--amber-bg)",
+  amberBorder: "var(--amber-border)",
 
-  // --- Success green --------------------------------------------
-  green:            "#059669",
-  greenBg:          "#ECFDF5",
-  greenBorder:      "#A7F3D0",
+  // ── Success green ─────────────────────────────────────────
+  green:        "var(--green)",
+  greenBg:      "var(--green-bg)",
+  greenBorder:  "var(--green-border)",
 
-  // --- Neutral greys --------------------------------------------
-  gray900:          "#111827",
-  gray700:          "#374151",
-  gray500:          "#6B7280",
-  gray400:          "#9CA3AF",
-  gray300:          "#D1D5DB",
-  gray200:          "#E5E7EB",
-  gray100:          "#F3F4F6",
-  gray50:           "#F9FAFB",
+  // ── Neutral grays (role-preserving in dark mode) ──────────
+  gray900: "var(--gray-900)",
+  gray800: "var(--gray-800)",
+  gray700: "var(--gray-700)",
+  gray600: "var(--gray-600)",
+  gray500: "var(--gray-500)",
+  gray400: "var(--gray-400)",
+  gray300: "var(--gray-300)",
+  gray200: "var(--gray-200)",
+  gray100: "var(--gray-100)",
+  gray50:  "var(--gray-50)",
 
-  // --- Typography -----------------------------------------------
-  font:             "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-  mono:             "'IBM Plex Mono', 'Fira Code', monospace",
+  // ── Typography ────────────────────────────────────────────
+  font: "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+  mono: "'JetBrains Mono', 'Fira Code', monospace",
 };
 
-// --- Button style helpers -----------------------------------------
+// ── Button style helpers ───────────────────────────────────────
 
 export const solidBtn = (bg, fg) => ({
-  background:     bg,
-  color:          fg,
-  border:         "none",
-  borderRadius:   "8px",
-  fontWeight:     "600",
-  fontSize:       "13px",
-  cursor:         "pointer",
-  fontFamily:     T.font,
-  transition:     "opacity 0.15s",
-  display:        "inline-flex",
-  alignItems:     "center",
-  gap:            "7px",
+  background:   bg,
+  color:        fg,
+  border:       "none",
+  borderRadius: "10px",
+  fontWeight:   "600",
+  fontSize:     "13px",
+  cursor:       "pointer",
+  fontFamily:   T.font,
+  transition:   "all 0.18s cubic-bezier(0.4,0,0.2,1)",
+  display:      "inline-flex",
+  alignItems:   "center",
+  gap:          "7px",
 });
 
 export const outlineBtn = (fg, border, bg) => ({
-  background:     bg || "transparent",
-  color:          fg,
-  border:         `1.5px solid ${border}`,
-  borderRadius:   "8px",
-  fontWeight:     "600",
-  fontSize:       "13px",
-  cursor:         "pointer",
-  fontFamily:     T.font,
-  padding:        "9px 18px",
-  display:        "inline-flex",
-  alignItems:     "center",
-  gap:            "7px",
-  transition:     "background 0.15s",
+  background:   bg || "transparent",
+  color:        fg,
+  border:       `1px solid ${border}`,
+  borderRadius: "10px",
+  fontWeight:   "600",
+  fontSize:     "13px",
+  cursor:       "pointer",
+  fontFamily:   T.font,
+  padding:      "9px 18px",
+  display:      "inline-flex",
+  alignItems:   "center",
+  gap:          "7px",
+  transition:   "all 0.18s cubic-bezier(0.4,0,0.2,1)",
 });
 
 export const ghostBtn = {
   background:     "none",
   border:         "none",
   cursor:         "pointer",
-  color:          "#9CA3AF",
+  color:          "var(--gray-400)",
   padding:        "6px",
-  borderRadius:   "6px",
+  borderRadius:   "8px",
   display:        "inline-flex",
   alignItems:     "center",
   justifyContent: "center",
@@ -99,25 +106,27 @@ export const ghostBtn = {
 };
 
 export const inp = {
-  width:          "100%",
-  background:     "#F9FAFB",
-  border:         "1px solid #E5E7EB",
-  borderRadius:   "8px",
-  padding:        "9px 13px",
-  color:          "#111827",
-  fontSize:       "13px",
-  outline:        "none",
-  fontFamily:     "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-  transition:     "border-color 0.15s, box-shadow 0.15s",
-  boxSizing:      "border-box",
+  width:        "100%",
+  background:   "var(--card-bg)",
+  border:       "1px solid var(--card-border-color)",
+  borderRadius: "10px",
+  padding:      "9px 13px",
+  color:        "var(--gray-900)",
+  fontSize:     "13px",
+  outline:      "none",
+  fontFamily:   "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+  transition:   "border-color 0.15s, box-shadow 0.15s",
+  boxSizing:    "border-box",
+  boxShadow:    "0 1px 2px rgba(15,23,42,0.04)",
 };
 
 export const lbl = {
-  display:        "block",
-  fontSize:       "11px",
-  fontWeight:     "600",
-  color:          "#6B7280",
-  marginBottom:   "6px",
-  letterSpacing:  "0.05em",
-  textTransform:  "uppercase",
+  display:       "block",
+  fontSize:      "11px",
+  fontWeight:    "700",
+  color:         "var(--gray-600)",
+  marginBottom:  "6px",
+  letterSpacing: "0.05em",
+  textTransform: "uppercase",
+  fontFamily:    "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif",
 };

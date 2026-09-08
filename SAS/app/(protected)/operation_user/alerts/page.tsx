@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import {
-    AlertCircle, Clock, CheckCircle2, Download, Search, Eye, Mail,
-    MoreHorizontal, Anchor, Truck, Warehouse, Plane, Navigation,
+    AlertCircle, Clock, CheckCircle2, Search, Eye, Mail,
+    Anchor, Truck, Warehouse, Plane, Navigation,
     LayoutList, LayoutGrid, ChevronLeft, ChevronRight,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import AlertDetailsModal, { AlertData } from '@/components/AlertDetailsModal';
 import EmailComposeModal from '@/components/EmailComposeModal';
+import { useAuth } from '@/lib/hooks/useAuth';
+
+const FLASK_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Alert = {
@@ -24,21 +26,30 @@ type Alert = {
     delay: string;
     delayColor: string;
     status: 'Get Action' | 'Action Taken' | 'Resolved';
+    dueDate: string | null;
+    alertStatus: string;
+    isCritical: boolean;
     createdAt: Date;
 }
 
 type SupabaseRow = {
     shipment_id: string;
-    name: string;
-    status: string;
-    notes: string;
+    title: string;
+    message: string;
     is_critical: boolean;
-    due_date: string | null;
-    completed_date: string | null;
-    assigned_to: string;
-    assigned_email: string;
-    alert_sent: boolean;
+    status: string;
     created_at?: string;
+}
+
+const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
+
+async function parseApiResponse(response: Response) {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+        return response.json();
+    }
+    const text = await response.text();
+    return { error: text || `Request failed with status ${response.status}` };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -54,12 +65,13 @@ function getMilestoneIcon(name: string = ''): 'anchor' | 'truck' | 'warehouse' |
 }
 
 function mapRow(row: SupabaseRow, idx: number): Alert {
-    const initial = String(row.shipment_id || '?')[0].toUpperCase();
+    const assignedTo = row.assigned_to?.trim() || '—';
+    const initial = String(assignedTo || '?')[0].toUpperCase();
     const isOverdue = row.due_date && !row.completed_date && new Date(row.due_date) < new Date();
     return {
         id: `${row.shipment_id}-${idx}`,
         shipment_id: row.shipment_id,
-        client: String(row.shipment_id),
+        client: assignedTo,
         clientInitial: initial,
         clientColor: CLIENT_COLORS[idx % CLIENT_COLORS.length],
         priority: row.is_critical ? 'Critical' : 'Medium',
@@ -68,7 +80,12 @@ function mapRow(row: SupabaseRow, idx: number): Alert {
         issue: row.notes || '—',
         delay: isOverdue ? `Overdue since ${new Date(row.due_date!).toLocaleDateString()}` : '—',
         delayColor: isOverdue ? '#ef4444' : '#6b7280',
-        status: 'Get Action',
+        status: (row.status === 'Action Taken' || row.status === 'Resolved' || row.status === 'Get Action')
+            ? row.status
+            : 'Get Action',
+        dueDate: row.due_date,
+        alertStatus: row.due_date && !row.completed_date ? 'overdue' : row.status,
+        isCritical: row.is_critical,
         createdAt: row.created_at ? new Date(row.created_at) : new Date(),
     };
 }
@@ -88,6 +105,9 @@ function toAlertData(alert: Alert): AlertData {
         delay: alert.delay,
         delayColor: alert.delayColor,
         status: alert.status,
+        dueDate: alert.dueDate,
+        alertStatus: alert.alertStatus,
+        isCritical: alert.isCritical,
         createdAt: alert.createdAt,
     };
 }
@@ -173,10 +193,10 @@ export default function AlertDashboardPage() {
     const [priorityFilter, setPriorityFilter] = useState<string>('All Priorities');
     const [statusFilter, setStatusFilter] = useState<string>('All Statuses');
     const [search, setSearch] = useState<string>('');
-    const [selected, setSelected] = useState<string[]>([]);
     const [alerts, setAlerts] = useState<Alert[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const { email } = useAuth();
 
     // ── Modal state ──────────────────────────────────────────────
     const [detailsOpen, setDetailsOpen]   = useState(false);
@@ -197,18 +217,24 @@ export default function AlertDashboardPage() {
     const fetchAlerts = async () => {
         setLoading(true);
         setError(null);
-        const { data, error: err } = await supabase
-            .from('shipment_milestones')
-            .select('shipment_id, name, status, notes, is_critical, due_date, completed_date, assigned_to, assigned_email, alert_sent, created_at');
-        if (err) {
-            setError(err.message);
-        } else {
-            setAlerts((data as SupabaseRow[] || []).map(mapRow));
+        try {
+            const userEmail = (localStorage.getItem('user_email') || '').trim();
+            const url = userEmail
+                ? `${BACKEND_BASE_URL}/api/alerts?assigned_email=${encodeURIComponent(userEmail)}`
+                : `${BACKEND_BASE_URL}/api/alerts`;
+            const response = await fetch(url);
+            const payload = await parseApiResponse(response);
+            if (!response.ok) {
+                throw new Error(payload?.error || 'Failed to load alerts');
+            }
+            setAlerts((payload.data as SupabaseRow[] || []).map(mapRow));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load alerts');
         }
         setLoading(false);
     };
 
-    useEffect(() => { fetchAlerts(); }, []);
+    useEffect(() => { fetchAlerts(); }, [email]);
 
     const filtered = alerts.filter((a) => {
         const matchPriority = priorityFilter === 'All Priorities' || a.priority === priorityFilter;
@@ -218,10 +244,6 @@ export default function AlertDashboardPage() {
             a.milestone.toLowerCase().includes(search.toLowerCase());
         return matchPriority && matchStatus && matchSearch;
     });
-
-    const toggleRow = (id: string) => {
-        setSelected((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
-    };
 
     const highPriority = alerts.filter(a => a.priority === 'Critical').length;
     const pending      = alerts.filter(a => a.status === 'Get Action').length;
@@ -257,9 +279,6 @@ export default function AlertDashboardPage() {
                     <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1a1a2e', letterSpacing: '-0.4px' }}>Alert Dashboard</h1>
                     <p style={{ fontSize: '13.5px', color: '#6b7280', marginTop: '4px' }}>Overview of shipment delays and critical issues requiring attention.</p>
                 </div>
-                <button style={{ display: 'flex', alignItems: 'center', gap: '7px', background: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', fontWeight: 500, color: '#374151', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-                    <Download size={14} /> Export Report
-                </button>
             </div>
 
             {/* Stats cards */}
@@ -316,7 +335,6 @@ export default function AlertDashboardPage() {
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                                 <tr style={{ background: '#f9fafb', borderBottom: '1px solid #f0f0f0' }}>
-                                    <th style={thStyle}><input type="checkbox" /></th>
                                     <th style={thStyle}>SHIPMENT ID</th>
                                     <th style={thStyle}>ASSIGNED TO</th>
                                     <th style={thStyle}>PRIORITY</th>
@@ -330,15 +348,12 @@ export default function AlertDashboardPage() {
                             <tbody>
                                 {filtered.map((alert, idx) => (
                                     <tr key={alert.id}
-                                        style={{ borderBottom: idx < filtered.length - 1 ? '1px solid #f5f5f5' : 'none', background: selected.includes(alert.id) ? '#f0f4ff' : 'white', transition: 'background 0.15s', cursor: 'pointer' }}
+                                        style={{ borderBottom: idx < filtered.length - 1 ? '1px solid #f5f5f5' : 'none', background: 'white', transition: 'background 0.15s', cursor: 'pointer' }}
                                         onClick={() => openDetails(alert)}
-                                        onMouseEnter={(e) => { if (!selected.includes(alert.id)) e.currentTarget.style.background = '#fafbff'; }}
-                                        onMouseLeave={(e) => { if (!selected.includes(alert.id)) e.currentTarget.style.background = 'white'; }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.background = '#fafbff'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}
                                     >
-                                        <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                                            <input type="checkbox" checked={selected.includes(alert.id)} onChange={() => toggleRow(alert.id)} />
-                                        </td>
-                                        <td style={{ ...tdStyle, fontWeight: 600, fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>{alert.client}</td>
+                                        <td style={{ ...tdStyle, fontWeight: 600, fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>{alert.shipment_id}</td>
                                         <td style={tdStyle}><ClientAvatar initial={alert.clientInitial} color={alert.clientColor} name={alert.client} /></td>
                                         <td style={tdStyle}><PriorityBadge level={alert.priority} /></td>
                                         <td style={tdStyle}>
@@ -355,7 +370,6 @@ export default function AlertDashboardPage() {
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 <ActionBtn icon={<Eye size={14} />}  title="View"  onClick={() => openDetails(alert)} />
                                                 <ActionBtn icon={<Mail size={14} />} title="Email" onClick={() => openCompose(toAlertData(alert))} />
-                                                <ActionBtn icon={<MoreHorizontal size={14} />} title="More" />
                                             </div>
                                         </td>
                                     </tr>
@@ -374,14 +388,18 @@ export default function AlertDashboardPage() {
                                 style={{ border: '1px solid #e8ecf0', borderRadius: '10px', padding: '16px', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', cursor: 'pointer' }}
                             >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                                    <span style={{ fontWeight: 700, fontSize: '13px', color: '#374151' }}>{alert.client}</span>
+                                    <span style={{ fontWeight: 700, fontSize: '13px', color: '#374151' }}>{alert.shipment_id}</span>
                                     <PriorityBadge level={alert.priority} />
                                 </div>
                                 <ClientAvatar initial={alert.clientInitial} color={alert.clientColor} name={alert.client} />
                                 <div style={{ marginTop: '12px', fontSize: '12.5px', color: '#6b7280', lineHeight: 1.5 }}>{alert.issue}</div>
                                 <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <StatusBadge status={alert.status} />
-                                    <span style={{ fontWeight: 700, fontSize: '13px', color: alert.delayColor }}>⏱ {alert.delay}</span>
+                                    <span style={{ fontWeight: 700, fontSize: '13px', color: alert.delayColor }}>{alert.delay}</span>
+                                </div>
+                                <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '6px', borderTop: '1px solid #f0f0f0', paddingTop: '12px' }} onClick={(e) => e.stopPropagation()}>
+                                    <ActionBtn icon={<Eye size={14} />}  title="View"  onClick={() => openDetails(alert)} />
+                                    <ActionBtn icon={<Mail size={14} />} title="Email" onClick={() => openCompose(toAlertData(alert))} />
                                 </div>
                             </div>
                         ))}

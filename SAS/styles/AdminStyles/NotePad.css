@@ -1,0 +1,126 @@
+@reference "tailwindcss";
+
+/* Notepad widget. Shares the feed-card shell; everything here is the
+   list + editor inside it. All values come from theme.css. */
+
+.note-list {
+  @apply flex flex-col;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.note-item {
+  @apply w-full text-left px-3 py-2.5;
+  border-bottom: 1px solid var(--c-border-light);
+  background: transparent;
+  cursor: pointer;
+}
+
+.note-item:last-child { border-bottom: 0; }
+.note-item:hover      { background: var(--c-surface-sunken); }
+
+.note-item__title {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  color: var(--c-text-strong);
+}
+
+.note-item__preview {
+  @apply mt-0.5 truncate;
+  font-size: var(--fs-sm);
+  color: var(--c-text-muted);
+}
+
+.note-item__time {
+  @apply mt-1;
+  font-size: var(--fs-xs);
+  color: var(--c-text-subtle);
+}
+
+.note-empty {
+  @apply px-3 py-10 text-center;
+  font-size: var(--fs-md);
+  color: var(--c-text-subtle);
+}
+
+/* ── Editor ───────────────────────────────────────────────── */
+
+.note-input,
+.note-textarea {
+  @apply w-full px-3 py-2;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-inner);
+  background: var(--c-surface);
+  font-size: var(--fs-md);
+  color: var(--c-text-strong);
+  font-family: inherit;
+}
+
+.note-input::placeholder,
+.note-textarea::placeholder { color: var(--c-text-subtle); }
+
+.note-input:focus,
+.note-textarea:focus {
+  outline: none;
+  border-color: var(--c-accent);
+  box-shadow: 0 0 0 3px var(--c-accent-bg);
+}
+
+.note-textarea {
+  @apply mt-2;
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.note-actions {
+  @apply mt-3 flex items-center gap-2;
+}
+
+.note-btn {
+  @apply px-3 py-1.5;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-inner);
+  background: var(--c-surface);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--c-text);
+  cursor: pointer;
+}
+
+.note-btn:hover:not(:disabled) { background: var(--c-surface-sunken); }
+.note-btn:disabled             { opacity: 0.5; cursor: not-allowed; }
+
+.note-btn--primary {
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: #fff;
+}
+
+.note-btn--primary:hover:not(:disabled) { opacity: 0.9; background: var(--c-accent); }
+
+.note-btn--danger {
+  @apply ml-auto;
+  border-color: var(--c-danger-border);
+  color: var(--c-danger);
+}
+
+.note-btn--danger:hover:not(:disabled) { background: var(--c-danger-bg); }
+
+.note-error {
+  @apply mt-2 px-3 py-2;
+  border: 1px solid var(--c-danger-border);
+  border-radius: var(--radius-inner);
+  background: var(--c-danger-bg);
+  font-size: var(--fs-sm);
+  color: var(--c-danger);
+}
+
+.note-warning {
+  @apply mt-2 px-3 py-2;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-inner);
+  background: var(--c-warning-bg);
+  font-size: var(--fs-sm);
+  color: var(--c-warning);
+}

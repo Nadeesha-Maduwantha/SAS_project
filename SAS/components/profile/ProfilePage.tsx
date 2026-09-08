@@ -5,6 +5,7 @@ import ProfileCard from "./ProfileCard";
 import PersonalInformation from "./PersonalInformation";
 import SecuritySettings from "./SecuritySettings";
 import { PasswordChange } from "@/types/profile";
+import AppDialog, { AppDialogState } from "@/components/shared/AppDialog";
 
 interface UserProfile {
   fullName: string;
@@ -38,6 +39,8 @@ export default function ProfilePage({ user }: ProfilePageProps) {
     profileImage: null,
   });
 
+  const [dialog, setDialog] = useState<AppDialogState | null>(null);
+
   // When the real 'user' data comes in from the API, update ALL the fields!
   useEffect(() => {
     if (user) {
@@ -60,7 +63,7 @@ export default function ProfilePage({ user }: ProfilePageProps) {
   const handleProfileUpdate = async (updatedData: Partial<UserProfile>) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch('http://localhost:5000/api/profile', {
+      const response = await fetch('http://127.0.0.1:5000/api/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -78,17 +81,41 @@ export default function ProfilePage({ user }: ProfilePageProps) {
         ...prev,
         ...updatedData,
       }));
-      alert("Profile updated successfully!");
+      setDialog({ variant: 'success', title: 'Profile updated', message: 'Your profile was updated successfully.' });
     } catch (error) {
       console.error(error);
       throw error; // Rethrow to let PersonalInformation know it failed
     }
   };
 
+  const handleAvatarUpload = async (file: File) => {
+    const token = localStorage.getItem('access_token');
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch('http://localhost:5000/api/profile/avatar', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to upload profile picture');
+    }
+
+    setUserProfile((prev) => ({
+      ...prev,
+      profileImage: data.avatarUrl,
+    }));
+  };
+
   const handlePasswordChange = async (data: PasswordChange) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch('http://localhost:5000/api/change-password', {
+      const response = await fetch('http://127.0.0.1:5000/api/change-password', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -101,16 +128,22 @@ export default function ProfilePage({ user }: ProfilePageProps) {
 
       if (!response.ok) {
         const errorData = await response.json();
-        alert(`Failed: ${errorData.error}`);
+        setDialog({ variant: 'error', title: 'Password change failed', message: errorData.error || 'Please try again.' });
         return;
       }
 
-      alert("Password changed successfully! Please log in again.");
-      localStorage.removeItem('access_token');
-      window.location.href = '/';
+      setDialog({
+        variant: 'success',
+        title: 'Password changed',
+        message: 'Password changed successfully! Please log in again.',
+        onConfirm: () => {
+          localStorage.removeItem('access_token');
+          window.location.href = '/';
+        },
+      });
     } catch (error) {
       console.error(error);
-      alert("Failed to change password.");
+      setDialog({ variant: 'error', title: 'Password change failed', message: 'Failed to change password.' });
     }
   };
 
@@ -127,7 +160,7 @@ export default function ProfilePage({ user }: ProfilePageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
             {/* The left card will now show the correct email, status, and dates */}
-            <ProfileCard profile={userProfile} />
+            <ProfileCard profile={userProfile} onAvatarUpload={handleAvatarUpload} />
           </div>
 
           <div className="lg:col-span-2 space-y-6">
@@ -140,6 +173,8 @@ export default function ProfilePage({ user }: ProfilePageProps) {
           </div>
         </div>
       </div>
+
+      <AppDialog dialog={dialog} onClose={() => setDialog(null)} />
     </div>
   );
 }

@@ -1,7 +1,24 @@
 from flask import Blueprint, jsonify, request
 from services.supabase_client import supabase
+from datetime import datetime, timezone
 
 dashboard_bp = Blueprint('dashboard', __name__)
+
+
+def _format_log_time(value):
+    if not value:
+        return datetime.now().strftime('%H:%M:%S')
+    try:
+        normalized = str(value).replace('Z', '+00:00')
+        return datetime.fromisoformat(normalized).astimezone(timezone.utc).strftime('%H:%M:%S')
+    except Exception:
+        return datetime.now().strftime('%H:%M:%S')
+
+
+def _pickup_status(shipment):
+    milestones = shipment.get('milestones') or {}
+    cargo_pickup = milestones.get('cargo_pickup') or {}
+    return cargo_pickup.get('pickup_date_status')
 
 
 # ADMIN METRICS
@@ -9,28 +26,110 @@ dashboard_bp = Blueprint('dashboard', __name__)
 def admin_metrics():
     try:
         # total users
-        users = supabase.table('profiles').select('id').execute()
-
-        # active alerts
-        alerts = supabase.table('alerts').select('id').eq('status', 'active').execute()
+        users = supabase.table('profiles').select('id, role').execute()
 
         # emails
         emails = supabase.table('email_logs').select('id').execute()
 
-        # success rate (simple logic)
-        milestones = supabase.table('shipment_milestones').select('status').execute()
+        # Milestones drive both the success rate and the alert counts.
+        #
+        # An alert IS an overdue milestone — the standalone `alerts` table is
+        # not written to by any part of the system, so counting it reported
+        # zero while the alert feed was showing hundreds of outstanding items.
+        milestones = (
+            supabase.table('shipment_milestones')
+            .select('status, is_critical, alerts_cancelled, shipment_id')
+            .execute()
+        )
+        rows = milestones.data or []
 
-        total = len(milestones.data or [])
-        completed = len([m for m in milestones.data if m['status'] == 'completed'])
-
+        total = len(rows)
+        completed = len([m for m in rows if m['status'] == 'completed'])
         success_rate = (completed / total * 100) if total > 0 else 0
+
+        # Cancelling an alert leaves the milestone overdue, so filter those out.
+        active = [
+            m for m in rows
+            if m['status'] == 'overdue' and not m.get('alerts_cancelled')
+        ]
+
+        user_roles = {}
+        for user in users.data or []:
+            role = user.get('role') or 'unknown'
+            user_roles[role] = user_roles.get(role, 0) + 1
 
         return jsonify({
             "data": {
                 "total_users": len(users.data),
-                "active_alerts": len(alerts.data),
+                "user_roles": user_roles,
+                "active_alerts": len(active),
+                "critical_alerts": sum(1 for m in active if m.get('is_critical')),
+                "alert_shipments": len({m['shipment_id'] for m in active}),
                 "total_emails": len(emails.data),
                 "success_rate": round(success_rate, 2)
+            }
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ADMIN TECHNICAL LOGS
+@dashboard_bp.route('/api/dashboard/admin/technical-logs', methods=['GET'])
+def admin_technical_logs():
+    try:
+        logs = (
+            supabase.table('sync_logs')
+            .select('id, synced_at, status, records_updated, error_count, total_processed, duration_seconds')
+            .order('synced_at', desc=True)
+            .limit(10)
+            .execute()
+        ).data or []
+
+        errors = (
+            supabase.table('sync_errors')
+            .select('job_number, field_name, error_reason, severity, created_at')
+            .order('created_at', desc=True)
+            .limit(5)
+            .execute()
+        ).data or []
+
+        total_runs = len(logs)
+        successful_runs = len([row for row in logs if row.get('status') == 'success'])
+        total_processed = sum(int(row.get('total_processed') or 0) for row in logs)
+        total_errors = sum(int(row.get('error_count') or 0) for row in logs)
+        total_duration = sum(float(row.get('duration_seconds') or 0) for row in logs)
+
+        eta_success = round((successful_runs / total_runs) * 100, 1) if total_runs else 0
+        api_error_rate = round((total_errors / total_processed) * 100, 2) if total_processed else 0
+        avg_latency_ms = round((total_duration / total_runs) * 1000) if total_runs else 0
+
+        lines = []
+        for row in logs[:3]:
+            time_label = _format_log_time(row.get('synced_at'))
+            status = (row.get('status') or 'unknown').upper()
+            updated = row.get('records_updated') or 0
+            error_count = row.get('error_count') or 0
+            lines.append(f'[{time_label}] {status}: sync updated {updated} records ({error_count} errors)')
+
+        for err in errors[:2]:
+            time_label = _format_log_time(err.get('created_at'))
+            severity = (err.get('severity') or 'warn').upper()
+            job = err.get('job_number') or 'unknown job'
+            field = err.get('field_name') or 'unknown field'
+            reason = err.get('error_reason') or 'validation issue'
+            lines.append(f'[{time_label}] {severity}: {job} {field} - {reason}')
+
+        if not lines:
+            lines = ['[--:--:--] INFO: no sync logs recorded yet']
+
+        return jsonify({
+            "data": {
+                "lines": lines[:5],
+                "eta_success": eta_success,
+                "api_error_rate": api_error_rate,
+                "avg_latency_ms": avg_latency_ms,
+                "smtp_relay": "Active" if errors else "Idle"
             }
         }), 200
 
@@ -47,21 +146,27 @@ def admin_shipment_feed():
             .select(
                 'id, cargowise_id, branch, gb_code, gc_code, '
                 'llm_identified_type, '
-                'transport_mode, pickup_date_status, created_at, job_last_edit_time'
+                'transport_mode, milestones, created_at, job_last_edit_time'
             )
             .order('job_last_edit_time', desc=True)
         )
 
-        #  Optional filter (for your "Filter" button)
+        # Pickup status is stored inside the milestones JSON, not as a flat
+        # shipments column.
         status = request.args.get('status')
-        if status:
-            query = query.eq('pickup_date_status', status)
-
         response = query.limit(5).execute()
+
+        shipments = response.data or []
+        if status:
+            status = status.strip().lower()
+            shipments = [
+                shipment for shipment in shipments
+                if (_pickup_status(shipment) or '').strip().lower() == status
+            ]
 
         result = []
 
-        for s in response.data:
+        for s in shipments:
             result.append({
                 "id": s["id"],
                 "cargo_id": s.get("cargowise_id"),
@@ -71,7 +176,7 @@ def admin_shipment_feed():
                 #  stage from AI
                 "stage": s.get("llm_identified_type"),
                 "transport_mode": s.get("transport_mode"),
-                "pickup_status": s.get("pickup_date_status")
+                "pickup_status": _pickup_status(s)
             })
 
         return jsonify({"data": result}), 200
@@ -213,21 +318,22 @@ def operation_shipment():
             .select(
                 'id, cargowise_id, branch, gb_code, gc_code, '
                 'llm_identified_type, '
-                'transport_mode, pickup_date_status, created_at, job_last_edit_time'
+                'transport_mode, milestones, created_at, job_last_edit_time'
             )
             .order('job_last_edit_time', desc=True)
         )
 
         #  Optional filter (for your "Filter" button)
         status = request.args.get('status')
-        if status:
-            query = query.eq('pickup_date_status', status)
-
         response = query.limit(5).execute()
+        shipments = response.data or []
+        if status:
+            status = status.strip().lower()
+            shipments = [s for s in shipments if (_pickup_status(s) or '').strip().lower() == status]
 
         result = []
 
-        for s in response.data:
+        for s in shipments:
             result.append({
                 "cargo_id": s.get("cargowise_id"),
                 #  lane logic
@@ -235,7 +341,7 @@ def operation_shipment():
                 #  stage from AI
                 "stage": s.get("llm_identified_type"),
                 "transport_mode": s.get("transport_mode"),
-                "pickup_status": s.get("pickup_date_status")
+                "pickup_status": _pickup_status(s)
             })
 
         return jsonify({"data": result}), 200
@@ -252,21 +358,22 @@ def sales_shipment():
             .select(
                 'id, cargowise_id, branch, gb_code, gc_code, '
                 'llm_identified_type, '
-                'transport_mode, pickup_date_status, created_at, job_last_edit_time'
+                'transport_mode, milestones, created_at, job_last_edit_time'
             )
             .order('job_last_edit_time', desc=True)
         )
 
         #  Optional filter (for your "Filter" button)
         status = request.args.get('status')
-        if status:
-            query = query.eq('pickup_date_status', status)
-
         response = query.limit(5).execute()
+        shipments = response.data or []
+        if status:
+            status = status.strip().lower()
+            shipments = [s for s in shipments if (_pickup_status(s) or '').strip().lower() == status]
 
         result = []
 
-        for s in response.data:
+        for s in shipments:
             result.append({
                 "cargo_id": s.get("cargowise_id"),
                 #  lane logic
@@ -274,7 +381,7 @@ def sales_shipment():
                 #  stage from AI
                 "stage": s.get("llm_identified_type"),
                 "transport_mode": s.get("transport_mode"),
-                "pickup_status": s.get("pickup_date_status")
+                "pickup_status": _pickup_status(s)
             })
 
         return jsonify({"data": result}), 200

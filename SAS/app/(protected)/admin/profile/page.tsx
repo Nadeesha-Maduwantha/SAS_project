@@ -16,7 +16,7 @@ export default function SuperUserProfilePage() {
       }
 
       try {
-        const response = await fetch('http://localhost:5000/api/auth/me', {
+        const response = await fetch('http://127.0.0.1:5000/api/auth/me', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -37,7 +37,7 @@ export default function SuperUserProfilePage() {
             isVerified: true,
             lastLogin: "Today",
             memberSince: data.user.memberSince || data.user.created_at?.slice(0,10) || "Recently",
-            avatarUrl: null
+            avatarUrl: data.user.avatarUrl || null
           });
         }
       } catch (error) {

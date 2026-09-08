@@ -7,24 +7,6 @@ interface TwoFactorAuthProps {
 }
 
 const TwoFactorAuthSection: React.FC<TwoFactorAuthProps> = ({ data, onChange }) => {
-  const options = [
-    {
-      value: "optional",
-      label: "Optional for all users",
-      description: "Users can choose to enable 2FA",
-    },
-    {
-      value: "admin_only",
-      label: "Required for admin users",
-      description: "Mandatory for users with admin privileges",
-    },
-    {
-      value: "all_users",
-      label: "Required for all users",
-      description: "Enforced across the entire system",
-    },
-  ];
-
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-5">
       {/* Header */}
@@ -40,32 +22,26 @@ const TwoFactorAuthSection: React.FC<TwoFactorAuthProps> = ({ data, onChange }) 
         </div>
       </div>
 
-      {/* Radio Options */}
-      <div className="space-y-3">
-        {options.map((option) => (
-          <label
-            key={option.value}
-            className={`flex items-start gap-3 border rounded-lg px-4 py-3 cursor-pointer transition-colors ${
-              data.mode === option.value
-                ? "border-blue-400 bg-blue-50"
-                : "border-gray-200 hover:bg-gray-50"
-            }`}
-          >
-            <input
-              type="radio"
-              name="twoFactorMode"
-              value={option.value}
-              checked={data.mode === option.value}
-              onChange={() => onChange({ mode: option.value as TwoFactorAuth["mode"] })}
-              className="mt-0.5 accent-blue-500"
-            />
-            <div>
-              <p className="text-sm font-medium text-gray-800">{option.label}</p>
-              <p className="text-xs text-gray-500">{option.description}</p>
-            </div>
-          </label>
-        ))}
-      </div>
+      {/* Checkbox */}
+      <label
+        className={`flex items-start gap-3 border rounded-lg px-4 py-3 cursor-pointer transition-colors ${
+          data.requireForAdmins
+            ? "border-blue-400 bg-blue-50"
+            : "border-gray-200 hover:bg-gray-50"
+        }`}
+      >
+        <input
+          type="checkbox"
+          checked={data.requireForAdmins}
+          onChange={(e) => onChange({ requireForAdmins: e.target.checked })}
+          className="mt-0.5 accent-blue-500"
+          data-testid="checkbox-requireForAdmins"
+        />
+        <div>
+          <p className="text-sm font-medium text-gray-800">Required for admin users</p>
+          <p className="text-xs text-gray-500">Mandatory for users with admin privileges</p>
+        </div>
+      </label>
     </div>
   );
 };

@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import AccessLogsStats from "@/components/AdminUser/AccessLogs/AccessLogsStats";
 import AccessLogsFilters from "@/components/AdminUser/AccessLogs/AccessLogsFilters";
-import AccessLogsTable from "@/components/AdminUser/AccessLogs/AccessLogsTable";
+import AccessLogsTable, { formatTimestamp } from "@/components/AdminUser/AccessLogs/AccessLogsTable";
 import { AccessLog, AccessLogFilters } from "@/types/access-logs";
 
 export default function AccessLogsPage() {
@@ -23,8 +23,11 @@ export default function AccessLogsPage() {
     const fetchLogs = async () => {
       try {
         setIsLoading(true);
-        // Replace localhost:5000 with your actual backend URL/environment variable if different
-        const response = await fetch("http://127.0.0.1:5000/api/access-logs");
+        const token = localStorage.getItem('access_token');
+        // Replace 127.0.0.1:5000 with your actual backend URL/environment variable if different
+        const response = await fetch("http://127.0.0.1:5000/api/access-logs", {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
         const json = await response.json();
         
         if (json.success) {
@@ -43,8 +46,10 @@ export default function AccessLogsPage() {
     fetchLogs();
   }, []);
 
-  // Filter logs based on selected filters
-  const filteredLogs = useMemo(() => {
+  // Logs scoped by User + Date Range only (not Action) — the login stat
+  // cards should reflect real login activity even while the table below is
+  // filtered to a different action like Delete or Update.
+  const baseFilteredLogs = useMemo(() => {
     let result = [...logs];
 
     // Filter by user role/email
@@ -56,66 +61,84 @@ export default function AccessLogsPage() {
       });
     }
 
-    // Filter by action type
-    if (filters.action !== "all") {
-      result = result.filter((log) => {
-        const action = log.action.toLowerCase();
-        return action.includes(filters.action.toLowerCase());
-      });
-    }
-
     // Filter by date range
-    if (filters.dateRange !== "today" && filters.dateRange !== "all") {
+    if (filters.dateRange !== "all") {
       const now = new Date();
       result = result.filter((log) => {
         const logDate = new Date(log.timestamp);
-        
+
         if (filters.dateRange === "today") {
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0); // start of today at midnight
-        result = result.filter(log => new Date(log.timestamp) >= todayStart);
+          const todayStart = new Date();
+          todayStart.setHours(0, 0, 0, 0); // start of today at midnight
+          return logDate >= todayStart;
         }
+
         if (filters.dateRange === "week") {
           const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
           return logDate >= weekAgo;
         }
-        
+
         if (filters.dateRange === "month") {
           const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           return logDate >= monthAgo;
         }
-        
+
         return true;
       });
     }
 
     return result;
-  }, [filters, logs]);
+  }, [filters.user, filters.dateRange, logs]);
 
-  // Calculate stats based on filtered data
+  // Table rows: base filters plus the Action dropdown
+  const filteredLogs = useMemo(() => {
+    if (filters.action === "all") return baseFilteredLogs;
+    return baseFilteredLogs.filter((log) => {
+      const action = log.action.toLowerCase();
+      return action.includes(filters.action.toLowerCase());
+    });
+  }, [filters.action, baseFilteredLogs]);
+
+  // Stat cards: always scoped to Login activity specifically, regardless of
+  // which action the table is currently filtered to.
   const filteredStats = useMemo(() => {
-    const successCount = filteredLogs.filter(log => log.status === "Success").length;
-    const failedCount = filteredLogs.filter(log => log.status === "Failed").length;
-    const uniqueUsers = new Set(filteredLogs.map(log => log.user.email)).size;
+    const loginLogs = baseFilteredLogs.filter((log) => {
+      const action = log.action.toLowerCase();
+      return action === "login" || action === "failed login attempt";
+    });
+    const successCount = loginLogs.filter(log => log.status === "Success").length;
+    const failedCount = loginLogs.filter(log => log.status === "Failed").length;
+    const uniqueUsers = new Set(loginLogs.map(log => log.user.email)).size;
 
     return {
-      totalLoginsToday: filteredLogs.length,
+      totalLoginsToday: loginLogs.length,
       successfulLogins: successCount,
       failedAttempts: failedCount,
       activeUsers: uniqueUsers,
     };
-  }, [filteredLogs]);
+  }, [baseFilteredLogs]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [filters]);
 
+  // Wraps a field in quotes and escapes embedded quotes whenever it contains
+  // a comma, quote, or newline — otherwise a comma inside e.g. a location
+  // string ("City, Country") would silently shift every column after it.
+  const csvField = (value: unknown) => {
+    const str = String(value ?? "");
+    if (/[",\n]/.test(str)) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
   const handleExport = () => {
     const csvContent = [
       ["Timestamp", "User", "Email", "Action", "IP Address", "Location", "Device", "Status"],
       ...filteredLogs.map(log => [
-        log.timestamp,
+        formatTimestamp(log.timestamp),
         log.user.name,
         log.user.email,
         log.action,
@@ -124,7 +147,7 @@ export default function AccessLogsPage() {
         log.device,
         log.status
       ])
-    ].map(row => row.join(",")).join("\n");
+    ].map(row => row.map(csvField).join(",")).join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);

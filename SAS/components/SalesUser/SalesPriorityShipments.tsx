@@ -19,7 +19,7 @@ export default function SalesPriorityShipments() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://127.0.0.1:5001/api/dashboard/sales/shipment")
+    fetch("http://127.0.0.1:5000/api/dashboard/sales/shipment")
       .then(res => res.json())
       .then(data => {
         setRows(data.data || []);

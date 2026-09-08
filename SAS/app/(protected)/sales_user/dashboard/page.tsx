@@ -1,22 +1,44 @@
-import SalesDashboardHeader from '@/components/SalesUser/SalesDashboardHeader';
-import SalesSectionTitle from '@/components/SalesUser/SalesSectionTitle';
-import SalesStatsGrid from '@/components/SalesUser/SalesStatsGrid';
-import SalesPriorityShipments from '@/components/SalesUser/SalesPriorityShipments';
+// app/(protected)/sales_user/dashboard/page.tsx
+// The shipment alert feed was replaced by a personal notepad.
+import UserDashboardMetricCards from '@/components/shared/UserDashboardMetricCards';
+import NotePad from '@/components/shared/NotePad';
+import AlertFeedTable from '@/components/shared/AlertFeedTable';
+import PinnedTableStatCards from '@/components/shared/PinnedTableStatCard';
 
-import { BarChart3, Star } from 'lucide-react';
-
-export default function SalesUserDashboardPage() {
+export default function SalesDashboardPage() {
   return (
     <div>
-      <SalesDashboardHeader />
+      <h1
+        style={{
+          fontSize: 'var(--fs-lg)',
+          fontWeight: 'var(--fw-bold)' as any,
+          color: 'var(--c-text-strong)',
+          marginBottom: 20,
+        }}
+      >
+        Sales Dashboard
+      </h1>
 
-      <SalesStatsGrid />
+      {/* My Shipments + My Alerts stat cards */}
+      <UserDashboardMetricCards scope="sales" />
 
-      <SalesSectionTitle
-        title="Priority Shipments" 
-      />
+      {/* Pinned custom table stat cards */}
+      <PinnedTableStatCards />
 
-      <SalesPriorityShipments />
+      {/* Personal notepad, saved per staff code */}
+      <div style={{ marginTop: 14 }}>
+        <NotePad title="My Notes" subtitle="Personal notes — saved to your account" />
+      </div>
+
+      {/* Scoped alert feed — overdue / delayed milestones for this user */}
+      <div style={{ marginTop: 14 }}>
+        <AlertFeedTable
+          title="My Shipment Alert Feed"
+          apiBase="http://localhost:5000"
+          maxRows={8}
+          scope="sales"
+        />
+      </div>
     </div>
   );
 }

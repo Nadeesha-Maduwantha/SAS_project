@@ -1,14 +1,19 @@
 from flask import Blueprint, request, jsonify
 from services.supabase_service import get_supabase
-from datetime import datetime
+from utils.auth_helper import require_auth, get_current_user
 import traceback
 import json
 
 bp = Blueprint('audit_trail', __name__, url_prefix='/api/audit-trail')
 
 @bp.route('/', methods=['GET'])
+@require_auth
 def get_audit_logs():
     try:
+        _, requester_role = get_current_user()
+        if (requester_role or '').lower() != 'admin':
+            return jsonify({'error': 'Only admins can view the audit trail'}), 403
+
         supabase = get_supabase()
         
         # 1. Fetch raw logs
@@ -34,28 +39,19 @@ def get_audit_logs():
                         'role': profile.get('role') or 'Admin'
                     }
 
-        # Lookups for your action and entity IDs
-        action_map = {1: "Create", 2: "Update", 3: "Delete"}
-        entity_map = {1: "User Management", 2: "Shipment Records", 3: "Security Settings"}
+        # Lookups for action and entity IDs — must match the real
+        # public.action_types / public.entity_types tables.
+        action_map = {1: "Create", 2: "Update", 3: "Delete", 4: "Login", 5: "Export"}
+        entity_map = {1: "Shipment", 2: "User Profile", 3: "Department", 4: "Security Settings", 5: "System"}
 
         formatted_events = []
         for log in logs:
             raw_user_id = log.get('user_id')
             user_info = user_profiles.get(raw_user_id, {'name': 'System', 'role': 'Automated'})
             
-            # Date Formatting
+            # Timestamp is sent as raw ISO — formatting for display happens in the frontend
+            # (parsing a hand-formatted string like "2026-7-14 2.30p.m" breaks Date-based filters).
             raw_date = log.get('created_at')
-            formatted_date = raw_date
-            if raw_date:
-                try:
-                    clean_date = raw_date.split('.')[0].replace("+00:00", "") 
-                    if "+" in clean_date: clean_date = clean_date.split('+')[0]
-                    dt_obj = datetime.fromisoformat(clean_date)
-                    time_str = dt_obj.strftime('%I.%M%p').lower().replace('pm', 'p.m').replace('am', 'a.m')
-                    if time_str.startswith('0'): time_str = time_str[1:]
-                    formatted_date = f"{dt_obj.year}-{dt_obj.month}-{dt_obj.day} {time_str}"
-                except Exception:
-                    pass
 
             # ID lookups
             action_id = log.get('action_type_id')
@@ -90,7 +86,7 @@ def get_audit_logs():
 
             formatted_events.append({
                 'id': str(log.get('audit_id')),
-                'timestamp': formatted_date,
+                'timestamp': raw_date,
                 'user': user_info,
                 'module': entity_str,
                 'action': action_str,
@@ -106,9 +102,14 @@ def get_audit_logs():
 
 
 @bp.route('/', methods=['POST'])
+@require_auth
 def create_audit_log():
     """ Endpoint to manually create a new audit log entry """
     try:
+        _, requester_role = get_current_user()
+        if (requester_role or '').lower() != 'admin':
+            return jsonify({'error': 'Only admins can create audit log entries'}), 403
+
         data = request.json
         if not data:
             return jsonify({'error': 'Request body is empty'}), 400

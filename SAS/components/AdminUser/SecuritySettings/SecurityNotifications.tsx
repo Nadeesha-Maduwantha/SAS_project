@@ -33,7 +33,6 @@ const SecurityNotificationsSection: React.FC<SecurityNotificationsProps> = ({ da
           { key: "notifyPasswordChanges",   label: "Notify on password changes" },
           { key: "notifyPermissionChanges", label: "Notify on permission changes" },
           { key: "notifyNewDeviceLogin",    label: "Notify on new device login" },
-          { key: "dailySummaryEmail",       label: "Daily security summary email" },
         ].map((item) => (
           <label key={item.key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
             <input
@@ -41,6 +40,7 @@ const SecurityNotificationsSection: React.FC<SecurityNotificationsProps> = ({ da
               checked={data[item.key as keyof SecurityNotifications]}
               onChange={(e) => handleChange(item.key as keyof SecurityNotifications, e.target.checked)}
               className="w-4 h-4 accent-blue-500"
+              data-testid={`checkbox-${item.key}`}
             />
             {item.label}
           </label>

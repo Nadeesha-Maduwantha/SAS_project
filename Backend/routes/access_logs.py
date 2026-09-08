@@ -2,18 +2,24 @@
 
 from flask import Blueprint, jsonify, request
 from services.supabase_service import get_supabase
+from utils.auth_helper import require_auth, get_current_user
 
 # Create a Flask Blueprint for access logs
 access_logs_bp = Blueprint('access_logs', __name__)
 
 @access_logs_bp.route('', methods=['GET'], strict_slashes=False)
 @access_logs_bp.route('/', methods=['GET'], strict_slashes=False)
+@require_auth
 def get_access_logs():
     """
     Fetch access logs from the database.
     Supports optional limit to prevent fetching massive amounts of data at once.
     """
     try:
+        _, requester_role = get_current_user()
+        if (requester_role or '').lower() != 'admin':
+            return jsonify({'success': False, 'error': 'Only admins can view access logs'}), 403
+
         # Get the Supabase client instance
         supabase = get_supabase()
         
@@ -22,23 +28,11 @@ def get_access_logs():
 
         # Query the access_logs table and join with the profiles table
         # We select profiles(full_name, email, role) to match the frontend 'user' object structure
+        # Select must be a single line — PostgREST silently drops the
+        # profiles(...) embed when the select string contains newlines.
         response = (
             supabase.table('access_logs')
-            .select('''
-                id,
-                timestamp,
-                action,
-                ip_address,
-                location,
-                device,
-                status,
-                email_attempted,
-                profiles (
-                    full_name,
-                    email,
-                    role
-                )
-            ''')
+            .select('id, timestamp, action, ip_address, location, device, status, email_attempted, profiles(full_name, email, role)')
             .order('timestamp', desc=True)
             .limit(limit)
             .execute()
@@ -62,9 +56,9 @@ def get_access_logs():
                 "status": log.get("status"),
                 "user": {
                     # Fallback to email_attempted if it's an unknown user
-                    "name": user_info.get("full_name", "Unknown User"),
-                    "email": user_info.get("email", log.get("email_attempted", "Unknown")),
-                    "role": user_info.get("role", "Unknown")
+                    "name": user_info.get("full_name") or log.get("email_attempted") or "Unknown User",
+                    "email": user_info.get("email") or log.get("email_attempted") or "Unknown",
+                    "role": user_info.get("role") or "Unknown"
                 }
             })
 

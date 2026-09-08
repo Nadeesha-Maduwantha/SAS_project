@@ -35,6 +35,7 @@ const PasswordPolicySection: React.FC<PasswordPolicyProps> = ({ data, onChange }
             value={data.minLength}
             onChange={(e) => handleChange("minLength", Number(e.target.value))}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            data-testid="input-minLength"
           />
         </div>
         <div>
@@ -44,6 +45,7 @@ const PasswordPolicySection: React.FC<PasswordPolicyProps> = ({ data, onChange }
             value={data.expiryDays}
             onChange={(e) => handleChange("expiryDays", Number(e.target.value))}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            data-testid="input-expiryDays"
           />
         </div>
       </div>
@@ -63,6 +65,7 @@ const PasswordPolicySection: React.FC<PasswordPolicyProps> = ({ data, onChange }
               checked={data[item.key as keyof PasswordPolicy] as boolean}
               onChange={(e) => handleChange(item.key as keyof PasswordPolicy, e.target.checked)}
               className="w-4 h-4 accent-blue-500"
+              data-testid={`checkbox-${item.key}`}
             />
             {item.label}
           </label>

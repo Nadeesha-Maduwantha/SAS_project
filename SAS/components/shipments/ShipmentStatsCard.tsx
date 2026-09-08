@@ -8,6 +8,10 @@ interface Props {
   borderColor?: string
 }
 
+// Styled to match the dashboard's CardShell recipe (DashboardMetricCards.tsx):
+// header row with tinted icon tile + bold title, hairline separator, big
+// number in the body. borderColor is kept in Props for compatibility with
+// existing callers but no longer rendered (dashboard cards have no stripe).
 export function ShipmentStatsCard({
   icon,
   label,
@@ -16,14 +20,18 @@ export function ShipmentStatsCard({
   borderColor = 'border-l-blue-500',
 }: Props) {
   return (
-    <div className={`bg-white rounded-xl border border-gray-200 border-l-4 ${borderColor} px-4 py-3 flex items-center gap-3 shadow-sm`}>
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${iconBgClass}`}>
-        {icon}
+    <div className="bg-white rounded-xl border border-gray-200 px-[18px] py-4 shadow-[0_1px_4px_rgba(0,0,0,0.05)] flex flex-col">
+      <div className="flex items-center gap-2 pb-2.5 mb-3 border-b border-gray-100">
+        {/* [&>svg] sizes whatever icon callers pass to the dashboard's 14px,
+            so pages don't need editing */}
+        <div className={`w-7 h-7 rounded-[7px] flex items-center justify-center flex-shrink-0 [&>svg]:w-3.5 [&>svg]:h-3.5 ${iconBgClass}`}>
+          {icon}
+        </div>
+        <span className="text-xs font-bold text-gray-700 tracking-tight">{label}</span>
       </div>
-      <div>
-        <p className="text-xs text-gray-500 font-medium">{label}</p>
-        <p className="text-xl font-bold text-gray-900 mt-0.5">{value}</p>
-      </div>
+      <p className="text-[26px] font-extrabold text-gray-900 leading-none tracking-tight tabular-nums">
+        {value}
+      </p>
     </div>
   )
 }

@@ -1,0 +1,72 @@
+/* =============================================================
+   theme.css — single source of truth for admin dashboard styling.
+
+   Every font size, weight and colour used on the admin pages comes
+   from here. Do not hardcode hex values or px sizes in component
+   CSS or inline styles — add a token instead.
+
+   Neutral ramp is Tailwind `slate` throughout. The older components
+   used `gray` and a set of one-off blues; those are gone.
+   ============================================================= */
+
+:root {
+  /* ---- Type scale — 5 steps, px only (no rem/clamp mixing) ---- */
+  --fs-xs: 11px;   /* uppercase labels, tags, badges, legends */
+  --fs-sm: 12px;   /* hints, sub-headings, terminal output */
+  --fs-md: 13px;   /* body copy, table cells */
+  --fs-lg: 16px;   /* card titles, section headings */
+  --fs-xl: 24px;   /* metric values */
+
+  /* ---- Weights — 3 steps. 800/900 are deliberately absent ---- */
+  --fw-normal: 500;
+  --fw-medium: 600;
+  --fw-bold: 700;
+
+  /* ---- Letter spacing ---- */
+  --ls-caps: 0.08em;    /* uppercase labels need air */
+  --ls-tight: -0.01em;  /* large numbers only */
+
+  /* ---- Neutrals (slate) ---- */
+  --c-text-strong: #0f172a;
+  --c-text: #334155;
+  --c-text-muted: #64748b;
+  --c-text-subtle: #94a3b8;
+
+  --c-border: #e2e8f0;
+  --c-border-light: #f1f5f9;
+
+  --c-surface: #ffffff;
+  --c-surface-sunken: #f8fafc;
+  --c-surface-inverse: #0f172a;
+  --c-text-inverse: #e2e8f0;
+
+  /* ---- Semantic roles — one shade + one tint each ---- */
+  --c-accent: #2563eb;
+  --c-accent-bg: #eff6ff;
+  --c-accent-border: #bfdbfe;
+
+  --c-success: #059669;
+  --c-success-bg: #ecfdf5;
+
+  --c-danger: #dc2626;
+  --c-danger-bg: #fef2f2;
+  --c-danger-border: #fecaca;
+
+  --c-warning: #d97706;
+  --c-warning-bg: #fffbeb;
+
+  /* ---- Categorical palette for charts/donuts ----
+     Used when colour encodes a category rather than a status. */
+  --c-chart-1: #2563eb;  /* air / admin */
+  --c-chart-2: #7c3aed;  /* sea / super user */
+  --c-chart-3: #059669;  /* completed / operation */
+  --c-chart-4: #d97706;  /* sales */
+  --c-chart-5: #dc2626;  /* overdue */
+  --c-chart-6: #64748b;  /* other / unknown */
+
+  /* ---- Shape ---- */
+  --radius-card: 14px;
+  --radius-inner: 10px;
+  --radius-pill: 999px;
+  --shadow-card: 0 10px 24px rgba(15, 23, 42, 0.04);
+}

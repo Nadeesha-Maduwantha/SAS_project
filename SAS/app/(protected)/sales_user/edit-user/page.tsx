@@ -3,11 +3,11 @@
 import React, { useState } from 'react';
 import BasicInformation from '@/components/AdminUser/BasicInformation';
 import AccountManagement from '@/components/AdminUser/AccountManagement';
-import SalesLeftNavBar from '@/components/SalesUser/SalesLeftNavBar';
 import { UserFormData } from '@/types';
 
 const EditUserPage: React.FC = () => {
   const [formData, setFormData] = useState<UserFormData>({
+    id: '',
     fullName: '',
     email: '',
     department: '',
@@ -43,6 +43,7 @@ const EditUserPage: React.FC = () => {
 
   const handleCancel = () => {
     setFormData({
+      id: '',
       fullName: '',
       email: '',
       department: '',
@@ -77,10 +78,7 @@ const EditUserPage: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-400 flex items-center gap-2">
-            🕐 Last updated on Oct 24, 2023 by Admin
-          </p>
+        <div className="flex items-center justify-end">
           <div className="flex gap-3">
             <button
               onClick={handleDelete}

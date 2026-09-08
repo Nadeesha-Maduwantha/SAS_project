@@ -1,12 +1,19 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-    X, Save, Wand2, Send,
+    X, Save,
     Bold, Italic, Underline, Undo, Redo, List, ListOrdered, Image as ImageIcon,
     Paperclip, ChevronDown, Sparkles, Eye, Bot
 } from 'lucide-react';
 import { AlertData } from './AlertDetailsModal';
+
+const escapeHtml = (value: string) => value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 
 interface EmailComposeModalProps {
     isOpen: boolean;
@@ -21,13 +28,43 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }: EmailC
     const [showBCC, setShowBCC] = useState(false);
     const [ccValue, setCcValue] = useState('');
     const [bccValue, setBccValue] = useState('');
+    const [toValue, setToValue] = useState('');
+    const [subjectValue, setSubjectValue] = useState('');
+    const [editorHtml, setEditorHtml] = useState('');
+    const [sendStatus, setSendStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+    const [isSending, setIsSending] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-
-    if (!isOpen) return null;
+    const editorRef = useRef<HTMLDivElement>(null);
 
     const shipmentId = alertData?.id || 'Shipment #49201';
-    const clientName = alertData?.client || 'Customer';
     const clientEmail = alertData?.client ? `contact@${alertData.client.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}.com` : 'recipient@logistics.com';
+    const dueDate = alertData?.dueDate ? alertData.dueDate.slice(0, 10) : '—';
+    const alertStatus = alertData?.alertStatus || (alertData?.status === 'Resolved' ? 'resolved' : 'overdue');
+    const milestone = alertData?.milestone || '—';
+    const critical = alertData?.isCritical ?? alertData?.priority === 'Critical';
+    const notes = alertData?.issue || '—';
+    const defaultBody = `Shipment <strong>${escapeHtml(shipmentId)}</strong> has an overdue milestone.<br><br>` +
+        `<ul><li><strong>Milestone:</strong> ${escapeHtml(milestone)}</li>` +
+        `<li><strong>Due date:</strong> ${escapeHtml(dueDate)}</li>` +
+        `<li><strong>Status:</strong> ${escapeHtml(alertStatus)}</li>` +
+        `<li><strong>Critical:</strong> ${critical ? 'Yes' : 'No'}</li>` +
+        `<li><strong>Notes:</strong> ${escapeHtml(notes)}</li></ul>` +
+        `Please review the shipment and take action as needed.<br><br>` +
+        `Thank you,<br>Logistics Team`;
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        setToValue(clientEmail);
+        setSubjectValue(`Update regarding ${shipmentId}`);
+        setEditorHtml(defaultBody);
+        setCcValue('');
+        setBccValue('');
+        setShowCC(false);
+        setShowBCC(false);
+        setAttachments([]);
+        setSendStatus(null);
+    }, [isOpen, clientEmail, shipmentId, defaultBody]);
 
     const handleFormat = (command: string, value: string | null = null) => {
         document.execCommand(command, false, value || undefined);
@@ -48,6 +85,108 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }: EmailC
         e.preventDefault(); // Keep focus on the contentEditable area
         handleFormat(command, value);
     };
+
+    const normalizeRecipientList = (value: string) =>
+        value
+            .split(',')
+            .map((email) => email.trim())
+            .filter(Boolean);
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    const allValidEmails = (emails: string[]) => emails.every((email) => emailPattern.test(email));
+
+    const buildPlainTextBody = (html: string) => {
+        if (typeof window === 'undefined') return html;
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+        return temp.innerText;
+    };
+
+    const fileToBase64 = (file: File) =>
+        new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const result = reader.result;
+                if (typeof result !== 'string') {
+                    reject(new Error('Failed to read attachment.'));
+                    return;
+                }
+                const base64 = result.split(',')[1];
+                resolve(base64 || '');
+            };
+            reader.onerror = () => reject(new Error('Failed to read attachment.'));
+            reader.readAsDataURL(file);
+        });
+
+    const handleSendEmail = async () => {
+        if (isSending) return;
+        const toRecipients = normalizeRecipientList(toValue);
+        const ccRecipients = normalizeRecipientList(ccValue);
+        const bccRecipients = normalizeRecipientList(bccValue);
+
+        if (!toRecipients.length) {
+            setSendStatus({ type: 'error', message: 'Please add at least one recipient in the To field.' });
+            return;
+        }
+
+        if (!subjectValue.trim()) {
+            setSendStatus({ type: 'error', message: 'Subject is required before sending.' });
+            return;
+        }
+
+        if (!allValidEmails(toRecipients) || !allValidEmails(ccRecipients) || !allValidEmails(bccRecipients)) {
+            setSendStatus({ type: 'error', message: 'Please enter valid email addresses. Use commas for multiple recipients.' });
+            return;
+        }
+
+        const bodyText = buildPlainTextBody(editorHtml).trim();
+        if (!bodyText) {
+            setSendStatus({ type: 'error', message: 'Email body cannot be empty.' });
+            return;
+        }
+
+        try {
+            setIsSending(true);
+            setSendStatus(null);
+
+            const attachmentPayload = await Promise.all(
+                attachments.map(async (file) => ({
+                    filename: file.name,
+                    contentType: file.type || 'application/octet-stream',
+                    content: await fileToBase64(file),
+                }))
+            );
+
+            const response = await fetch('/api/email/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    to: toRecipients,
+                    cc: ccRecipients,
+                    bcc: bccRecipients,
+                    subject: subjectValue.trim(),
+                    html: editorHtml,
+                    text: bodyText,
+                    attachments: attachmentPayload,
+                }),
+            });
+
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload?.error || 'Failed to send email.');
+            }
+
+            setSendStatus({ type: 'success', message: 'Email sent successfully.' });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to send email.';
+            setSendStatus({ type: 'error', message });
+        } finally {
+            setIsSending(false);
+        }
+    };
+
+    if (!isOpen) return null;
 
     return (
         <div style={{
@@ -125,13 +264,17 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }: EmailC
                             <Sparkles size={16} /> Generate with AI
                         </button>
 
-                        <button style={{
+                        <button
+                            onClick={handleSendEmail}
+                            disabled={isSending}
+                            style={{
                             padding: '8px 24px', borderRadius: '6px',
                             border: 'none', backgroundColor: '#06b6d4',
                             color: 'white', fontSize: '13px', fontWeight: 500,
-                            cursor: 'pointer'
+                            cursor: isSending ? 'not-allowed' : 'pointer',
+                            opacity: isSending ? 0.7 : 1
                         } as React.CSSProperties}>
-                            Send Email
+                            {isSending ? 'Sending...' : 'Send Email'}
                         </button>
 
                         <button onClick={onClose} style={{
@@ -163,7 +306,8 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }: EmailC
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <input
                                     type="text"
-                                    defaultValue={clientEmail}
+                                    value={toValue}
+                                    onChange={(e) => setToValue(e.target.value)}
                                     style={{
                                         border: 'none', outline: 'none', width: '100%',
                                         fontSize: '14px', color: '#111827',
@@ -252,7 +396,8 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }: EmailC
                             } as React.CSSProperties}>Subject *</span>
                             <input
                                 type="text"
-                                defaultValue={`Update regarding ${shipmentId}`}
+                                value={subjectValue}
+                                onChange={(e) => setSubjectValue(e.target.value)}
                                 style={{
                                     border: 'none', outline: 'none', width: '100%',
                                     fontSize: '14px', color: '#111827',
@@ -286,9 +431,11 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }: EmailC
                         {/* Text Area */}
                         <div style={{ flex: 1, position: 'relative' } as React.CSSProperties}>
                             <div
+                                ref={editorRef}
                                 className="rich-text-editor"
                                 contentEditable
                                 suppressContentEditableWarning
+                                onInput={(e) => setEditorHtml((e.target as HTMLDivElement).innerHTML)}
                                 style={{
                                     width: '100%', height: '100%', border: 'none', outline: 'none',
                                     overflowY: 'auto', fontSize: '14px', lineHeight: '1.6',
@@ -296,7 +443,7 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }: EmailC
                                     paddingBottom: '20px'
                                 } as React.CSSProperties}
                                 dangerouslySetInnerHTML={{
-                                    __html: `Dear ${clientName},<br><br>This is an automated update regarding your ${shipmentId.toLowerCase()}. The cargo has successfully cleared customs and is currently en route to the distribution center in Hamburg.<br>Estimated Time of Arrival: Nov 14, 2023 - 14:00 CET<br><br>Best Regards,<br>Logistics Team`
+                                    __html: editorHtml
                                 }}
                             />
                         </div>
@@ -350,7 +497,12 @@ export default function EmailComposeModal({ isOpen, onClose, alertData }: EmailC
                                         multiple
                                     />
                                 </div>
-                                <span style={{ color: '#9ca3af' }}>Auto-saving...</span>
+                                <span style={{
+                                    color: sendStatus?.type === 'success' ? '#15803d' : sendStatus?.type === 'error' ? '#dc2626' : '#9ca3af',
+                                    fontWeight: sendStatus ? 500 : 400
+                                }}>
+                                    {sendStatus?.message || 'Auto-saving...'}
+                                </span>
                             </div>
                         </div>
                     </div>

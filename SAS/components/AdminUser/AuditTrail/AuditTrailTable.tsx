@@ -9,6 +9,16 @@ interface AuditTrailTableProps {
   onPageChange: (page: number) => void;
 }
 
+// Formats an ISO timestamp as e.g. "2026-5-4 4.46p.m"
+function formatTimestamp(ts: string): string {
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return ts;
+  const ampm = d.getHours() >= 12 ? "p.m" : "a.m";
+  const hours = d.getHours() % 12 || 12;
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()} ${hours}.${minutes}${ampm}`;
+}
+
 export default function AuditTrailTable({
   events,
   currentPage,
@@ -36,11 +46,10 @@ export default function AuditTrailTable({
 
   const getModuleColor = (module: string) => {
     const colors: Record<string, string> = {
-      "User Management": "bg-blue-100 text-blue-800",
+      "Shipment": "bg-purple-100 text-purple-800",
+      "User Profile": "bg-blue-100 text-blue-800",
+      "Department": "bg-red-100 text-red-800",
       "Security Settings": "bg-green-100 text-green-800",
-      "Shipment Management": "bg-purple-100 text-purple-800",
-      "Alert Management": "bg-yellow-100 text-yellow-800",
-      "Department Management": "bg-red-100 text-red-800",
       "System": "bg-gray-100 text-gray-800",
     };
     return colors[module] || "bg-gray-100 text-gray-800";
@@ -50,7 +59,7 @@ export default function AuditTrailTable({
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full" data-testid="audit-table">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -79,9 +88,9 @@ export default function AuditTrailTable({
           <tbody className="bg-white divide-y divide-gray-200">
             {paginatedEvents.length > 0 ? (
               paginatedEvents.map((event) => (
-                <tr key={event.id} className="hover:bg-gray-50">
+                <tr key={event.id} className="hover:bg-gray-50" data-testid="audit-row">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {event.timestamp}
+                    {formatTimestamp(event.timestamp)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
@@ -106,7 +115,7 @@ export default function AuditTrailTable({
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <button className="text-blue-600 hover:text-blue-800 font-medium">
+                    <button className="text-blue-600 hover:text-blue-800 font-medium" data-testid="view-details-btn">
                       View Details
                     </button>
                   </td>
@@ -125,7 +134,7 @@ export default function AuditTrailTable({
 
       {/* Pagination */}
       <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-        <div className="text-sm text-gray-700">
+        <div className="text-sm text-gray-700" data-testid="pagination-summary">
           Showing {paginatedEvents.length > 0 ? startIndex + 1 : 0} to {endIndex} of {totalResults} results
         </div>
         <div className="flex gap-2">
@@ -133,6 +142,7 @@ export default function AuditTrailTable({
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
             className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            data-testid="prev-page-btn"
           >
             Previous
           </button>
@@ -145,6 +155,7 @@ export default function AuditTrailTable({
                   ? "bg-blue-600 text-white border-blue-600"
                   : "border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
               }`}
+              data-testid={`page-btn-${page}`}
             >
               {page}
             </button>
@@ -153,6 +164,7 @@ export default function AuditTrailTable({
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage === totalPages || totalPages === 0}
             className="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            data-testid="next-page-btn"
           >
             Next
           </button>

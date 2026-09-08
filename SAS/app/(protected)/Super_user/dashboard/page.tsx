@@ -1,31 +1,43 @@
-"use client";
+// app/(protected)/Super_user/dashboard/page.tsx
+// Super User runs sea freight, so only the SEA breakdown is shown here.
+// The Department Alert Feed was replaced by the branch delay breakdown.
+import SuperDashboardAnalytics from '@/components/SuperUser/SuperDashboardAnalytics';
+import SuperBranchDelayCard from '@/components/SuperUser/SuperBranchDelayCard';
+import AlertFeedTable from '@/components/shared/AlertFeedTable';
+import PinnedTableStatCards from '@/components/shared/PinnedTableStatCard';
 
-import SuperStatsGrid from '@/components/SuperUser/SuperStatsGrid';
-import SuperRecentActivityTable from '@/components/SuperUser/SuperRecentActivityTable';
-import SuperCriticalAlertsCard from '@/components/SuperUser/SuperCriticalAlertsCard';
-import '@/styles/SuperStyles/SuperDashboardLayout.css';
-import SuperDashboardHeader from '@/components/SuperUser/SuperDashboardHeader';
-
-export default function SuperUserDashboard() {
+export default function SuperDashboardPage() {
   return (
-    <div className="super-dashboard">
-      <SuperDashboardHeader />
+    <div>
+      <h1
+        style={{
+          fontSize: 'var(--fs-lg)',
+          fontWeight: 'var(--fw-bold)' as any,
+          color: 'var(--c-text-strong)',
+          marginBottom: 20,
+        }}
+      >
+        Super User Dashboard
+      </h1>
 
-      <div className="super-grid-2">
-        <div className="super-grid-2__left">
-          <SuperStatsGrid />
-        </div>
+      {/* Sea freight breakdown + overall shipment summary */}
+      <SuperDashboardAnalytics />
 
-        <div className="super-grid-2__right">
-          <SuperCriticalAlertsCard />
-        </div>
-        <SuperCriticalAlertsCard />
+      {/* Pinned custom table stat cards */}
+      <PinnedTableStatCards />
+
+      {/* Where the delays sit, by branch */}
+      <SuperBranchDelayCard />
+
+      {/* Scoped alert feed — overdue / delayed milestones for this department */}
+      <div style={{ marginTop: 14 }}>
+        <AlertFeedTable
+          title="Department Alert Feed"
+          apiBase="http://localhost:5000"
+          maxRows={8}
+          scope="super"
+        />
       </div>
-
-      <div className="super-section-gap">
-        <SuperRecentActivityTable />
-      </div>
-
     </div>
   );
 }

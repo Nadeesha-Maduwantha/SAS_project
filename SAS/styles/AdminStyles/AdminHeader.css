@@ -5,9 +5,18 @@
 }
 
 .admin-header__title {
-  @apply text-[18px] font-black text-slate-900;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--c-text-strong);
 }
 
 .admin-header__badge {
-  @apply text-[10px] font-black tracking-[0.8px] px-[10px] py-[6px] rounded-full border border-blue-200 bg-blue-50 text-blue-700 uppercase;
+  @apply uppercase px-2.5 py-1;
+  border: 1px solid var(--c-accent-border);
+  border-radius: var(--radius-pill);
+  background: var(--c-accent-bg);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-caps);
+  color: var(--c-accent);
 }
