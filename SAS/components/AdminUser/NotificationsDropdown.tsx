@@ -53,7 +53,7 @@ export default function NotificationsDropdown() {
       const token = localStorage.getItem('access_token');
       if (!token) return;
       try {
-        const res = await fetch(apiUrl('/api/notifications'), {
+        const res = await fetch('http://localhost:5000/api/notifications', {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         });
         const data = await res.json();
