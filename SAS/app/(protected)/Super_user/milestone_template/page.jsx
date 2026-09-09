@@ -144,7 +144,10 @@ export default function MilestoneTemplatePage() {
     try {
       const res    = await fetch(`http://127.0.0.1:5000/api/templates/${tmpl.id}/copy`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        // Carry the current editor state into the copy so edits made before
+        // "Save as Copy" aren't lost (backend copies the stored original only
+        // when `milestones` is omitted).
+        body: JSON.stringify({ name, milestones: milestones.map((m, i) => ({ name: m.name, sequence_order: i })) }),
       });
       const result = await res.json();
       if (res.ok) {

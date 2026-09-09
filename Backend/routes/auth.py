@@ -8,10 +8,14 @@ from services.security_settings_service import (
     is_two_factor_required_for_admins,
     is_new_device_login_notification_enabled,
     get_login_restriction_settings,
+    get_max_concurrent_sessions,
+    is_remember_device_enabled,
 )
 from utils.auth_helper import require_auth, get_current_user
 from utils.access_logger import log_access_event, is_new_device, is_new_ip
 from utils.password_policy import is_password_expired
+from utils.session_manager import count_active_sessions, register_session, remove_session
+from utils.remembered_devices import register_remembered_device, is_remembered_device
 from datetime import datetime, timedelta, timezone
 import hashlib
 import secrets
@@ -65,38 +69,6 @@ def get_device_info(user_agent):
     browser = user_agent.browser or "Unknown Browser"
     platform = user_agent.platform or "Unknown OS"
     return f"{browser} on {platform}".title()
-
-
-# DEBUG ENDPOINT - Remove this after testing
-@bp.route('/debug', methods=['GET', 'POST'])
-def debug():
-    """Debug endpoint to check token and headers"""
-    print("[DEBUG ENDPOINT] Called")
-    auth_header = request.headers.get('Authorization')
-    print(f"[DEBUG] Authorization header: {bool(auth_header)}")
-    
-    if auth_header and auth_header.startswith('Bearer '):
-        token = auth_header.split(' ')[1]
-        print(f"[DEBUG] Token length: {len(token)}")
-        try:
-            decoded = jwt.decode(token, options={"verify_signature": False})
-            print(f"[DEBUG] Token decoded successfully")
-            print(f"[DEBUG] Token claims: {list(decoded.keys())}")
-            print(f"[DEBUG] User ID (sub): {decoded.get('sub')}")
-            return jsonify({
-                'status': 'ok',
-                'token_valid': True,
-                'token_keys': list(decoded.keys()),
-                'user_id': decoded.get('sub')
-            }), 200
-        except Exception as e:
-            print(f"[DEBUG] Token decode failed: {str(e)}")
-            return jsonify({
-                'status': 'error',
-                'error': str(e)
-            }), 400
-    
-    return jsonify({'status': 'no_token'}), 400
 
 
 @bp.route('/signup', methods=['POST'])
@@ -287,7 +259,19 @@ def login():
         # Credentials were correct, so this is a 200 with no access_token yet,
         # not an error. The real token was already issued by Supabase Auth
         # above; we hold it in the profile row until the code is verified.
-        require_2fa = (
+        # A valid remembered-device token ("Remember device for 30 days")
+        # trusts this browser outright and skips 2FA entirely — same
+        # semantics as "don't ask again on this device" on most login
+        # systems — rather than only suppressing the unrecognized-device
+        # clause below, which already stops firing after this browser's
+        # first-ever successful login regardless of remembering it.
+        remember_enabled = is_remember_device_enabled()
+        device_is_trusted = (
+            remember_enabled
+            and is_remembered_device(user_id, data.get('remember_device_token'))
+        )
+
+        require_2fa = not device_is_trusted and (
             ((actual_role or '').lower() == 'admin' and is_two_factor_required_for_admins())
             or (login_restrictions['enable_ip_restrictions'] and is_new_ip(user_id, ip_address))
             or (not login_restrictions['allow_unrecognized_devices'] and is_new_device(user_id, device))
@@ -324,6 +308,17 @@ def login():
             log_access_event('2FA Code Sent', status='Success', email_attempted=email, user_id=user_id)
             return jsonify({'message': 'Verification code required', 'twoFactorRequired': True, 'email': email}), 200
 
+        # 3c. CONCURRENT SESSION LIMIT — Security Settings -> Session
+        # Management -> 'Max concurrent sessions'. Checked here (password
+        # correct, no pending 2FA) since this is the first point a real
+        # session is actually about to be granted.
+        max_concurrent = get_max_concurrent_sessions()
+        if max_concurrent is not None and count_active_sessions(user_id) >= max_concurrent:
+            return jsonify({
+                'error': f'You have reached the maximum of {max_concurrent} active session(s). '
+                         f'Log out from another device and try again.'
+            }), 403
+
         # LOG SUCCESSFUL ACCESS
         # Checked BEFORE inserting this login's own access_logs row below —
         # otherwise that row would already be there to match against itself.
@@ -352,18 +347,31 @@ def login():
             'department': profile_data.get('department') if profile_data else None
         }
 
+        register_session(user_id, response.session.access_token, ip_address=ip_address, device=device)
+
+        # Issue a fresh 30-day remembered-device token if the user asked for
+        # it and the admin toggle allows it. None if either is false — the
+        # frontend simply won't have anything new to store in that case.
+        remember_device_token = (
+            register_remembered_device(user_id)
+            if remember_enabled and data.get('remember_device')
+            else None
+        )
+
         if is_password_expired(profile_data.get('password_changed_at') if profile_data else None):
             return jsonify({
                 'message': 'Password expired',
                 'passwordExpired': True,
                 'access_token': response.session.access_token,
                 'user': user_payload,
+                'remember_device_token': remember_device_token,
             }), 200
 
         return jsonify({
             'message': 'Login successful',
             'access_token': response.session.access_token,
             'user': user_payload,
+            'remember_device_token': remember_device_token,
         }), 200
 
     except Exception as e:
@@ -471,6 +479,16 @@ def verify_otp():
     except Exception:
         pass
 
+    # CONCURRENT SESSION LIMIT — same check as the direct-login path; this is
+    # the equivalent "about to grant a real session" point when 2FA was
+    # required instead.
+    max_concurrent = get_max_concurrent_sessions()
+    if max_concurrent is not None and count_active_sessions(user_id) >= max_concurrent:
+        return jsonify({
+            'error': f'You have reached the maximum of {max_concurrent} active session(s). '
+                     f'Log out from another device and try again.'
+        }), 403
+
     # Checked BEFORE log_access_event('Login', ...) inserts this login's own
     # access_logs row below — otherwise that row would match against itself.
     device = get_device_info(request.user_agent)
@@ -488,18 +506,31 @@ def verify_otp():
         'department': profile_data.get('department'),
     }
 
+    register_session(user_id, access_token, ip_address=request.remote_addr, device=device)
+
+    # Reaching here means 2FA was actually required and just got completed,
+    # so (unlike the direct-login path) there's no existing trusted-device
+    # token to check — only a possible new one to issue.
+    remember_device_token = (
+        register_remembered_device(user_id)
+        if is_remember_device_enabled() and data.get('remember_device')
+        else None
+    )
+
     if is_password_expired(profile_data.get('password_changed_at')):
         return jsonify({
             'message': 'Password expired',
             'passwordExpired': True,
             'access_token': access_token,
             'user': user_payload,
+            'remember_device_token': remember_device_token,
         }), 200
 
     return jsonify({
         'message': 'Login successful',
         'access_token': access_token,
         'user': user_payload,
+        'remember_device_token': remember_device_token,
     }), 200
 
 
@@ -520,6 +551,11 @@ def logout():
             except Exception:
                 pass
             log_access_event('Logout', status='Success', email_attempted=email, user_id=user_id)
+
+        # Free this session's slot against 'Max concurrent sessions'.
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            remove_session(auth_header.split(' ')[1])
 
         supabase.auth.sign_out()
         return jsonify({'message': 'Logout successful'}), 200
@@ -556,9 +592,9 @@ def get_me():
         return jsonify({
             'user': {
                 'id': user_data.get('id'),
-                'fullName': user_data.get('full_name') or 'No Name Set',
+                'fullName': user_data.get('full_name') or '',
                 'email': user_data.get('email') or '',
-                'phoneNumber': user_data.get('phoneNumber') or 'Not Set',
+                'phoneNumber': user_data.get('phoneNumber') or '',
                 'department': user_data.get('department') or 'General',
                 'role': user_data.get('role') or 'user',
                 'status': 'Active', 

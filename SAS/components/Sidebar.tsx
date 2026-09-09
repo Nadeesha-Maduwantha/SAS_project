@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
     LayoutDashboard,
     Users,
@@ -90,10 +90,20 @@ const navItems: NavItem[] = [
 
 export default function Sidebar() {
     const pathname = usePathname();
+    const router = useRouter();
     const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({ 'All Alerts': true });
 
     const toggleMenu = (label: string) => {
         setOpenMenus((prev) => ({ ...prev, [label]: !prev[label] }));
+    };
+
+    const handleItemClick = (item: NavItem) => {
+        if (item.children?.length) {
+            toggleMenu(item.label);
+            return;
+        }
+
+        router.push(item.href);
     };
 
     return (
@@ -139,27 +149,29 @@ export default function Sidebar() {
                 {navItems.map((item) => {
                     const Icon = item.icon;
                     const isOpen = openMenus[item.label];
+                    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
 
                     return (
                         <div key={item.label}>
                             <button
-                                onClick={() => item.expandable && toggleMenu(item.label)}
+                                type="button"
+                                onClick={() => handleItemClick(item)}
                                 style={{
                                     width: '100%',
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '10px',
                                     padding: '10px 16px',
-                                    background: item.active ? 'rgba(79,142,247,0.1)' : 'transparent',
-                                    borderLeft: item.active ? '3px solid #4f8ef7' : '3px solid transparent',
-                                    color: item.active ? '#3b82f6' : '#4b5563',
+                                    background: isActive ? 'rgba(79,142,247,0.1)' : 'transparent',
+                                    borderLeft: isActive ? '3px solid #4f8ef7' : '3px solid transparent',
+                                    color: isActive ? '#3b82f6' : '#4b5563',
                                     cursor: 'pointer',
                                     borderTop: 'none',
                                     borderRight: 'none',
                                     borderBottom: 'none',
                                     textAlign: 'left',
                                     fontSize: '13px',
-                                    fontWeight: item.active ? 600 : 500,
+                                    fontWeight: isActive ? 600 : 500,
                                     transition: 'all 0.15s ease',
                                 } as React.CSSProperties}
                             >

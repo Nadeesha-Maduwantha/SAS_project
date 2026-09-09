@@ -58,9 +58,20 @@ def allowed_shipment_ids(role, email, department):
                     .select('id').ilike('sales_user_email', email).execute()).data or []
             return {r['id'] for r in rows}
 
-        if role == 'super' and department:
+        if role == 'super':
+            # A super user is scoped to a freight mode (AIR / SEA). But the
+            # profile.department field is free text (e.g. "General"), so only
+            # filter when it actually names a mode; otherwise the super sees
+            # everything rather than an empty feed.
+            d = (department or '').upper()
+            mode = 'AIR' if 'AIR' in d else 'SEA' if 'SEA' in d else None
+            if not mode:
+                return None  # department isn't a freight mode → no restriction
+            # Contains-match so 'AIR' / 'Air' / 'Air Freight' all match — an exact
+            # ilike would return nothing when transport_mode is stored with a
+            # suffix, leaving the super with an empty alert feed.
             rows = (supabase.table('shipments')
-                    .select('id').ilike('transport_mode', department).execute()).data or []
+                    .select('id').ilike('transport_mode', f'%{mode}%').execute()).data or []
             return {r['id'] for r in rows}
     except Exception as e:
         print(f"[scope] allowed_shipment_ids failed ({role}): {e}")

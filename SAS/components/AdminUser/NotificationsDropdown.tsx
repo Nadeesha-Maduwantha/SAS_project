@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Bell, AlertTriangle, KeyRound, ShieldAlert, Monitor } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 type NotificationType = 'failed_login' | 'password_changed' | 'permission_changed' | 'new_device_login';
 
@@ -52,7 +53,7 @@ export default function NotificationsDropdown() {
       const token = localStorage.getItem('access_token');
       if (!token) return;
       try {
-        const res = await fetch('http://localhost:5000/api/notifications', {
+        const res = await fetch('http://127.0.0.1:5000/api/notifications', {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         });
         const data = await res.json();
@@ -82,32 +83,31 @@ export default function NotificationsDropdown() {
       {/* ── Dropdown ────────────────────────────────────────── */}
       {isOpen && (
         <div className="absolute right-0 mt-3 w-[340px] rounded-xl shadow-xl border z-50
-                        bg-white border-gray-100
-                        dark:bg-slate-800 dark:border-slate-700">
+                        bg-white border-gray-100">
 
-          <div className="p-4 rounded-t-xl bg-slate-50/60 dark:bg-slate-700/60">
-            <h3 className="text-[14px] font-semibold text-slate-800 dark:text-slate-100">
+          <div className="p-4 rounded-t-xl bg-slate-50/60">
+            <h3 className="text-[14px] font-semibold text-slate-800">
               Security Notifications
             </h3>
           </div>
 
-          <hr className="border-gray-100 dark:border-slate-700 mx-2" />
+          <hr className="border-gray-100 mx-2" />
 
           <div className="max-h-80 overflow-y-auto py-1.5">
             {notifications.length === 0 ? (
-              <p className="px-4 py-6 text-center text-[13px] text-slate-400 dark:text-slate-500">
+              <p className="px-4 py-6 text-center text-[13px] text-slate-400">
                 No recent security notifications.
               </p>
             ) : (
               notifications.map(n => (
                 <div
                   key={n.id}
-                  className="flex items-start gap-3 px-4 py-2.5 text-[13px] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60"
+                  className="flex items-start gap-3 px-4 py-2.5 text-[13px] text-slate-600 hover:bg-slate-50"
                 >
                   {ICONS[n.type]}
                   <div className="min-w-0">
                     <p className="leading-snug">{n.message}</p>
-                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{timeAgo(n.timestamp)}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{timeAgo(n.timestamp)}</p>
                   </div>
                 </div>
               ))

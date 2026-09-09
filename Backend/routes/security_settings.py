@@ -33,7 +33,6 @@ def _general_row_to_camel(row: dict) -> dict:
             'timeoutMinutes': row.get('session_timeout_minutes'),
             'maxConcurrentSessions': row.get('session_max_concurrent'),
             'autoLogoutOnInactivity': row.get('session_auto_logout'),
-            'requireReauthForSensitive': row.get('session_require_reauth'),
             'rememberDevice': row.get('session_remember_device'),
         },
         'loginSecurity': {
@@ -176,7 +175,6 @@ def update_general_settings():
             'session_timeout_minutes': timeout_minutes,
             'session_max_concurrent': max_concurrent,
             'session_auto_logout': bool(session.get('autoLogoutOnInactivity')),
-            'session_require_reauth': bool(session.get('requireReauthForSensitive')),
             'session_remember_device': bool(session.get('rememberDevice')),
             'login_max_failed_attempts': max_failed_attempts,
             'login_lockout_duration_minutes': lockout_duration,
