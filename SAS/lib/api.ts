@@ -9,7 +9,7 @@
 //
 //  Note the host is 127.0.0.1, not localhost. On macOS `localhost`
 //  resolves to IPv6 ::1 first, and AirPlay Receiver listens on
-//  port 5000 across all interfaces — so `localhost:5000` reaches
+//  port 5000 across all interfaces — so `127.0.0.1:5000` reaches
 //  AirPlay (403) instead of Flask. 127.0.0.1 forces IPv4.
 // =============================================================
 

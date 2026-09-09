@@ -33,3 +33,49 @@ class LazySupabaseClient:
 
 
 supabase = LazySupabaseClient()
+
+
+# ── transient-connection retry ────────────────────────────────────────────────
+# Supabase runs over a keep-alive HTTPS connection. When that socket has been
+# idle and the server (or a proxy) drops it, the next request reuses the dead
+# socket and Windows raises "[WinError 10054] An existing connection was forcibly
+# closed by the remote host" (other platforms: connection reset / broken pipe /
+# RemoteProtocolError). It's transient: dropping the cached client and retrying
+# on a fresh connection succeeds. Wrap read/execute calls in this.
+_TRANSIENT_MARKERS = (
+    '10054', 'forcibly closed', 'connection reset', 'connection aborted',
+    'broken pipe', 'server disconnected', 'remoteprotocolerror',
+    'connection closed', 'peer closed', 'econnreset',
+)
+
+
+def _is_transient(exc):
+    msg = str(exc).lower()
+    if any(m in msg for m in _TRANSIENT_MARKERS):
+        return True
+    # Fall back to the exception's origin/type: httpx/httpcore transport-level
+    # errors (ConnectError, ReadError, RemoteProtocolError, connect/read
+    # timeouts, pool disconnects) are all safe to retry on a fresh connection.
+    mod = type(exc).__module__ or ''
+    name = type(exc).__name__.lower()
+    if mod.startswith(('httpx', 'httpcore', 'urllib3', 'requests')):
+        if any(k in name for k in ('connect', 'read', 'protocol', 'timeout', 'disconnect', 'pool', 'remote')):
+            return True
+    return False
+
+
+def run_with_retry(fn, attempts=3):
+    """Run a Supabase call, resetting the client and retrying on a transient
+    dropped-connection error. `fn` should perform the query and return its result
+    (e.g. `lambda: supabase.table('x').select('*').execute()`)."""
+    last = None
+    for attempt in range(attempts):
+        try:
+            return fn()
+        except Exception as e:
+            last = e
+            if attempt < attempts - 1 and _is_transient(e):
+                supabase.reset()   # drop the dead connection; next call reconnects
+                continue
+            raise
+    raise last

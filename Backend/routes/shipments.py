@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from services.supabase_client import supabase
+from services.supabase_client import supabase, run_with_retry
 from utils.audit_logger import log_audit_action
 from utils.auth_helper import get_current_user
 
@@ -538,27 +538,29 @@ def assign_template(shipment_id, template_id):
 @shipments_bp.route('/api/shipments/<shipment_id>', methods=['GET'])
 def get_shipment(shipment_id):
     try:
-        shipment_response = (
+        # limit(1) instead of .single(): .single() raises (→500) when the row
+        # count isn't exactly 1, so a missing id would 500 instead of 404.
+        shipment_rows = run_with_retry(lambda: (
             supabase.table('shipments')
             .select('*')
             .eq('id', shipment_id)
-            .single()
+            .limit(1)
             .execute()
-        )
-        if not shipment_response.data:
+        )).data or []
+        if not shipment_rows:
             return jsonify({"error": "Shipment not found"}), 404
 
-        milestones_response = (
+        milestones_response = run_with_retry(lambda: (
             supabase.table('shipment_milestones')
             .select('*')
             .eq('shipment_id', shipment_id)
             .order('sequence_order')
             .execute()
-        )
+        ))
 
         return jsonify({
             "data": {
-                "shipment": shipment_response.data,
+                "shipment": shipment_rows[0],
                 "milestones": milestones_response.data or []
             }
         }), 200

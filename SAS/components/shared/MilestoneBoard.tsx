@@ -71,7 +71,7 @@ const SearchIcon = () => (
 
 // ── types ────────────────────────────────────────────────────────────────────────
 interface Props {
-  apiBase?:     string;   // default API_BASE from lib/api
+  apiBase?:     string;   // default http://127.0.0.1:5000
   detailBase?:  string;   // e.g. /admin/milestone_detail  → `${detailBase}?id=<shipmentId>`
   canByMember?: boolean;  // admin + super users only
   scope?:       'admin' | 'operation' | 'sales' | 'super';  // role-based data scoping
@@ -91,7 +91,7 @@ function StatusPill({ m }: { m: any }) {
 
 // ── main ─────────────────────────────────────────────────────────────────────────
 export default function MilestoneBoard({
-  apiBase = API_BASE,
+  apiBase = 'http://127.0.0.1:5000',
   detailBase,
   canByMember = false,
   scope,

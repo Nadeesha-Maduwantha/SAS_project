@@ -4,36 +4,22 @@
 //  UserDashboardMetricCards.tsx
 //  Path: components/shared/UserDashboardMetricCards.tsx
 //
-//  Stat cards for Sales + Operations dashboards, scoped to the viewer.
-//
-//  Both endpoints do the scoping server-side from ?role=&email=
-//  (or &department= for a super user) — see Backend/services/scope.py.
-//  The card just passes that query string through.
+//  Stat cards for Sales + Operations dashboards.
+//  For now shows all shipment stats.
+//  TODO: filter by assigned user once auth wiring is complete.
 // =============================================================
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Package, AlertTriangle, AlertCircle, CheckCircle2, TrendingUp, Eye } from 'lucide-react';
+import { Package, AlertTriangle, CheckCircle2, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { apiUrl, authHeaders } from '@/lib/api';
+
+const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
 
 type Scope = 'admin' | 'operation' | 'sales' | 'super';
 
-// The per-role Alert Dashboard page + how it scopes /api/alerts. The "My Alerts"
-// card reads the SAME data so its counts match that page's table, and its
-// "View alerts" button opens that page.
-const ALERT_PAGE: Record<Scope, string> = {
-  admin:     '/admin/alerts',
-  operation: '/operation_user/alerts',
-  sales:     '/sales_user/alerts',
-  super:     '/Super_user/alerts',
-};
-
-function alertsQuery(scope: Scope | undefined, u: { email?: string; department?: string }) {
-  if (scope === 'operation') return u.email ? `?assigned_email=${encodeURIComponent(u.email)}` : '';
-  if (scope === 'sales')     return u.email ? `?email=${encodeURIComponent(u.email)}` : '';
-  if (scope === 'super')     return u.department ? `?department=${encodeURIComponent(u.department)}` : '';
-  return ''; // admin — every alert
+function authHeaders() {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
+  return { Authorization: `Bearer ${token}` };
 }
 
 // Build the ?role=&email=&department= scope query for the current viewer.
@@ -76,7 +62,7 @@ function MyShipmentsCard({ qs }: { qs: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(apiUrl(`/api/shipments/stats${qs}`), { headers: authHeaders() })
+    fetch(`${API}/api/shipments/stats${qs}`, { headers: authHeaders() })
       .then(r => r.json())
       .then(d => setStats(d.data))
       .catch(() => {})
@@ -116,40 +102,21 @@ function MyShipmentsCard({ qs }: { qs: string }) {
 }
 
 // ── My Alerts card ─────────────────────────────────────────────────────────────
-// Reads the SAME source as the role's Alert Dashboard page (GET /api/alerts,
-// scoped by assigned_email / email / department). Headline = alerts still in
-// "Get Action" (must take action); rows split those by priority the way that
-// page does — is_critical → Critical, otherwise → Medium. The button opens the
-// Alert Dashboard page to work through them in detail.
-function MyAlertsCard({ scope, user }: { scope?: Scope; user: { email?: string; department?: string } }) {
-  const router = useRouter();
-  const [stats,   setStats]   = useState<{ total: number; critical: number; medium: number } | null>(null);
+function MyAlertsCard({ qs }: { qs: string }) {
+  const [count,   setCount]   = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const q         = alertsQuery(scope, user);
-  const viewRoute = ALERT_PAGE[scope ?? 'admin'];
-
   useEffect(() => {
-    fetch(apiUrl(`/api/alerts${q}`), { headers: authHeaders() })
+    fetch(`${API}/api/alerts/active${qs}`, { headers: authHeaders() })
       .then(r => r.json())
       .then(d => {
-        const rows: any[] = d.data || [];
-        // Match the Alert Dashboard page: any status that isn't explicitly
-        // "Action Taken" / "Resolved" is treated as "Get Action".
-        const needsAction = rows.filter(
-          (r: any) => r.status !== 'Action Taken' && r.status !== 'Resolved',
-        );
-        const critical = needsAction.filter((r: any) => r.is_critical).length;
-        const medium   = needsAction.filter((r: any) => !r.is_critical).length;
-        setStats({ total: needsAction.length, critical, medium });
+        const groups: any[] = d.data || [];
+        const total = groups.reduce((sum: number, g: any) => sum + (g.alert_count || 0), 0);
+        setCount(total);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [q]);
-
-  const total    = stats?.total ?? 0;
-  const critical = stats?.critical ?? 0;
-  const medium   = stats?.medium ?? 0;
+  }, [qs]);
 
   return (
     <div style={card}>
@@ -160,18 +127,10 @@ function MyAlertsCard({ scope, user }: { scope?: Scope; user: { email?: string; 
           </div>
           <span style={title}>My Alerts</span>
         </div>
-        {!loading && (
-          <button
-            onClick={() => router.push(viewRoute)}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              fontSize: 11, fontWeight: 700, padding: '5px 10px', borderRadius: 7,
-              background: 'var(--red-bg)', color: 'var(--red)', border: '1px solid var(--red-border)',
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            <Eye size={12} /> View alerts
-          </button>
+        {!loading && count > 0 && (
+          <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: 'var(--red-bg)', color: 'var(--red)', border: '1px solid var(--red-border)' }}>
+            {count}
+          </span>
         )}
       </div>
 
@@ -179,24 +138,20 @@ function MyAlertsCard({ scope, user }: { scope?: Scope; user: { email?: string; 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <SpinDot /><span style={{ fontSize: 12, color: 'var(--gray-400)' }}>Loading…</span>
         </div>
-      ) : total === 0 ? (
+      ) : count === 0 ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>
           <CheckCircle2 size={13} color="#10B981" />
-          <span style={{ fontSize: 12, color: 'var(--gray-500)' }}>No alerts to action</span>
+          <span style={{ fontSize: 12, color: 'var(--gray-500)' }}>No active alerts</span>
         </div>
       ) : (
-        <>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 6 }}>
-            <span style={{ fontSize: 26, fontWeight: 800, color: 'var(--red)', lineHeight: 1, letterSpacing: '-0.02em' }}>
-              {total}
-            </span>
-            <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>
-              {total === 1 ? 'alert to action' : 'alerts to action'}
-            </span>
-          </div>
-          <StatRow icon={<AlertTriangle size={11} />} label="Critical" value={critical} color="var(--red)" />
-          <StatRow icon={<AlertCircle   size={11} />} label="Medium"   value={medium}   color="#D97706" />
-        </>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+          <span style={{ fontSize: 26, fontWeight: 800, color: 'var(--red)', lineHeight: 1, letterSpacing: '-0.02em' }}>
+            {count}
+          </span>
+          <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>
+            overdue {count === 1 ? 'milestone' : 'milestones'}
+          </span>
+        </div>
       )}
     </div>
   );
@@ -211,7 +166,7 @@ export default function UserDashboardMetricCards({ scope }: { scope?: Scope }) {
       <style>{`@keyframes udmcSpin { to { transform: rotate(360deg) } }`}</style>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 20 }}>
         <MyShipmentsCard qs={qs} />
-        <MyAlertsCard scope={scope} user={user} />
+        <MyAlertsCard qs={qs} />
       </div>
     </>
   );

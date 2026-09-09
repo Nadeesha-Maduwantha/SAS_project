@@ -16,6 +16,16 @@
 
 import { useState, useEffect } from "react";
 import { T, solidBtn, outlineBtn, ghostBtn } from "@/styles/tokens";
+import FieldSelector from "@/components/milestones/MilestoneBuilder/FieldSelector";
+
+// Due-date bases the admin can pick per manual milestone at assign time —
+// mirrors the milestone builder's "When is this milestone due?" options.
+const DUE_BASES = [
+  { value: "manual",                   label: "Specific date" },
+  { value: "another_field",            label: "From a date field" },
+  { value: "days_after_creation",      label: "Days after shipment created" },
+  { value: "after_previous_milestone", label: "After previous milestone" },
+];
 
 const BASE = "http://127.0.0.1:5000";
 
@@ -28,12 +38,10 @@ const IcoWarn   = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="no
 // ── Assignment type config ─────────────────────────────────────────────────────
 const ASSIGN_TYPES = [
   {
-    group: "Standard Types",
+    group: "Freight Mode",
     items: [
-      { id: "air_import", label: "Air Import",  desc: "Air freight arriving in Sri Lanka"  },
-      { id: "air_export", label: "Air Export",  desc: "Air freight departing Sri Lanka"    },
-      { id: "sea_import", label: "Sea Import",  desc: "Sea freight arriving in Sri Lanka"  },
-      { id: "sea_export", label: "Sea Export",  desc: "Sea freight departing Sri Lanka"    },
+      { id: "air", label: "Air Freight", desc: "All air freight shipments" },
+      { id: "sea", label: "Sea Freight", desc: "All sea freight shipments" },
     ],
   },
   {
@@ -131,7 +139,7 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
   const [step, setStep] = useState("type");
 
   // Step 1 state
-  const [assignType,    setAssignType]    = useState("air_import");
+  const [assignType,    setAssignType]    = useState("air");
   const [clientFilter,  setClientFilter]  = useState("");
   const [branchFilter,  setBranchFilter]  = useState("");
 
@@ -154,13 +162,15 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
 
   // Milestones whose due-date basis is "manual" — admin picks a date at assign time.
   const [manualMilestones, setManualMilestones] = useState([]); // [{ key, name }]
-  const [manualDates,      setManualDates]      = useState({});  // { key: 'YYYY-MM-DD' }
+  // Per-milestone due-date config keyed by milestone key:
+  //   { basis, field, offset, mode:'shared'|'per_shipment', date, perShip:{sid:date} }
+  const [mConfig, setMConfig] = useState({});
 
   // ── Reset on open
   useEffect(() => {
     if (isOpen) {
       setStep("type");
-      setAssignType("air_import");
+      setAssignType("air");
       setClientFilter("");
       setBranchFilter("");
       setAllShipments([]);
@@ -171,7 +181,7 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
       setConflictStrategy("skip");
       setResult(null);
       setError(null);
-      setManualDates({});
+      setMConfig({});
     }
   }, [isOpen]);
 
@@ -216,6 +226,59 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
         || (s.consignee_name ?? "").toLowerCase().includes(q)
         || (s.branch ?? "").toLowerCase().includes(q);
   });
+
+  // Shipments that will actually receive the template (skipped conflicts won't,
+  // so they don't need manual dates).
+  const targetShipments = conflictStrategy === "replace"
+    ? previewShipments
+    : previewShipments.filter(s => !s.has_milestones);
+
+  // Per-milestone config helpers.
+  const cfgFor = (key) => mConfig[key] || { basis: "manual", field: "", offset: 0, mode: "shared", date: "", perShip: {} };
+  const setCfg = (key, patch) => setMConfig(p => ({ ...p, [key]: { ...cfgFor(key), ...patch } }));
+  const setPerShip = (key, sid, v) => {
+    const c = cfgFor(key);
+    setCfg(key, { perShip: { ...(c.perShip || {}), [sid]: v } });
+  };
+
+  // A single manual milestone's config is complete?
+  const milestoneComplete = (m) => {
+    const c = cfgFor(m.key);
+    if (c.basis === "manual") {
+      return c.mode === "per_shipment"
+        ? targetShipments.every(s => (c.perShip || {})[s.id])
+        : !!c.date;
+    }
+    if (c.basis === "another_field") return !!c.field;
+    return true; // days_after_creation / after_previous_milestone need only an offset
+  };
+
+  // Every manual milestone must be fully configured before assigning.
+  const datesComplete = () =>
+    manualMilestones.length === 0 || manualMilestones.every(milestoneComplete);
+
+  // Build the manual_due_dates payload the backend expects.
+  const buildManualPayload = () => {
+    const out = {};
+    for (const m of manualMilestones) {
+      const c = cfgFor(m.key);
+      if (c.basis === "manual") {
+        out[m.key] = c.mode === "per_shipment"
+          ? { basis: "manual", per_shipment: c.perShip || {} }
+          : { basis: "manual", date: c.date };
+      } else {
+        out[m.key] = { basis: c.basis, field: c.field || null, offset: Number(c.offset) || 0 };
+      }
+    }
+    return out;
+  };
+
+  // After conflicts are handled (or if there are none), collect manual dates
+  // when the template has any manual milestones — otherwise assign directly.
+  const proceedAfterConflicts = () => {
+    if (manualMilestones.length > 0) { setError(null); setStep("dates"); }
+    else handleAssign();
+  };
 
   // ── API: Load all shipments for custom picker
   const loadAllShipments = async () => {
@@ -276,7 +339,8 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
         body: JSON.stringify({
           shipment_ids:      previewShipments.map(s => s.id),
           conflict_strategy: conflictStrategy,
-          manual_due_dates:  manualDates,
+          // Per-milestone: { key: { basis, date|per_shipment|field+offset } }.
+          manual_due_dates:  buildManualPayload(),
         }),
       });
       const data = await res.json();
@@ -599,7 +663,7 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
             ← Back
           </button>
           <button
-            onClick={() => { conflictCount > 0 ? setStep("conflict") : handleAssign(); }}
+            onClick={() => { conflictCount > 0 ? setStep("conflict") : proceedAfterConflicts(); }}
             disabled={assigning || previewShipments.length === 0}
             style={{
               ...solidBtn(previewShipments.length > 0 ? T.blue : T.gray300, "#fff"),
@@ -612,6 +676,8 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
               ? "Assigning..."
               : conflictCount > 0
               ? `Next: Handle ${conflictCount} Conflict${conflictCount !== 1 ? "s" : ""} →`
+              : manualMilestones.length > 0
+              ? "Next: Set Due Dates →"
               : `Assign to ${previewShipments.length} Shipment${previewShipments.length !== 1 ? "s" : ""}`}
           </button>
         </ModalFooter>
@@ -682,26 +748,9 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
                 : `${previewShipments.length - conflictCount} shipment(s) will get the template, ${conflictCount} skipped.`}
             </div>
 
-            {/* Manual due dates — for milestones whose basis is "Set manually when assigning" */}
             {manualMilestones.length > 0 && (
-              <div style={{ marginTop: "16px", padding: "12px 14px", background: T.amberBg, border: `1px solid ${T.amberBorder}`, borderRadius: "8px" }}>
-                <div style={{ fontSize: "12px", fontWeight: "700", color: T.gray900, marginBottom: "4px" }}>
-                  Set due dates for manual milestones
-                </div>
-                <div style={{ fontSize: "11px", color: T.gray500, marginBottom: "10px", lineHeight: "1.5" }}>
-                  These milestones use a manual due-date basis. The date you pick applies to all selected shipments.
-                </div>
-                {manualMilestones.map(m => (
-                  <div key={m.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginBottom: "6px" }}>
-                    <span style={{ fontSize: "12px", color: T.gray700 }}>{m.name}</span>
-                    <input
-                      type="date"
-                      value={manualDates[m.key] || ""}
-                      onChange={e => setManualDates(p => ({ ...p, [m.key]: e.target.value }))}
-                      style={{ fontSize: "12px", padding: "6px 8px", border: `1px solid ${T.gray300}`, borderRadius: "6px", fontFamily: T.font, color: T.gray900, background: T.cardBg }}
-                    />
-                  </div>
-                ))}
+              <div style={{ marginTop: "16px", fontSize: "11px", color: T.gray500, lineHeight: "1.5" }}>
+                This template has manual-date milestone{manualMilestones.length !== 1 ? "s" : ""} — you'll set {manualMilestones.length !== 1 ? "their" : "its"} due date{manualMilestones.length !== 1 ? "s" : ""} on the next step.
               </div>
             )}
           </div>
@@ -715,7 +764,7 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
           <ModalFooter>
             <button onClick={() => { setError(null); setStep("preview"); }} style={{ ...outlineBtn(T.gray500, T.gray200, T.gray50) }}>← Back</button>
             <button
-              onClick={handleAssign}
+              onClick={proceedAfterConflicts}
               disabled={assigning}
               style={{
                 ...solidBtn(replacing ? T.red : T.blue, "#fff"),
@@ -726,9 +775,147 @@ export default function AssignTemplateModal({ isOpen, onClose, templateId, templ
             >
               {assigning
                 ? "Assigning..."
+                : manualMilestones.length > 0
+                ? "Next: Set Due Dates →"
                 : replacing
                 ? `Replace & Assign (${previewShipments.length})`
                 : `Skip Conflicts & Assign (${previewShipments.length - conflictCount})`}
+            </button>
+          </ModalFooter>
+        </div>
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  //  STEP 3c — Set Manual Due Dates (required, always shown when any exist)
+  // ══════════════════════════════════════════════════════════════
+  if (step === "dates") {
+    const complete = datesComplete();
+    const dateInp = { fontSize: "12px", padding: "6px 8px", border: `1px solid ${T.gray300}`, borderRadius: "6px", fontFamily: T.font, color: T.gray900, background: T.cardBg };
+    const numInp  = { ...dateInp, width: "70px" };
+    const selInp  = { fontSize: "12px", padding: "6px 8px", border: `1px solid ${T.gray300}`, borderRadius: "6px", fontFamily: T.font, color: T.gray900, background: T.cardBg };
+
+    return (
+      <div style={OVERLAY}>
+        <div style={{ ...baseCard, width: "760px", maxWidth: "96vw", height: "82vh", maxHeight: "90vh" }}>
+          <ModalHeader
+            title="Set Due Dates"
+            subtitle={`Choose how each manual milestone's deadline is set for the ${targetShipments.length} shipment${targetShipments.length !== 1 ? "s" : ""} being assigned`}
+            onClose={onClose}
+          />
+
+          <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {manualMilestones.map(m => {
+                const c = cfgFor(m.key);
+                const ok = milestoneComplete(m);
+                return (
+                  <div key={m.key} style={{ border: `1px solid ${ok ? T.gray200 : T.amberBorder}`, borderRadius: "10px", padding: "12px 14px", background: ok ? T.cardBg : T.amberBg }}>
+                    <div style={{ fontSize: "13px", fontWeight: "700", color: T.gray900, marginBottom: "8px" }}>
+                      {m.name} {!ok && <span style={{ color: T.red }}>*</span>}
+                    </div>
+
+                    {/* Basis selector */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                      <span style={{ fontSize: "11px", color: T.gray500 }}>Due date basis</span>
+                      <select value={c.basis} onChange={e => setCfg(m.key, { basis: e.target.value })} style={selInp}>
+                        {DUE_BASES.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+                      </select>
+                    </div>
+
+                    {/* Specific date */}
+                    {c.basis === "manual" && (
+                      <div>
+                        <div style={{ display: "flex", gap: "6px", marginBottom: "8px" }}>
+                          {[
+                            { val: "shared",       label: "Same for all" },
+                            { val: "per_shipment", label: "Per shipment" },
+                          ].map(opt => {
+                            const sel = (c.mode || "shared") === opt.val;
+                            return (
+                              <button key={opt.val} type="button" onClick={() => setCfg(m.key, { mode: opt.val })}
+                                style={{ fontSize: "11px", fontWeight: "600", padding: "4px 10px", borderRadius: "6px", cursor: "pointer",
+                                  border: `1px solid ${sel ? T.blue : T.gray200}`, background: sel ? T.blueBg : T.cardBg, color: sel ? T.blue : T.gray600 }}>
+                                {opt.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {(c.mode || "shared") === "shared" ? (
+                          <input type="date" value={c.date || ""} onChange={e => setCfg(m.key, { date: e.target.value })} style={dateInp} />
+                        ) : targetShipments.length === 0 ? (
+                          <div style={{ fontSize: "11px", color: T.gray400 }}>No shipments will receive the template.</div>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                            {targetShipments.map(s => (
+                              <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
+                                <span style={{ fontSize: "11px", color: T.gray600, fontFamily: T.mono }}>{s.job_number ?? s.id.slice(0, 8)}</span>
+                                <input type="date" value={(c.perShip || {})[s.id] || ""} onChange={e => setPerShip(m.key, s.id, e.target.value)} style={dateInp} />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* From a date field */}
+                    {c.basis === "another_field" && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        <FieldSelector value={c.field || ""} onChange={key => setCfg(m.key, { field: key })} placeholder="Select a date field…" filter="date" size="sm" />
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <input type="number" value={c.offset ?? 0} onChange={e => setCfg(m.key, { offset: parseInt(e.target.value) || 0 })} style={numInp} />
+                          <span style={{ fontSize: "11px", color: T.gray500 }}>days after that field (0 = on that date, negative = before)</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Days after creation */}
+                    {c.basis === "days_after_creation" && (
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <input type="number" min="0" value={c.offset ?? 0} onChange={e => setCfg(m.key, { offset: parseInt(e.target.value) || 0 })} style={numInp} />
+                        <span style={{ fontSize: "11px", color: T.gray500 }}>days after the shipment is created</span>
+                      </div>
+                    )}
+
+                    {/* After previous milestone */}
+                    {c.basis === "after_previous_milestone" && (
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <input type="number" min="0" value={c.offset ?? 0} onChange={e => setCfg(m.key, { offset: parseInt(e.target.value) || 0 })} style={numInp} />
+                        <span style={{ fontSize: "11px", color: T.gray500 }}>days after the previous milestone completes (resolved per shipment)</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {!complete && (
+              <div style={{ marginTop: "14px", fontSize: "11px", color: T.amber, display: "flex", alignItems: "center", gap: "6px" }}>
+                <IcoWarn /> Finish configuring every manual milestone before you can assign.
+              </div>
+            )}
+          </div>
+
+          {error && (
+            <div style={{ flexShrink: 0, fontSize: "12px", color: T.red, margin: "0 24px 12px", padding: "10px 14px", background: T.redBg, border: `1px solid ${T.redBorder}`, borderRadius: "8px" }}>
+              {error}
+            </div>
+          )}
+
+          <ModalFooter>
+            <button onClick={() => { setError(null); setStep(conflictCount > 0 ? "conflict" : "preview"); }} style={{ ...outlineBtn(T.gray500, T.gray200, T.gray50) }}>← Back</button>
+            <button
+              onClick={handleAssign}
+              disabled={assigning || !complete}
+              style={{
+                ...solidBtn(complete ? T.blue : T.gray300, "#fff"),
+                padding: "9px 20px",
+                opacity: assigning ? 0.7 : 1,
+                cursor: complete && !assigning ? "pointer" : "not-allowed",
+              }}
+            >
+              {assigning ? "Assigning..." : `Assign to ${previewShipments.length} Shipment${previewShipments.length !== 1 ? "s" : ""}`}
             </button>
           </ModalFooter>
         </div>
