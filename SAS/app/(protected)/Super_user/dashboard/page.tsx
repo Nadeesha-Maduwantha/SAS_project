@@ -81,18 +81,20 @@ export default function SuperDashboardPage() {
           {/* Pinned custom table stat cards */}
           <PinnedTableStatCards />
 
-      {/* Where the delays sit, by branch */}
-      <SuperBranchDelayCard />
+          {/* Where the delays sit, by branch — this desk only */}
+          <SuperBranchDelayCard mode={mode} />
 
-      {/* Scoped alert feed — overdue / delayed milestones for this department */}
-      <div style={{ marginTop: 14 }}>
-        <AlertFeedTable
-          title="Department Alert Feed"
-          apiBase="http://localhost:5000"
-          maxRows={8}
-          scope="super"
-        />
-      </div>
+          {/* Scoped alert feed — overdue / delayed milestones for this department */}
+          <div style={{ marginTop: 14 }}>
+            <AlertFeedTable
+              title="Department Alert Feed"
+              apiBase={API}
+              maxRows={8}
+              scope="super"
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

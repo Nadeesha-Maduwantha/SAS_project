@@ -42,7 +42,6 @@ export default function OperationDashboardPage() {
       <div style={{ marginTop: 14 }}>
         <AlertFeedTable
           title="My Alert Feed"
-          apiBase="http://localhost:5000"
           maxRows={8}
           scope="operation"
         />
