@@ -6,11 +6,14 @@
 //  Full-width card showing the delay rate of every branch as a bar
 //  chart. Bars are scaled against a fixed 0-100 axis so "57%" reads
 //  as just over half the width rather than being stretched to fill.
+//
+//  Restricted to the super user's own freight desk via `mode`.
 // =============================================================
 
 import { useEffect, useState } from 'react';
 import { Building2 } from 'lucide-react';
 import BarChart, { type BarRow } from '@/components/shared/BarChart';
+import type { FreightMode } from '@/lib/departments';
 import '@/styles/AdminStyles/AdminDashboardAnalytics.css';
 
 const API =
@@ -29,17 +32,18 @@ type BranchRow = {
   rate:    number;
 };
 
-export default function SuperBranchDelayCard() {
+export default function SuperBranchDelayCard({ mode }: { mode: FreightMode }) {
   const [rows, setRows] = useState<BranchRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API}/api/shipments/stats/branch`, { cache: 'no-store' })
+    setLoading(true);
+    fetch(`${API}/api/shipments/stats/branch?mode=${mode}`, { cache: 'no-store' })
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then(result => setRows(result.data ?? []))
       .catch(err => console.error('Failed to load branch delay stats:', err))
       .finally(() => setLoading(false));
-  }, []);
+  }, [mode]);
 
   // The API already sorts worst rate first, which is the order we want.
   const bars: BarRow[] = rows.map(r => ({

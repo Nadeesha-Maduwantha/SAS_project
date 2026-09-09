@@ -178,6 +178,30 @@ def _log_send(sales_email: str, kind: str, item_count: int, subject: str,
         print(f"[sales_digest] could not write sales_digest_log: {e}")
 
 
+def count_digest_emails() -> dict:
+    """
+    Tallies of what the digest has actually sent, read back from sales_digest_log.
+
+    Same table and same status filter the admin Sales Digest page applies to
+    /api/sales-digest/history, so the dashboard's 'Total Generated Emails' cannot
+    drift from the 'Emails Sent' card on that page. Counted here rather than in
+    the route because that page caps its fetch at 100 rows for the table.
+    """
+    try:
+        rows = _execute_with_retry(lambda: (
+            _supabase().table('sales_digest_log').select('status')
+        )).data or []
+    except Exception as e:
+        print(f"[sales_digest] could not read sales_digest_log: {e}")
+        return {'sent': 0, 'failed': 0, 'total': 0}
+
+    return {
+        'sent':   sum(1 for r in rows if r.get('status') == 'sent'),
+        'failed': sum(1 for r in rows if r.get('status') == 'failed'),
+        'total':  len(rows),
+    }
+
+
 def run_sales_digest(dry_run: bool = False) -> dict:
     """
     One daily pass: every sales user with overdue milestones gets an Overdue

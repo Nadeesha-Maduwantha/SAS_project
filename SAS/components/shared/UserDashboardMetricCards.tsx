@@ -4,23 +4,19 @@
 //  UserDashboardMetricCards.tsx
 //  Path: components/shared/UserDashboardMetricCards.tsx
 //
-//  Stat cards for Sales + Operations dashboards.
-//  For now shows all shipment stats.
-//  TODO: filter by assigned user once auth wiring is complete.
+//  Stat cards for Sales + Operations dashboards, scoped to the viewer.
+//
+//  Both endpoints do the scoping server-side from ?role=&email=
+//  (or &department= for a super user) — see Backend/services/scope.py.
+//  The card just passes that query string through.
 // =============================================================
 
 import { useState, useEffect } from 'react';
 import { Package, AlertTriangle, CheckCircle2, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
-
-const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+import { apiUrl, authHeaders } from '@/lib/api';
 
 type Scope = 'admin' | 'operation' | 'sales' | 'super';
-
-function authHeaders() {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
-  return { Authorization: `Bearer ${token}` };
-}
 
 // Build the ?role=&email=&department= scope query for the current viewer.
 function scopeQuery(scope: Scope | undefined, u: { email?: string; department?: string }) {
@@ -62,7 +58,7 @@ function MyShipmentsCard({ qs }: { qs: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API}/api/shipments/stats${qs}`, { headers: authHeaders() })
+    fetch(apiUrl(`/api/shipments/stats${qs}`), { headers: authHeaders() })
       .then(r => r.json())
       .then(d => setStats(d.data))
       .catch(() => {})
@@ -107,7 +103,7 @@ function MyAlertsCard({ qs }: { qs: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API}/api/alerts/active${qs}`, { headers: authHeaders() })
+    fetch(apiUrl(`/api/alerts/active${qs}`), { headers: authHeaders() })
       .then(r => r.json())
       .then(d => {
         const groups: any[] = d.data || [];

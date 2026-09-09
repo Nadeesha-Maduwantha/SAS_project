@@ -111,6 +111,61 @@ export default function ShipmentDetailModal({ isOpen, onClose, shipment }: Shipm
     router.push(`/admin/shipment_milestones?id=${shipment!.id}`)
   }
 
+  // Export every milestone for this shipment as a CSV audit log.
+  // Each row carries the shipment-level details too, so the file is
+  // self-describing when opened on its own.
+  function downloadAuditCsv() {
+    const route =
+      [shipment!.originCity, shipment!.originCountryCode].filter(Boolean).join(", ") +
+      " -> " +
+      [shipment!.destinationCity, shipment!.destinationCountryCode].filter(Boolean).join(", ")
+
+    // Shipment-level columns — constant across all rows.
+    const shipCols: [string, string][] = [
+      ["job_number",     String(shipment!.jobNumber ?? shipment!.cargowiseId ?? shipment!.id ?? "")],
+      ["consignee",      String(shipment!.consigneeName ?? "")],
+      ["route",          route.trim() === "->" ? "" : route],
+      ["transport_mode", String(shipment!.transportMode ?? "")],
+      ["branch",         String(shipment!.branch ?? "")],
+    ]
+
+    // Per-milestone columns.
+    const msCols = [
+      ["seq",            (m: any) => m.sequence_order ?? ""],
+      ["milestone",      (m: any) => m.name ?? ""],
+      ["status",         (m: any) => m.status ?? ""],
+      ["is_critical",    (m: any) => (m.is_critical ? "yes" : "no")],
+      ["due_date",       (m: any) => m.due_date ?? ""],
+      ["completed_date", (m: any) => m.completed_date ?? ""],
+      ["assigned_to",    (m: any) => m.assigned_to ?? ""],
+      ["assigned_email", (m: any) => m.assigned_email ?? ""],
+      ["notes",          (m: any) => m.notes ?? ""],
+    ] as const
+
+    const esc = (v: any) => {
+      const s = String(v ?? "")
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+    }
+    const rows = [...milestones].sort(
+      (a: any, b: any) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0)
+    )
+    const header = [...shipCols.map(c => c[0]), ...msCols.map(c => c[0])].join(",")
+    const body = rows.map(m =>
+      [...shipCols.map(c => esc(c[1])), ...msCols.map(c => esc(c[1](m)))].join(",")
+    )
+    const csv = [header, ...body].join("\n")
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `${shipment!.jobNumber ?? shipment!.cargowiseId ?? shipment!.id}_milestones.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <>
     <div
@@ -428,12 +483,17 @@ export default function ShipmentDetailModal({ isOpen, onClose, shipment }: Shipm
                   </p>
                 </button>
 
-                <button style={{
-                  width: '100%', marginTop: '12px', padding: '8px',
-                  fontSize: '12px', fontWeight: 500, color: '#374151',
-                  background: '#f9fafb', border: '1px solid #e5e7eb',
-                  borderRadius: '8px', cursor: 'pointer'
-                }}>
+                <button
+                  onClick={downloadAuditCsv}
+                  disabled={milestones.length === 0}
+                  style={{
+                    width: '100%', marginTop: '12px', padding: '8px',
+                    fontSize: '12px', fontWeight: 500, color: '#374151',
+                    background: '#f9fafb', border: '1px solid #e5e7eb',
+                    borderRadius: '8px', cursor: milestones.length === 0 ? 'not-allowed' : 'pointer',
+                    opacity: milestones.length === 0 ? 0.5 : 1,
+                  }}
+                >
                   Download Full Audit Log (CSV)
                 </button>
               </div>

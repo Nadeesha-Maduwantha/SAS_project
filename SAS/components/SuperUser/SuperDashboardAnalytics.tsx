@@ -4,15 +4,19 @@
 //  SuperDashboardAnalytics.tsx
 //
 //  Two cards side by side on the Super User dashboard:
-//    left  — Sea Freight breakdown (AIR is deliberately not shown here)
-//    right — overall shipment summary
+//    left  — breakdown for the user's own freight desk (air or sea)
+//    right — shipment summary, restricted to that same desk
+//
+//  A super user runs one desk only, so both cards are filtered by `mode`
+//  rather than showing the whole company.
 //
 //  Reuses the admin card styling so both dashboards look identical.
 // =============================================================
 
 import { useEffect, useState } from 'react';
-import { Anchor, Package } from 'lucide-react';
+import { Anchor, Package, Plane } from 'lucide-react';
 import DonutChart, { DonutLegendRow, type DonutSlice } from '@/components/shared/DonutChart';
+import type { FreightMode } from '@/lib/departments';
 import '@/styles/AdminStyles/AdminDashboardAnalytics.css';
 
 const API =
@@ -59,34 +63,39 @@ function CardShell({
   );
 }
 
-// ── Sea freight ───────────────────────────────────────────────────────────────
-function SeaFreightCard() {
+// ── Freight breakdown for the user's own desk ─────────────────────────────────
+function FreightCard({ mode }: { mode: FreightMode }) {
   const [stats, setStats] = useState<DepartmentStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API}/api/shipments/stats/department/SEA`, { cache: 'no-store' })
+    setLoading(true);
+    fetch(`${API}/api/shipments/stats/department/${mode}`, { cache: 'no-store' })
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then(result => setStats(result.data ?? null))
-      .catch(err => console.error('Failed to load SEA freight stats:', err))
+      .catch(err => console.error(`Failed to load ${mode} freight stats:`, err))
       .finally(() => setLoading(false));
-  }, []);
+  }, [mode]);
+
+  // Same title/accent/icon mapping the admin dashboard uses, so the two match.
+  const isAir = mode === 'AIR';
+  const accent = isAir ? 'var(--c-chart-1)' : 'var(--c-chart-2)';
 
   const ongoing = stats?.on_time ?? 0;
   const overdue = stats?.delayed ?? 0;
   const completed = stats?.delivered_today ?? 0;
 
   const slices: DonutSlice[] = [
-    { label: 'Ongoing',   value: ongoing,   color: 'var(--c-chart-2)' },
+    { label: 'Ongoing',   value: ongoing,   color: accent },
     { label: 'Overdue',   value: overdue,   color: 'var(--c-chart-5)' },
     { label: 'Completed', value: completed, color: 'var(--c-chart-3)' },
   ];
 
   return (
     <CardShell
-      icon={<Anchor size={18} color="var(--c-chart-2)" />}
-      iconTint="var(--c-chart-2)"
-      title="Sea Freight"
+      icon={isAir ? <Plane size={18} color={accent} /> : <Anchor size={18} color={accent} />}
+      iconTint={accent}
+      title={isAir ? 'Air Freight' : 'Sea Freight'}
     >
       {loading ? (
         <div className="freight-pie-card__loading">Loading…</div>
@@ -110,18 +119,19 @@ function SeaFreightCard() {
   );
 }
 
-// ── Shipment summary ──────────────────────────────────────────────────────────
-function ShipmentSummaryCard() {
+// ── Shipment summary, restricted to the user's own desk ───────────────────────
+function ShipmentSummaryCard({ mode }: { mode: FreightMode }) {
   const [stats, setStats] = useState<ShipmentStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API}/api/shipments/stats`, { cache: 'no-store' })
+    setLoading(true);
+    fetch(`${API}/api/shipments/stats?mode=${mode}`, { cache: 'no-store' })
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then(result => setStats(result.data ?? null))
       .catch(err => console.error('Failed to load shipment stats:', err))
       .finally(() => setLoading(false));
-  }, []);
+  }, [mode]);
 
   const total = stats?.total ?? 0;
   const completed = stats?.delivered ?? 0;
@@ -163,11 +173,11 @@ function ShipmentSummaryCard() {
   );
 }
 
-export default function SuperDashboardAnalytics() {
+export default function SuperDashboardAnalytics({ mode }: { mode: FreightMode }) {
   return (
     <section className="admin-dashboard-analytics">
-      <SeaFreightCard />
-      <ShipmentSummaryCard />
+      <FreightCard mode={mode} />
+      <ShipmentSummaryCard mode={mode} />
     </section>
   );
 }
