@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Mail, RefreshCw, AlertTriangle, LayoutGrid, List, Search, ChevronDown, X, ArrowRight } from 'lucide-react';
+import { ChevronRight, Mail, RefreshCw, AlertTriangle, LayoutGrid, List, Search, ChevronDown, X, ArrowRight, Download } from 'lucide-react';
 import EmailComposeModal from '@/components/EmailComposeModal';
 import { AlertData } from '@/components/AlertDetailsModal';
 import ShipmentMilestonesModal from '@/components/Shipmentmilestonesmodal';
 import MilestoneDetailModal    from '@/components/Milestonedetailmodal';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { exportAlertFeedPDF } from '@/lib/Utils/exportPDF';
 
 // Build the ?role=&email=&department= scope query for the current viewer.
 function scopeQuery(scope: string | undefined, u: { email?: string; department?: string }) {
@@ -786,16 +787,26 @@ export default function AlertFeedTable({
   
 
   // ── View: table or cards — default cards, remembered ───────
-  const [view, setView] = useState<'table' | 'cards'>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('alertFeedView') as 'table' | 'cards') ?? 'cards';
+  const [view, setView] = useState<'table' | 'cards'>('cards');
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('alertFeedView') as 'table' | 'cards' | null;
+      if (saved === 'table' || saved === 'cards') {
+        setView(saved);
+      }
+    } catch {
+      /* ignore storage access errors */
     }
-    return 'cards';
-  });
+  }, []);
 
   const switchView = (v: 'table' | 'cards') => {
     setView(v);
-    if (typeof window !== 'undefined') localStorage.setItem('alertFeedView', v);
+    try {
+      localStorage.setItem('alertFeedView', v);
+    } catch {
+      /* ignore */
+    }
   };
 
   // ── Search ──────────────────────────────────────────────────
@@ -905,18 +916,35 @@ export default function AlertFeedTable({
               </div>
             )}
           </div>
-          <button
-            onClick={fetchAlerts}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500,
-              color: 'var(--gray-500)', background: 'none', border: '1px solid var(--card-border-color)',
-              padding: '5px 12px', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--gray-50)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-          >
-            <RefreshCw size={12} /> Refresh
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => exportAlertFeedPDF(processed, `${title} — Report`)}
+              disabled={loading || processed.length === 0}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500,
+                color: 'var(--gray-500)', background: 'none', border: '1px solid var(--card-border-color)',
+                padding: '5px 12px', borderRadius: 7, fontFamily: 'inherit',
+                cursor: loading || processed.length === 0 ? 'not-allowed' : 'pointer',
+                opacity: loading || processed.length === 0 ? 0.5 : 1,
+              }}
+              onMouseEnter={e => { if (!(loading || processed.length === 0)) e.currentTarget.style.background = 'var(--gray-50)'; }}
+              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+            >
+              <Download size={12} /> Export PDF
+            </button>
+            <button
+              onClick={fetchAlerts}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500,
+                color: 'var(--gray-500)', background: 'none', border: '1px solid var(--card-border-color)',
+                padding: '5px 12px', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--gray-50)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+            >
+              <RefreshCw size={12} /> Refresh
+            </button>
+          </div>
         </div>
 
         {/* ── Shared Toolbar ──────────────────────────────────── */}

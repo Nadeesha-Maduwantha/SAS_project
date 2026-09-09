@@ -27,7 +27,6 @@ const defaultSettings: SecuritySettings = {
     timeoutMinutes: 60,
     maxConcurrentSessions: 3,
     autoLogoutOnInactivity: true,
-    requireReauthForSensitive: true,
     rememberDevice: true,
   },
   loginSecurity: {

@@ -25,16 +25,15 @@ export default function SalesDashboardPage() {
       {/* Pinned custom table stat cards */}
       <PinnedTableStatCards />
 
-      {/* Personal notepad, saved per staff code */}
+      {/* Personal notepad — private to the signed-in user */}
       <div style={{ marginTop: 14 }}>
-        <NotePad title="My Notes" subtitle="Personal notes — saved to your account" />
+        <NotePad title="My Notes" subtitle="Private to you — link a note to one of your shipments" />
       </div>
 
       {/* Scoped alert feed — overdue / delayed milestones for this user */}
       <div style={{ marginTop: 14 }}>
         <AlertFeedTable
-          title="My Shipment Alert Feed"
-          apiBase="http://127.0.0.1:5000"
+          title="My Alert Feed"
           maxRows={8}
           scope="sales"
         />

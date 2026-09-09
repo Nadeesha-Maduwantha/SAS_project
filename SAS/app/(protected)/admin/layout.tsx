@@ -5,39 +5,21 @@ import '@/styles/AdminStyles/theme.css';
 import AdminLeftNavBar from '@/components/AdminUser/AdminLeftNavBar';
 import AdminTopBar    from '@/components/AdminUser/AdminTopBar';
 import RouterLoadingOverlay from '@/components/shared/RouterLoadingOverlay';
-import { NavProvider, useNav } from '@/contexts/NavContext';
+import { NavProvider } from '@/contexts/NavContext';
 
 // ── Topbar height — nav starts below this so toggle button is visible ──────────
 const TOPBAR_H = 57; // px — must match AdminTopBar height
 
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
-  const { expanded, collapse } = useNav();
-
   return (
     <>
       <RouterLoadingOverlay />
 
-      {/* Fixed nav overlay — sits on top of content */}
+      {/* Fixed nav overlay — sits on top of content. It collapses itself on an
+          outside mousedown and on route change, so no separate click-catcher
+          overlay is needed (a full-viewport catcher one z-index below the nav
+          ends up swallowing clicks on the nav itself). */}
       <AdminLeftNavBar topOffset={TOPBAR_H} />
-
-      {/*
-        Invisible click-catcher overlay.
-        Renders only when nav is expanded.
-        Sits between the nav (z-index 1000) and page content (z-index 0).
-        Clicking it collapses the nav without triggering page interactions.
-      */}
-      {expanded && (
-        <div
-          onClick={collapse}
-          style={{
-            position:   'fixed',
-            inset:      0,
-            zIndex:     999,
-            background: 'transparent',
-            cursor:     'default',
-          }}
-        />
-      )}
 
       {/* Page shell — always full viewport, never shifts */}
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>

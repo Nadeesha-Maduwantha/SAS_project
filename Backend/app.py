@@ -413,17 +413,20 @@ app.config['SCHEDULER'] = scheduler
 app.config['RUN_SYNC_JOB'] = run_sync_job
 
 
-def find_available_port(start_port: int, max_attempts: int = 20) -> int:
+def find_available_port(start_port: int, host: str, max_attempts: int = 20) -> int:
     import socket
 
     configured_port = int(os.getenv('PORT', str(start_port)))
     ports_to_try = [configured_port] + list(range(configured_port + 1, configured_port + max_attempts + 1))
 
+    # Probe with the same host and SO_REUSEADDR that werkzeug's server uses, so
+    # the result reflects what app.run() will actually manage to bind. Probing a
+    # different host than we serve on reports free ports as busy and vice versa.
     for port in ports_to_try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
-                sock.bind(('127.0.0.1', port))
+                sock.bind((host, port))
                 return port
             except OSError:
                 continue
@@ -432,6 +435,10 @@ def find_available_port(start_port: int, max_attempts: int = 20) -> int:
 
 
 if __name__ == '__main__':
-    port = find_available_port(5000)
-    print(f'Starting Flask app on port {port}')
-    app.run(debug=True, host='0.0.0.0', port=port, use_reloader=False)
+    # Loopback by default: the frontend calls http://127.0.0.1:5000, and binding
+    # the specific address rather than the wildcard lets us share port 5000 with
+    # macOS AirPlay Receiver, which holds *:5000. Set HOST=0.0.0.0 for LAN access.
+    host = os.getenv('HOST', '127.0.0.1')
+    port = find_available_port(5000, host=host)
+    print(f'Starting Flask app on {host}:{port}')
+    app.run(debug=True, host=host, port=port, use_reloader=False)

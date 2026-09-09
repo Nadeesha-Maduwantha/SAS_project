@@ -4,7 +4,7 @@ import traceback
 from services.supabase_service import get_supabase
 from utils.access_logger import log_access_event
 from utils.audit_logger import log_audit_action
-from utils.auth_helper import get_current_user
+from utils.auth_helper import get_current_user, require_auth
 from utils.password_policy import validate_password_complexity, record_password_history
 
 print("=== USERS.PY MODULE LOADED ===")  # ← TOP OF FILE outside function
@@ -12,6 +12,7 @@ print("=== USERS.PY MODULE LOADED ===")  # ← TOP OF FILE outside function
 bp = Blueprint('users', __name__, url_prefix='/api/users')
 
 @bp.route('/create', methods=['POST'])
+@require_auth
 def create_user():
     try:
         data = request.json
@@ -26,12 +27,14 @@ def create_user():
         if policy_error:
             return jsonify({'error': policy_error}), 400
 
-        # A Super User may only create Sales/Operation accounts — Admin and
-        # Super User accounts stay Admin-only. Requesters with no identifiable
-
-        # restricted by this check specifically.
+        # Only Admins and Super Users may create accounts at all. A Super
+        # User may only create Sales/Operation accounts — Admin and Super
+        # User accounts stay Admin-only.
         requester_id, requester_role = get_current_user()
-        if (requester_role or '').lower() == 'superuser':
+        requester_role_lower = (requester_role or '').lower()
+        if requester_role_lower not in ('admin', 'superuser'):
+            return jsonify({'error': 'Only Admins or Super Users can create accounts'}), 403
+        if requester_role_lower == 'superuser':
             allowed_roles = {'salesuser', 'operationuser'}
             if (data.get('role') or '').lower() not in allowed_roles:
                 return jsonify({'error': 'Super Users can only create Sales User or Operation User accounts'}), 403

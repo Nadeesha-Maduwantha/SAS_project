@@ -6,6 +6,7 @@ import PersonalInformation from "./PersonalInformation";
 import SecuritySettings from "./SecuritySettings";
 import { PasswordChange } from "@/types/profile";
 import AppDialog, { AppDialogState } from "@/components/shared/AppDialog";
+import { apiUrl } from "@/lib/api";
 
 interface UserProfile {
   fullName: string;
@@ -29,7 +30,7 @@ export default function ProfilePage({ user }: ProfilePageProps) {
   const [userProfile, setUserProfile] = useState<UserProfile>({
     fullName: "Loading...",
     email: "Loading...",
-    phone: "Loading...",
+    phone: "",
     department: "Loading...",
     role: "User",
     status: "Active",
@@ -63,7 +64,7 @@ export default function ProfilePage({ user }: ProfilePageProps) {
   const handleProfileUpdate = async (updatedData: Partial<UserProfile>) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch('http://127.0.0.1:5000/api/profile', {
+      const response = await fetch(apiUrl('/api/profile'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -75,7 +76,10 @@ export default function ProfilePage({ user }: ProfilePageProps) {
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to update');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to update');
+      }
 
       setUserProfile((prev) => ({
         ...prev,
@@ -93,7 +97,7 @@ export default function ProfilePage({ user }: ProfilePageProps) {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch('http://127.0.0.1:5000/api/profile/avatar', {
+    const response = await fetch(apiUrl('/api/profile/avatar'), {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
