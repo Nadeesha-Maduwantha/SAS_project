@@ -20,6 +20,9 @@ function emptyRule() {
     days_offset:           1,
     fire_time:             '09:00',
     condition:             'always',
+    condition_field:       '',          // for 'if_comparison_true' with a custom field check
+    condition_operator:    'has_value',
+    condition_value:       '',
     recipient_type:        'operations',
     custom_email:          '',
     recurrence_type:       'once',
@@ -233,9 +236,65 @@ function AlertRuleCard({ rule, index, onChange, onDelete, milestoneType }) {
             <p style={{ fontSize: '11px', color: T.gray400, marginTop: '6px' }}>
               {rule.condition === 'always'             && 'Alert fires regardless of field values.'}
               {rule.condition === 'if_not_recorded'    && 'Alert fires only if the primary field still has no value.'}
-              {rule.condition === 'if_comparison_true' && 'Alert fires only if the comparison rule is still true.'}
+              {rule.condition === 'if_comparison_true' && 'Alert fires while the field check below is true (or, if left blank, while the milestone is unmet).'}
               {rule.condition === 'if_missing'         && 'Alert fires only if the required field is still empty.'}
             </p>
+
+            {/* Per-rule field check — only for "If condition" */}
+            {rule.condition === 'if_comparison_true' && (
+              <div style={{ marginTop: '10px', padding: '12px', background: T.gray50, borderRadius: '8px', border: `1px solid ${T.gray100}`, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <p style={{ ...lbl, margin: 0 }}>Field to check</p>
+                <FieldSelector
+                  value={rule.condition_field}
+                  onChange={key => set('condition_field', key)}
+                  placeholder="Select the field this rule checks…"
+                />
+                <p style={{ ...lbl, margin: '4px 0 0' }}>Fires while</p>
+                <select
+                  value={rule.condition_operator}
+                  onChange={e => set('condition_operator', e.target.value)}
+                  style={{ ...inp, cursor: 'pointer' }}
+                >
+                  <option value="has_value">Has a value</option>
+                  <option value="missing">Is empty</option>
+                  <option value="is_true">Is true</option>
+                  <option value="is_false">Is false</option>
+                  <option value="equals">Equals…</option>
+                  <option value="not_equals">Not equals…</option>
+                  <option value="contains">Contains…</option>
+                  <option value="greater_than">Greater than…</option>
+                  <option value="less_than">Less than…</option>
+                </select>
+                {['equals', 'not_equals', 'contains', 'greater_than', 'less_than'].includes(rule.condition_operator) && (
+                  <input
+                    value={rule.condition_value || ''}
+                    onChange={e => set('condition_value', e.target.value)}
+                    placeholder="Value to compare against"
+                    style={{ ...inp }}
+                  />
+                )}
+                <p style={{ fontSize: '11px', color: T.gray400, margin: '2px 0 0' }}>
+                  The alert fires only while this check holds, and stops automatically when it no longer does.
+                </p>
+              </div>
+            )}
+
+            {/* "If missing" can watch a specific field instead of the milestone's own */}
+            {rule.condition === 'if_missing' && (
+              <div style={{ marginTop: '10px', padding: '12px', background: T.gray50, borderRadius: '8px', border: `1px solid ${T.gray100}`, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <p style={{ ...lbl, margin: 0 }}>Check this field is empty <span style={{ color: T.gray400, fontWeight: 400 }}>(optional)</span></p>
+                <FieldSelector
+                  value={rule.condition_field}
+                  onChange={key => set('condition_field', key)}
+                  placeholder="Leave blank to use the milestone's own field…"
+                />
+                <p style={{ fontSize: '11px', color: T.gray400, margin: '2px 0 0' }}>
+                  {rule.condition_field
+                    ? 'Fires while the selected field is still empty; stops once it has a value.'
+                    : "Blank = fires while the milestone's own required field is empty."}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* ── RECURRENCE ── */}

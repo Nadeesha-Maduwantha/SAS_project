@@ -3,25 +3,46 @@ from services.supabase_service import get_supabase
 from functools import wraps
 import traceback
 
+
+def _fetch_user_role(user_id):
+    """Best-effort role lookup. If Supabase drops the connection, fall back to the
+    token's role claim so the request can still be authorized instead of failing
+    with a transient transport error.
+    """
+    for attempt in range(2):
+        try:
+            supabase = get_supabase()
+            profiles = supabase.table('profiles').select('role').eq('id', user_id).execute()
+            if profiles and getattr(profiles, 'data', None):
+                return profiles.data[0].get('role')
+            return None
+        except Exception as exc:
+            if attempt == 0:
+                print(f"[AUTH] Profile lookup failed, retrying once: {exc}")
+                continue
+            print(f"[AUTH] Profile lookup failed after retry: {exc}")
+            raise
+
+
 def get_current_user():
     """Extract current user from JWT token in Authorization header"""
     print("\n" + "="*80)
     print("[AUTH] get_current_user() called")
     print("="*80)
-    
+
     try:
         auth_header = request.headers.get('Authorization')
         print(f"[AUTH STEP 1] Authorization header present: {bool(auth_header)}")
         if auth_header:
             print(f"[AUTH STEP 1] Auth header value: {auth_header[:50]}...")
-        
+
         if not auth_header or not auth_header.startswith('Bearer '):
             print("[AUTH STEP 1] FAILED: Missing or invalid Authorization header")
             return None, None
-        
+
         token = auth_header.split(' ')[1]
         print(f"[AUTH STEP 2] Token extracted, length: {len(token)}")
-        
+
         try:
             # Verify the token against Supabase's Auth server rather than
             # trusting its (unverified) claims locally.
@@ -58,7 +79,7 @@ def get_current_user():
             print(f"[AUTH EXCEPTION] Token validation failed: {str(e)}")
             traceback.print_exc()
             return None, None
-    
+
     except Exception as e:
         print(f"[AUTH EXCEPTION] Outer exception: {str(e)}")
         traceback.print_exc()

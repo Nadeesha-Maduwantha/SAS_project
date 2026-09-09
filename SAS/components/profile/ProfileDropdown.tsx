@@ -8,6 +8,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { User, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { apiUrl } from '@/lib/api';
 
 export default function ProfileDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -46,7 +47,7 @@ export default function ProfileDropdown() {
       const token = localStorage.getItem('access_token');
       if (!token) return;
       try {
-        const res  = await fetch('http://localhost:5000/api/auth/me', {
+        const res  = await fetch(apiUrl('/api/auth/me'), {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         });
         const data = await res.json();
@@ -75,7 +76,7 @@ export default function ProfileDropdown() {
     const token = localStorage.getItem('access_token');
     if (token) {
       try {
-        await fetch('http://localhost:5000/api/auth/logout', {
+        await fetch(apiUrl('/api/auth/logout'), {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
         });

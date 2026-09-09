@@ -1,12 +1,14 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import {
   X, Printer, Truck, Calendar,
   MapPin, User, Mail, Phone, Box, Brain
 } from 'lucide-react'
 import { ShipmentStatusBadge } from '@/components/shipments/ShipmentStatusBadge'
 import { ShipmentMap } from '@/components/shipments/ShipmentMap'
+import ShipmentMilestonesModal from '@/components/Shipmentmilestonesmodal'
 import { exportShipmentDetailPDF } from '@/lib/Utils/exportPDF'
 import { Shipment } from '@/types'
 
@@ -53,10 +55,37 @@ interface ShipmentDetailModalProps {
   shipment: Shipment | null
 }
 
+const DETAIL_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5000'
+
 export default function ShipmentDetailModal({ isOpen, onClose, shipment }: ShipmentDetailModalProps) {
   const router = useRouter()
 
+  // Real milestones for this shipment (replaces the old hardcoded list).
+  const [milestones, setMilestones] = useState<any[]>([])
+  const [showMilestones, setShowMilestones] = useState(false)
+  useEffect(() => {
+    if (!isOpen || !shipment?.id) { setMilestones([]); return }
+    let cancelled = false
+    fetch(`${DETAIL_API}/api/shipments/${shipment.id}`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(j => { if (!cancelled) setMilestones(j?.data?.milestones ?? []) })
+      .catch(() => { if (!cancelled) setMilestones([]) })
+    return () => { cancelled = true }
+  }, [isOpen, shipment?.id])
+
   if (!isOpen || !shipment) return null
+
+  // "Previous Milestones" = completed ones, most-recent first.
+  const fmtMs = (iso: string | null | undefined) =>
+    iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
+  const previousMilestones = [...milestones]
+    .filter((m: any) => m.status === 'completed' || m.completed_date)
+    .sort((a: any, b: any) => new Date(b.completed_date ?? b.due_date ?? 0).getTime() - new Date(a.completed_date ?? a.due_date ?? 0).getTime())
+    .map((m: any) => ({
+      title: m.name ?? 'Milestone',
+      time:  fmtMs(m.completed_date ?? m.due_date),
+      note:  m.notes ?? '',
+    }))
 
   const progress = getProgressPercent(shipment.llmIdentifiedType, shipment.currentStage)
 
@@ -82,7 +111,63 @@ export default function ShipmentDetailModal({ isOpen, onClose, shipment }: Shipm
     router.push(`/admin/shipment_milestones?id=${shipment!.id}`)
   }
 
+  // Export every milestone for this shipment as a CSV audit log.
+  // Each row carries the shipment-level details too, so the file is
+  // self-describing when opened on its own.
+  function downloadAuditCsv() {
+    const route =
+      [shipment!.originCity, shipment!.originCountryCode].filter(Boolean).join(", ") +
+      " -> " +
+      [shipment!.destinationCity, shipment!.destinationCountryCode].filter(Boolean).join(", ")
+
+    // Shipment-level columns — constant across all rows.
+    const shipCols: [string, string][] = [
+      ["job_number",     String(shipment!.jobNumber ?? shipment!.cargowiseId ?? shipment!.id ?? "")],
+      ["consignee",      String(shipment!.consigneeName ?? "")],
+      ["route",          route.trim() === "->" ? "" : route],
+      ["transport_mode", String(shipment!.transportMode ?? "")],
+      ["branch",         String(shipment!.branch ?? "")],
+    ]
+
+    // Per-milestone columns.
+    const msCols = [
+      ["seq",            (m: any) => m.sequence_order ?? ""],
+      ["milestone",      (m: any) => m.name ?? ""],
+      ["status",         (m: any) => m.status ?? ""],
+      ["is_critical",    (m: any) => (m.is_critical ? "yes" : "no")],
+      ["due_date",       (m: any) => m.due_date ?? ""],
+      ["completed_date", (m: any) => m.completed_date ?? ""],
+      ["assigned_to",    (m: any) => m.assigned_to ?? ""],
+      ["assigned_email", (m: any) => m.assigned_email ?? ""],
+      ["notes",          (m: any) => m.notes ?? ""],
+    ] as const
+
+    const esc = (v: any) => {
+      const s = String(v ?? "")
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+    }
+    const rows = [...milestones].sort(
+      (a: any, b: any) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0)
+    )
+    const header = [...shipCols.map(c => c[0]), ...msCols.map(c => c[0])].join(",")
+    const body = rows.map(m =>
+      [...shipCols.map(c => esc(c[1])), ...msCols.map(c => esc(c[1](m)))].join(",")
+    )
+    const csv = [header, ...body].join("\n")
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `${shipment!.jobNumber ?? shipment!.cargowiseId ?? shipment!.id}_milestones.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
   return (
+    <>
     <div
       style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -354,19 +439,19 @@ export default function ShipmentDetailModal({ isOpen, onClose, shipment }: Shipm
             {/* RIGHT COLUMN */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-              {/* Previous Milestones — placeholder, not wired to real data yet */}
+              {/* Previous Milestones — real completed milestones for this shipment */}
               <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                   <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#111827', margin: 0 }}>Previous Milestones</h3>
                 </div>
 
+                {previousMilestones.length === 0 ? (
+                  <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0' }}>
+                    No completed milestones recorded for this shipment yet.
+                  </p>
+                ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                  {[
-                    { title: 'Departed Chicago O\'Hare', time: 'Oct 23, 2023 - 08:45 PM', note: 'Flight LH431 en route to Munich for transfer.' },
-                    { title: 'Picked up from Shipper', time: 'Oct 22, 2023 - 02:30 PM', note: 'Driver: Mike Johnson. Condition: Good.' },
-                    { title: 'Label Created', time: 'Oct 22, 2023 - 09:15 AM', note: 'Shipping information received.' },
-                    { title: 'Order Placed', time: 'Oct 21, 2023 - 04:00 PM', note: '' },
-                  ].map((m, i, arr) => (
+                  {previousMilestones.map((m, i, arr) => (
                     <div key={i} style={{ display: 'flex', gap: '12px' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
                         <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#bfdbfe', border: '2px solid #93c5fd', marginTop: '2px', flexShrink: 0 }} />
@@ -380,9 +465,10 @@ export default function ShipmentDetailModal({ isOpen, onClose, shipment }: Shipm
                     </div>
                   ))}
                 </div>
+                )}
 
                 <button
-                  onClick={goToMilestones}
+                  onClick={() => setShowMilestones(true)}
                   style={{
                     width: '100%', marginTop: '14px', padding: '8px 12px',
                     background: '#fefce8', border: '1px solid #fde68a',
@@ -397,12 +483,17 @@ export default function ShipmentDetailModal({ isOpen, onClose, shipment }: Shipm
                   </p>
                 </button>
 
-                <button style={{
-                  width: '100%', marginTop: '12px', padding: '8px',
-                  fontSize: '12px', fontWeight: 500, color: '#374151',
-                  background: '#f9fafb', border: '1px solid #e5e7eb',
-                  borderRadius: '8px', cursor: 'pointer'
-                }}>
+                <button
+                  onClick={downloadAuditCsv}
+                  disabled={milestones.length === 0}
+                  style={{
+                    width: '100%', marginTop: '12px', padding: '8px',
+                    fontSize: '12px', fontWeight: 500, color: '#374151',
+                    background: '#f9fafb', border: '1px solid #e5e7eb',
+                    borderRadius: '8px', cursor: milestones.length === 0 ? 'not-allowed' : 'pointer',
+                    opacity: milestones.length === 0 ? 0.5 : 1,
+                  }}
+                >
                   Download Full Audit Log (CSV)
                 </button>
               </div>
@@ -457,5 +548,14 @@ export default function ShipmentDetailModal({ isOpen, onClose, shipment }: Shipm
         </div>
       </div>
     </div>
+
+    {/* Milestone detail popup — opens on the current active milestone */}
+    <ShipmentMilestonesModal
+      isOpen={showMilestones}
+      onClose={() => setShowMilestones(false)}
+      shipmentId={shipment.id}
+      apiBase={DETAIL_API}
+    />
+    </>
   )
 }

@@ -7,29 +7,47 @@
 //  Dashboard notepad backed by the user_notes table.
 //  Full CRUD: list, create, edit, delete.
 //
+//  Notes are private. Every request is scoped by the signed-in
+//  email, so a user only ever sees their own notes — the previous
+//  version keyed on the mock staff code, which is the same string
+//  for everyone, so all notes were shared.
+//
+//  A note is just its text plus an optional shipment link — there is
+//  no title field.
+//
+//  A note can also be attached to one of the user's own shipments,
+//  picked from the dropdown in the editor. The link is editable:
+//  reopen the note and choose a different shipment, or "No shipment"
+//  to detach it.
+//
 //  Needs Backend/migrations/user_notes.sql to have been run. Until
 //  then the API replies with an empty list plus a warning, which is
 //  surfaced in the card rather than failing silently.
 // =============================================================
 
 import { useCallback, useEffect, useState } from 'react';
-import { NotebookPen, Plus } from 'lucide-react';
+import { NotebookPen, Plus, Package } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { normalizeRole } from '@/lib/roles';
+import { apiUrl, authHeaders } from '@/lib/api';
 import '@/styles/AdminStyles/FeedTable.css';
 import '@/styles/AdminStyles/NotePad.css';
 
-const API =
-  process.env.NEXT_PUBLIC_API_URL ??
-  process.env.NEXT_PUBLIC_BACKEND_URL ??
-  'http://127.0.0.1:5000';
-
 type Note = {
-  id:         string;
-  staff_code: string;
-  title:      string | null;
-  body:       string;
-  created_at: string;
-  updated_at: string;
+  id:                  string;
+  owner_email:         string | null;
+  staff_code:          string | null;
+  body:                string;
+  shipment_id:         string | null;
+  shipment_job_number: string | null;
+  created_at:          string;
+  updated_at:          string;
+};
+
+/** One entry in the shipment dropdown. */
+type ShipmentOption = {
+  id:    string;
+  label: string;
 };
 
 /** 'new' means the editor is open for a note that does not exist yet. */
@@ -43,29 +61,52 @@ function formatWhen(iso: string): string {
   });
 }
 
+/**
+ * Query string that narrows /api/shipments to the shipments this user owns.
+ * The two roles own shipments differently: a sales user owns the shipment
+ * itself, an operation user is assigned to one of its milestones.
+ * Any other role gets no dropdown rather than the whole company's shipments.
+ */
+function ownedShipmentsQuery(role: string, email: string): string | null {
+  if (!email) return null;
+  const key = normalizeRole(role);
+  if (key === 'salesuser')     return `?sales_user_email=${encodeURIComponent(email)}`;
+  if (key === 'operationuser') return `?assigned_email=${encodeURIComponent(email)}`;
+  return null;
+}
+
+/** Human label for a shipment row: job number first, consignee as context. */
+function shipmentLabel(row: any): string {
+  const ref = row.job_number || row.house_bill_number || row.cargowise_id || row.id;
+  const who = row.consignee_name;
+  return who ? `${ref} — ${who}` : String(ref);
+}
+
 export default function NotePad({
   title = 'My Notes',
-  subtitle = 'Personal notes — saved to your account',
+  subtitle = 'Private to you — only you can see these notes',
 }: {
   title?:    string;
   subtitle?: string;
 }) {
-  const { staffCode } = useAuth();
+  const { email, role, staffCode } = useAuth();
 
   const [notes, setNotes] = useState<Note[]>([]);
+  const [shipments, setShipments] = useState<ShipmentOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [warning, setWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [editing, setEditing] = useState<Editing>(null);
-  const [draftTitle, setDraftTitle] = useState('');
   const [draftBody, setDraftBody] = useState('');
+  const [draftShipment, setDraftShipment] = useState('');
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
+    if (!email) { setLoading(false); return; }
     try {
       setError(null);
-      const res = await fetch(`${API}/api/notes?staff_code=${encodeURIComponent(staffCode)}`, {
+      const res = await fetch(apiUrl(`/api/notes?email=${encodeURIComponent(email)}`), {
         cache: 'no-store',
       });
       const json = await res.json();
@@ -79,32 +120,51 @@ export default function NotePad({
     } finally {
       setLoading(false);
     }
-  }, [staffCode]);
+  }, [email]);
 
   useEffect(() => { load(); }, [load]);
 
+  // The dropdown only ever offers shipments this user owns, which is also
+  // what the backend re-checks before storing the link.
+  useEffect(() => {
+    const query = ownedShipmentsQuery(role, email);
+    if (!query) { setShipments([]); return; }
+
+    let cancelled = false;
+    fetch(apiUrl(`/api/shipments${query}`), { headers: authHeaders(), cache: 'no-store' })
+      .then(r => r.json())
+      .then(json => {
+        if (cancelled) return;
+        const rows: any[] = json?.data ?? [];
+        setShipments(rows.map(row => ({ id: row.id, label: shipmentLabel(row) })));
+      })
+      .catch(err => console.error('Failed to load shipments for notes:', err));
+
+    return () => { cancelled = true; };
+  }, [role, email]);
+
   function openNew() {
     setEditing('new');
-    setDraftTitle('');
     setDraftBody('');
+    setDraftShipment('');
     setError(null);
   }
 
   function openExisting(note: Note) {
     setEditing(note);
-    setDraftTitle(note.title ?? '');
     setDraftBody(note.body ?? '');
+    setDraftShipment(note.shipment_id ?? '');
     setError(null);
   }
 
   function closeEditor() {
     setEditing(null);
-    setDraftTitle('');
     setDraftBody('');
+    setDraftShipment('');
   }
 
   async function save() {
-    if (!draftTitle.trim() && !draftBody.trim()) return;
+    if (!draftBody.trim()) return;
 
     setSaving(true);
     setError(null);
@@ -112,15 +172,19 @@ export default function NotePad({
     try {
       const isNew = editing === 'new';
       const res = await fetch(
-        isNew ? `${API}/api/notes` : `${API}/api/notes/${(editing as Note).id}`,
+        isNew
+          ? apiUrl('/api/notes')
+          : apiUrl(`/api/notes/${(editing as Note).id}?email=${encodeURIComponent(email)}`),
         {
           method: isNew ? 'POST' : 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(
-            isNew
-              ? { staff_code: staffCode, title: draftTitle, body: draftBody }
-              : { title: draftTitle, body: draftBody },
-          ),
+          body: JSON.stringify({
+            email,
+            body: draftBody,
+            // Always sent, so clearing the dropdown detaches the shipment.
+            shipment_id: draftShipment,
+            ...(isNew ? { staff_code: staffCode } : {}),
+          }),
         },
       );
 
@@ -145,7 +209,10 @@ export default function NotePad({
     setError(null);
 
     try {
-      const res = await fetch(`${API}/api/notes/${editing.id}`, { method: 'DELETE' });
+      const res = await fetch(
+        apiUrl(`/api/notes/${editing.id}?email=${encodeURIComponent(email)}`),
+        { method: 'DELETE' },
+      );
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error ?? `HTTP ${res.status}`);
 
@@ -159,7 +226,14 @@ export default function NotePad({
     }
   }
 
-  const canSave = (draftTitle.trim() !== '' || draftBody.trim() !== '') && !saving;
+  const canSave = draftBody.trim() !== '' && !saving;
+
+  /** Label for a saved link, even when that shipment is no longer in the list. */
+  function labelFor(note: Note): string | null {
+    if (!note.shipment_id) return null;
+    const match = shipments.find(s => s.id === note.shipment_id);
+    return match?.label ?? note.shipment_job_number ?? 'Linked shipment';
+  }
 
   return (
     <div className="feed-card">
@@ -196,13 +270,26 @@ export default function NotePad({
 
       {editing !== null ? (
         <div style={{ paddingTop: 12 }}>
-          <input
-            className="note-input"
-            placeholder="Note title"
-            value={draftTitle}
-            onChange={e => setDraftTitle(e.target.value)}
-            maxLength={200}
-          />
+          <select
+            className="note-select note-select--first"
+            value={draftShipment}
+            onChange={e => setDraftShipment(e.target.value)}
+          >
+            <option value="">No shipment</option>
+            {shipments.map(s => (
+              <option key={s.id} value={s.id}>{s.label}</option>
+            ))}
+            {/* A note may point at a shipment that has since left the list —
+                keep the option so saving does not silently drop the link. */}
+            {editing !== 'new'
+              && editing.shipment_id
+              && !shipments.some(s => s.id === editing.shipment_id) && (
+              <option value={editing.shipment_id}>
+                {editing.shipment_job_number ?? 'Linked shipment'}
+              </option>
+            )}
+          </select>
+
           <textarea
             className="note-textarea"
             placeholder="Write your note…"
@@ -230,13 +317,21 @@ export default function NotePad({
         <div className="note-empty">No notes yet — use “New note” to add one.</div>
       ) : (
         <div className="note-list">
-          {notes.map(note => (
-            <button key={note.id} className="note-item" onClick={() => openExisting(note)}>
-              <div className="note-item__title">{note.title || 'Untitled note'}</div>
-              {note.body && <div className="note-item__preview">{note.body}</div>}
-              <div className="note-item__time">{formatWhen(note.updated_at)}</div>
-            </button>
-          ))}
+          {notes.map(note => {
+            const linked = labelFor(note);
+            return (
+              <button key={note.id} className="note-item" onClick={() => openExisting(note)}>
+                {linked && (
+                  <div className="note-item__shipment">
+                    <Package size={11} style={{ flexShrink: 0 }} />
+                    <span className="note-item__shipment-label">{linked}</span>
+                  </div>
+                )}
+                <div className="note-item__text">{note.body}</div>
+                <div className="note-item__time">{formatWhen(note.updated_at)}</div>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

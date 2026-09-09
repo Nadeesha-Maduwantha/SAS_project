@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Bell, AlertTriangle, KeyRound, ShieldAlert, Monitor } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 type NotificationType = 'failed_login' | 'password_changed' | 'permission_changed' | 'new_device_login';
 

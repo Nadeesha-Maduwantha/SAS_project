@@ -37,6 +37,49 @@
   color: var(--c-text-strong);
 }
 
+.freight-pie-card__count {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid var(--c-border-light);
+  border-radius: var(--radius-pill);
+  background: var(--c-surface-sunken);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  color: var(--c-text-strong);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.freight-pie-card__count-label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-normal);
+  color: var(--c-text-muted);
+}
+
+.freight-pie-card__action {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--c-chart-1);
+  color: #fff;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.14s;
+}
+
+.freight-pie-card__action:hover {
+  filter: brightness(0.94);
+}
+
 .freight-pie-card__body {
   @apply pt-4 flex items-center gap-5 min-h-[128px];
 }
