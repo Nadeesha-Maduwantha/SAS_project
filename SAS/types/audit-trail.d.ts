@@ -47,7 +47,5 @@ export interface AuditTrailFilters {
 // Renamed from AuditTrailStats to AuditTrailStatsData
 export interface AuditTrailStatsData {
   totalEvents: number;
-  eventsToday: number;
   criticalChanges: number;
-  activeAdmins: number;
 }

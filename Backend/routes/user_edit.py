@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from services.supabase_service import get_supabase
+from services.supabase_service import get_supabase, get_supabase_admin
 from datetime import datetime
 import traceback
 from utils.audit_logger import log_audit_action
@@ -191,18 +191,35 @@ def delete_user(user_id):
         
         target_role = target_user.data[0]['role']
         target_email = target_user.data[0]['email']
-        
+
         print(f"Target user found: {target_email} (role={target_role})")
-        
+
+        # Both auth.admin.* and bypassing RLS on the delete below require the
+        # service-role key — the anon key get_supabase() uses can't do either
+        # (auth.admin.delete_user 401s, and profiles.delete() is silently
+        # filtered to 0 rows by RLS instead of raising).
+        supabase_admin = get_supabase_admin()
+
         # Delete from auth
         try:
-            supabase.auth.admin.delete_user(user_id)
+            supabase_admin.auth.admin.delete_user(user_id)
             print(f"Auth user deleted: {user_id}")
         except Exception as auth_err:
-            print(f"Warning - Could not delete from auth: {str(auth_err)}")
-        
-        # Delete from profiles table
-        supabase.table('profiles').delete().eq('id', user_id).execute()
+            # Tolerate "already gone from auth" so the profile row can still
+            # be cleaned up, but don't pretend other failures didn't happen.
+            if 'not found' not in str(auth_err).lower() and 'not_found' not in str(auth_err).lower():
+                raise
+            print(f"Warning - Auth user already absent: {str(auth_err)}")
+
+        # Delete from profiles table and confirm a row actually went away —
+        # RLS can silently no-op a delete instead of raising, so an unchecked
+        # .execute() here can report success while leaving the row in place.
+        delete_result = supabase_admin.table('profiles').delete().eq('id', user_id).execute()
+        if not delete_result.data:
+            return jsonify({
+                'error': 'Internal Server Error',
+                'details': 'Profile row was not removed. Check RLS policies on the profiles table.'
+            }), 500
         print(f"Profile deleted: {user_id}")
         
         # Log to audit trail

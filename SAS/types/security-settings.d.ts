@@ -16,7 +16,6 @@ export interface SessionManagement {
   timeoutMinutes: number;
   maxConcurrentSessions: number;
   autoLogoutOnInactivity: boolean;
-  requireReauthForSensitive: boolean;
   rememberDevice: boolean;
 }
 

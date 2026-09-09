@@ -93,22 +93,10 @@ export default function AuditTrailPage() {
   // Calculate stats based on filtered data
   const filteredStats: AuditTrailStatsData = useMemo(() => {
     const criticalCount = filteredEvents.filter(event => event.severity === "Critical").length;
-    const uniqueAdmins = new Set(
-        filteredEvents
-            .filter(event => event.user && event.user.role && event.user.role.includes("Admin"))
-            .map(event => event.user && event.user.name)
-    ).size;
-
-    const today = new Date().toDateString();
-    const eventsToday = filteredEvents.filter(
-      event => new Date(event.timestamp).toDateString() === today
-    ).length;
 
     return {
       totalEvents: filteredEvents.length,
-      eventsToday: eventsToday,
       criticalChanges: criticalCount,
-      activeAdmins: uniqueAdmins,
     };
   }, [filteredEvents]);
 

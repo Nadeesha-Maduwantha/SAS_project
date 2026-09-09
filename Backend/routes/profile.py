@@ -3,6 +3,7 @@ import uuid
 from flask import Blueprint, jsonify, request
 from utils.auth_helper import require_auth, get_current_user
 from services.supabase_service import get_supabase
+from utils.profile_validation import validate_full_name, validate_phone_number
 
 bp = Blueprint('profile', __name__, url_prefix='/api/profile')
 
@@ -33,16 +34,23 @@ def manage_profile():
         
         update_data = {}
         if 'full_name' in data:
-            update_data['full_name'] = data['full_name']
+            name_error = validate_full_name(data['full_name'])
+            if name_error:
+                return jsonify({"error": name_error}), 400
+            update_data['full_name'] = data['full_name'].strip()
         if 'phone_number' in data:
+            phone_error = validate_phone_number(data['phone_number'])
+            if phone_error:
+                return jsonify({"error": phone_error}), 400
             # Change the key here to exactly match your Supabase column: 'phoneNumber'
-            update_data['phoneNumber'] = data['phone_number']
-            
+            update_data['phoneNumber'] = (data['phone_number'] or '').strip()
+
         try:
             supabase.table('profiles').update(update_data).eq('id', user_id).execute()
             return jsonify({"message": "Profile updated successfully"}), 200
         except Exception as e:
-            return jsonify({"error": str(e)}), 400
+            print(f"Failed to update profile for {user_id}: {e}")
+            return jsonify({"error": "Failed to update profile. Please try again."}), 400
 
 
 @bp.route('/avatar', methods=['POST'], strict_slashes=False)

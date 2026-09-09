@@ -30,7 +30,7 @@ export default function ProfilePage({ user }: ProfilePageProps) {
   const [userProfile, setUserProfile] = useState<UserProfile>({
     fullName: "Loading...",
     email: "Loading...",
-    phone: "Loading...",
+    phone: "",
     department: "Loading...",
     role: "User",
     status: "Active",
@@ -76,7 +76,10 @@ export default function ProfilePage({ user }: ProfilePageProps) {
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to update');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to update');
+      }
 
       setUserProfile((prev) => ({
         ...prev,
