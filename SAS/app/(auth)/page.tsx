@@ -38,6 +38,10 @@ export default function LoginPage() {
     else if (role.includes('operation')) router.push('/operation_user/dashboard');
     else if (role.includes('sales'))     router.push('/sales_user/dashboard');
     else if (role.includes('super'))     router.push('/Super_user/dashboard');
+    // Anything else is an admin-defined custom user type (System Settings ->
+    // User Types) — its key doesn't match any of the 4 built-in roles above,
+    // so it lands on the generic custom_user shell instead.
+    else router.push('/custom_user/dashboard');
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {

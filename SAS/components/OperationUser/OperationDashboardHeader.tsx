@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import ProfileDropdown from '@/components/profile/ProfileDropdown';
+import CoverWorkSelector from '@/components/shared/CoverWorkSelector';
 import TopBarSearch from '@/components/shared/TopBarSearch';
 import '@/styles/AdminStyles/AdminTopBar.css';
 
@@ -36,6 +37,7 @@ export default function OperationDashboardHeader() {
 
         {/* Right */}
         <div className="admin-topbar__right">
+          <CoverWorkSelector />
           <ProfileDropdown />
         </div>
 

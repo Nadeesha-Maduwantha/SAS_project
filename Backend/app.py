@@ -47,6 +47,9 @@ from routes.dashboard import dashboard_bp
 # from routes.cargowise_sync import cargowise_sync_bp
 from routes.notes import notes_bp
 from routes.notifications import notifications_bp
+from routes.cover_access import cover_bp
+from routes.user_type_rules import user_type_rules_bp
+from routes.user_types import user_types_bp
 
 
 def run_sync_job():
@@ -227,6 +230,23 @@ def run_field_watch():
         print(f"[field_watch] ERROR: {e}")
 
 
+def run_cover_expiry_job():
+    try:
+        from services.cover_access import run_cover_expiry
+        run_cover_expiry()
+    except Exception as e:
+        print(f"[cover_access] expiry job ERROR: {e}")
+
+
+def run_user_type_scan_job():
+    try:
+        from services.user_type_rules import scan_for_unmatched_people
+        result = scan_for_unmatched_people()
+        print(f"[user_type_rules] scan: scanned={result.get('scanned')} queued={result.get('queued')}")
+    except Exception as e:
+        print(f"[user_type_rules] scan job ERROR: {e}")
+
+
 def run_sales_digest_job():
     try:
         from services.sales_digest import run_sales_digest
@@ -297,6 +317,9 @@ app.register_blueprint(alerts_bp)
 
 app.register_blueprint(notes_bp)
 app.register_blueprint(notifications_bp)
+app.register_blueprint(cover_bp)
+app.register_blueprint(user_type_rules_bp)
+app.register_blueprint(user_types_bp)
 
 app.register_blueprint(milestone_library_bp)
 app.register_blueprint(field_map_bp)
@@ -379,6 +402,24 @@ scheduler.add_job(
     run_field_watch,
     CronTrigger(minute='5,35', timezone='Asia/Colombo'),
     id='field_watch_scan',
+    replace_existing=True,
+)
+
+# Cover-access: end expired grants (email the owner a report) every 10 minutes.
+scheduler.add_job(
+    run_cover_expiry_job,
+    CronTrigger(minute='*/10', timezone='Asia/Colombo'),
+    id='cover_access_expiry',
+    replace_existing=True,
+)
+
+# User Type Rules: scan shipment data for emails with no matching profile yet,
+# queue detected-role suggestions for an admin to review (System Settings ->
+# User Type Rules). Twice an hour, same cadence family as field_watch.
+scheduler.add_job(
+    run_user_type_scan_job,
+    CronTrigger(minute='10,40', timezone='Asia/Colombo'),
+    id='user_type_scan',
     replace_existing=True,
 )
 

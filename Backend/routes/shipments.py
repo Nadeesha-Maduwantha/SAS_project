@@ -85,6 +85,23 @@ def get_all_shipments():
                 return jsonify({"data": []}), 200
             query = query.in_('id', shipment_ids)
 
+        # Generic role-based scoping (?role=&email=&department=&owners=), additive
+        # on top of the legacy params above. Used by custom user types (and any
+        # future generic caller) whose visibility can't be expressed as
+        # sales_user_email/assigned_email — the modern scope.py system already
+        # backing /api/shipments/stats and /api/shipments/all-milestones. Only
+        # engages when ?role= is present, so every existing caller (sales_user,
+        # operation_user pages) that never sends it is completely unaffected.
+        role_param = request.args.get('role')
+        if role_param:
+            from services.scope import read_scope, cover_allowed_shipment_ids
+            role, email, dept = read_scope(request.args)
+            allowed = cover_allowed_shipment_ids(role, email, dept, request.args.get('owners'))
+            if allowed is not None:
+                if not allowed:
+                    return jsonify({"data": []}), 200
+                query = query.in_('id', list(allowed))
+
         response = query.execute()
         return jsonify({"data": response.data}), 200
     except Exception as e:
@@ -157,9 +174,9 @@ def get_shipment_stats():
     Fetching all columns of all rows just to count them wastes bandwidth.
     """
     try:
-        from services.scope import read_scope, allowed_shipment_ids
+        from services.scope import read_scope, cover_allowed_shipment_ids
         role, email, dept = read_scope(request.args)
-        allowed = allowed_shipment_ids(role, email, dept)   # None = all
+        allowed = cover_allowed_shipment_ids(role, email, dept, request.args.get('owners'))   # None = all
         if allowed is not None and not allowed:
             return jsonify({"data": {'total': 0, 'pending': 0, 'delivered': 0, 'delayed': 0}}), 200
 
@@ -400,11 +417,22 @@ def get_all_milestones():
     Milestone.status is one of completed | overdue | delayed | pending.
     """
     try:
-        from services.scope import read_scope, allowed_shipment_ids
+        from services.scope import read_scope, cover_allowed_shipment_ids
         role, email, dept = read_scope(request.args)
-        allowed = allowed_shipment_ids(role, email, dept)   # None = all
+        # Include a covered colleague's work when an active grant exists, honoring
+        # the whose-work filter (?owners=a@x,b@y). No grant → unchanged (self only).
+        owners_param = request.args.get('owners')
+        allowed = cover_allowed_shipment_ids(role, email, dept, owners_param)   # None = all
+        # Active grants let the frontend build the whose-work filter + owner tags.
+        grants = []
+        if role in ('operation', 'sales') and email:
+            try:
+                from services.cover_access import active_grants_for
+                grants = active_grants_for(email)
+            except Exception:
+                grants = []
         if allowed is not None and not allowed:
-            return jsonify({"data": []}), 200
+            return jsonify({"data": [], "grants": grants}), 200
 
         q = (
             supabase.table('shipments')
@@ -444,7 +472,7 @@ def get_all_milestones():
             {"shipment": s, "milestones": ms_by_ship.get(s['id'], [])}
             for s in shipments
         ]
-        return jsonify({"data": result}), 200
+        return jsonify({"data": result, "grants": grants}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

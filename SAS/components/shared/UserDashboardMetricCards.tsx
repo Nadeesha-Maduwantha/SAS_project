@@ -12,23 +12,33 @@
 import { useState, useEffect } from 'react';
 import { Package, AlertTriangle, CheckCircle2, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useCoverSelection } from '@/lib/hooks/useCoverSelection';
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
 
-type Scope = 'admin' | 'operation' | 'sales' | 'super';
+// Widened (string & {}) so a custom user type's role key (System Settings ->
+// User Types) can be passed too, while keeping autocomplete for the 4 built-ins.
+type Scope = 'admin' | 'operation' | 'sales' | 'super' | (string & {});
 
 function authHeaders() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
   return { Authorization: `Bearer ${token}` };
 }
 
-// Build the ?role=&email=&department= scope query for the current viewer.
-function scopeQuery(scope: Scope | undefined, u: { email?: string; department?: string }) {
-  if (!scope || scope === 'admin') return '';
-  const p = new URLSearchParams({ role: scope });
-  if (scope === 'super') p.set('department', u.department ?? '');
-  else p.set('email', u.email ?? '');
-  return `?${p.toString()}`;
+// Build the ?role=&email=&department=&owners= scope query for the current viewer.
+function scopeQuery(scope: Scope | undefined, u: { email?: string; department?: string }, ownersParam?: string) {
+  const p = new URLSearchParams();
+  if (scope && scope !== 'admin') {
+    p.set('role', scope);
+    if (scope === 'super') p.set('department', u.department ?? '');
+    else p.set('email', u.email ?? '');
+  }
+  if (ownersParam) {
+    if (!p.has('role')) { p.set('role', scope || 'admin'); p.set('email', u.email ?? ''); }
+    p.set('owners', ownersParam);
+  }
+  const s = p.toString();
+  return s ? `?${s}` : '';
 }
 
 function SpinDot() {
@@ -160,7 +170,8 @@ function MyAlertsCard({ qs }: { qs: string }) {
 // ── Exported: 2 equal cards ────────────────────────────────────────────────────
 export default function UserDashboardMetricCards({ scope }: { scope?: Scope }) {
   const user = useAuth();
-  const qs = scopeQuery(scope, user);
+  const { ownersParam } = useCoverSelection();
+  const qs = scopeQuery(scope, user, ownersParam);
   return (
     <>
       <style>{`@keyframes udmcSpin { to { transform: rotate(360deg) } }`}</style>

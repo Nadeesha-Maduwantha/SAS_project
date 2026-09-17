@@ -33,8 +33,16 @@ def create_user():
         requester_id, requester_role = get_current_user()
         if (requester_role or '').lower() == 'superuser':
             allowed_roles = {'salesuser', 'operationuser'}
+            # Custom user types (System Settings -> User Types) are meant to
+            # have the same standing as Sales/Operation, so a Super User can
+            # create those too — Admin/Super User accounts stay Admin-only.
+            try:
+                from services.user_types import list_types
+                allowed_roles |= {t['key'] for t in list_types(include_inactive=False)}
+            except Exception as e:
+                print(f"[users] custom type lookup failed, Super User restricted to the fixed 2 roles: {e}")
             if (data.get('role') or '').lower() not in allowed_roles:
-                return jsonify({'error': 'Super Users can only create Sales User or Operation User accounts'}), 403
+                return jsonify({'error': 'Super Users can only create Sales User, Operation User, or an active custom user type'}), 403
 
         supabase = get_supabase()
 
@@ -91,6 +99,26 @@ def create_user():
                 new_value=user_data,
                 description=f"Created user {email}",
             )
+
+        # Admin alert (email) — best-effort, never blocks account creation.
+        try:
+            from services.user_alerts import notify_new_user_created
+            requester_email = None
+            if requester_id:
+                try:
+                    prof = supabase.table('profiles').select('email').eq('id', requester_id).limit(1).execute().data
+                    requester_email = (prof or [{}])[0].get('email')
+                except Exception:
+                    pass
+            notify_new_user_created(
+                email=email,
+                full_name=user_data.get('full_name'),
+                role=user_data.get('role'),
+                department=user_data.get('department'),
+                created_by_email=requester_email,
+            )
+        except Exception as e:
+            print(f"[users] new-user alert email failed (non-fatal): {e}")
 
         return jsonify({
             'message': 'User created successfully',

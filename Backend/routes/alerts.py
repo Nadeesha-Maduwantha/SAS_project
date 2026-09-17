@@ -76,6 +76,19 @@ def get_alerts():
         if department:
             rows = [r for r in rows if (r.get('transport_mode') or '').strip().upper() == department]
 
+        # Generic role-based scoping (?role=&email=&department=&owners=), additive
+        # on top of the params above. Needed for custom user types, whose
+        # visibility field isn't sales_user_email — sales_user's own alerts page
+        # never sends ?role=, so it keeps using the sales_email branch above
+        # unchanged.
+        role_param = request.args.get('role')
+        if role_param:
+            from services.scope import read_scope, cover_allowed_shipment_ids
+            role, scope_email, scope_dept = read_scope(request.args)
+            allowed = cover_allowed_shipment_ids(role, scope_email, scope_dept, request.args.get('owners'))
+            if allowed is not None:
+                rows = [r for r in rows if r.get('shipment_id') in allowed]
+
         return jsonify({'data': rows}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -135,10 +148,13 @@ def get_active_alerts():
             )
         }
 
-        # Role scoping: keep only shipments this viewer may see.
-        from services.scope import read_scope, allowed_shipment_ids
+        # Role scoping (+ cover selection): keep only shipments this viewer may
+        # see. When a whose-work selection is sent (?owners=), narrow to those
+        # authorized owners' work; with none, behaves exactly as before.
+        from services.scope import read_scope, cover_allowed_shipment_ids
         role, email, dept = read_scope(request.args)
-        allowed = allowed_shipment_ids(role, email, dept)   # None = all
+        owners_param = request.args.get('owners')
+        allowed = cover_allowed_shipment_ids(role, email, dept, owners_param)   # None = all
         if allowed is not None:
             milestones = [m for m in milestones if m['shipment_id'] in allowed]
             shipment_map = {sid: s for sid, s in shipment_map.items() if sid in allowed}

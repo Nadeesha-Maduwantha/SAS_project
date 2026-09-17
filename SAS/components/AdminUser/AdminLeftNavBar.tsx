@@ -192,9 +192,10 @@ export default function AdminLeftNavBar({ topOffset = 57 }: { topOffset?: number
         onToggle={() => toggleSec('userManagement')}
         showLabel={fullyExpanded}
       >
-        <NavItem label="Add New User"  isActive={active('/admin/create_user')} onClick={() => go('/admin/create_user')} />
-        <NavItem label="Edit User"     isActive={active('/admin/edit-user')}   onClick={() => go('/admin/edit-user')} />
-        <NavItem label="Activity Logs" isActive={active('/admin/access-logs')} onClick={() => go('/admin/access-logs')} />
+        <NavItem label="Add New User"   isActive={active('/admin/create_user')}   onClick={() => go('/admin/create_user')} />
+        <NavItem label="User Registry"  isActive={active('/admin/user_registry')} onClick={() => go('/admin/user_registry')} />
+        <NavItem label="Edit User"      isActive={active('/admin/edit-user')}     onClick={() => go('/admin/edit-user')} />
+        <NavItem label="Activity Logs"  isActive={active('/admin/access-logs')}   onClick={() => go('/admin/access-logs')} />
       </Section>
 
       {/* Department Management */}
