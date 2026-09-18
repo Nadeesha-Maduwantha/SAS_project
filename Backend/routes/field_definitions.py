@@ -50,6 +50,24 @@ def upsert_field_definition():
             'updated_at': datetime.now(timezone.utc).isoformat(),
             'updated_by': user_id,
         }
+
+        # Optional: which table this field lives on, and — the shared field
+        # registry (see migrations/user_management_field_registry.sql) — what
+        # it's used for. Omitted entirely on an ordinary label/definition
+        # edit, so those never clobber a usage an admin already set elsewhere.
+        if 'table_name' in data:
+            row['table_name'] = (data.get('table_name') or 'shipments').strip() or 'shipments'
+        if 'usage' in data:
+            usage = (data.get('usage') or 'none').strip()
+            if usage not in ('milestones', 'user_management', 'none'):
+                return jsonify({'error': "usage must be one of 'milestones', 'user_management', 'none'"}), 400
+            row['usage'] = usage
+        if 'value_shape' in data:
+            shape = (data.get('value_shape') or 'text').strip()
+            if shape not in ('text', 'email', 'jsonb_email_array'):
+                return jsonify({'error': "value_shape must be one of 'text', 'email', 'jsonb_email_array'"}), 400
+            row['value_shape'] = shape
+
         resp = supabase.table('field_definitions').upsert(row, on_conflict='api_field').execute()
         return jsonify({'message': 'Saved', 'data': (resp.data or [None])[0]}), 200
     except Exception as e:

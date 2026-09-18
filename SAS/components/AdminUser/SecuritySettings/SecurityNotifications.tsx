@@ -33,6 +33,8 @@ const SecurityNotificationsSection: React.FC<SecurityNotificationsProps> = ({ da
           { key: "notifyPasswordChanges",   label: "Notify on password changes" },
           { key: "notifyPermissionChanges", label: "Notify on permission changes" },
           { key: "notifyNewDeviceLogin",    label: "Notify on new device login" },
+          { key: "notifyNewUserCreated",    label: "Notify when a new user account is created" },
+          { key: "notifyUserAccountSuggested", label: "Notify when a new email needs a user account created" },
         ].map((item) => (
           <label key={item.key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
             <input

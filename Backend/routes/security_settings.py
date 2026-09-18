@@ -47,6 +47,8 @@ def _general_row_to_camel(row: dict) -> dict:
             'notifyPasswordChanges': row.get('notify_password_changes'),
             'notifyPermissionChanges': row.get('notify_permission_changes'),
             'notifyNewDeviceLogin': row.get('notify_new_device_login'),
+            'notifyNewUserCreated': row.get('notify_new_user_created'),
+            'notifyUserAccountSuggested': row.get('notify_user_account_suggested'),
             'dailySummaryEmail': row.get('notify_daily_summary'),
         },
     }
@@ -185,6 +187,8 @@ def update_general_settings():
             'notify_password_changes': bool(notifications.get('notifyPasswordChanges')),
             'notify_permission_changes': bool(notifications.get('notifyPermissionChanges')),
             'notify_new_device_login': bool(notifications.get('notifyNewDeviceLogin')),
+            'notify_new_user_created': bool(notifications.get('notifyNewUserCreated')),
+            'notify_user_account_suggested': bool(notifications.get('notifyUserAccountSuggested')),
             'notify_daily_summary': bool(notifications.get('dailySummaryEmail')),
             'updated_at': datetime.utcnow().isoformat(),
             'updated_by': requester_id,

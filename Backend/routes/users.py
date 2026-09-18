@@ -36,8 +36,16 @@ def create_user():
             return jsonify({'error': 'Only Admins or Super Users can create accounts'}), 403
         if requester_role_lower == 'superuser':
             allowed_roles = {'salesuser', 'operationuser'}
+            # Custom user types (System Settings -> User Types) are meant to
+            # have the same standing as Sales/Operation, so a Super User can
+            # create those too — Admin/Super User accounts stay Admin-only.
+            try:
+                from services.user_types import list_types
+                allowed_roles |= {t['key'] for t in list_types(include_inactive=False)}
+            except Exception as e:
+                print(f"[users] custom type lookup failed, Super User restricted to the fixed 2 roles: {e}")
             if (data.get('role') or '').lower() not in allowed_roles:
-                return jsonify({'error': 'Super Users can only create Sales User or Operation User accounts'}), 403
+                return jsonify({'error': 'Super Users can only create Sales User, Operation User, or an active custom user type'}), 403
 
         supabase = get_supabase()
 
@@ -79,6 +87,16 @@ def create_user():
             traceback.print_exc()
             return jsonify({'error': 'Failed to create user profile. Please try again.'}), 400
 
+        # Mark the matching User Registry suggestion as created.
+        try:
+            supabase.table('suggested_user_accounts').update({
+                'status': 'created',
+                'created_user_id': user_id,
+            }).eq('email', email.strip().lower()).eq('status', 'pending').execute()
+        except Exception as suggestion_error:
+            # Account creation succeeded; registry cleanup should not block it.
+            print(f"Failed to resolve user registry suggestion: {suggestion_error}")
+
         print("=== STEP 4: Success ===")
         record_password_history(user_id, data.get('password'))
         log_access_event('Create', status='Success', email_attempted=email, user_id=user_id)
@@ -94,6 +112,47 @@ def create_user():
                 new_value=user_data,
                 description=f"Created user {email}",
             )
+
+        # Admin alert (email) — best-effort, never blocks account creation.
+        try:
+            from services.user_alerts import notify_new_user_created
+            requester_email = None
+            if requester_id:
+                try:
+                    prof = supabase.table('profiles').select('email').eq('id', requester_id).limit(1).execute().data
+                    requester_email = (prof or [{}])[0].get('email')
+                except Exception:
+                    pass
+            notify_new_user_created(
+                email=email,
+                full_name=user_data.get('full_name'),
+                role=user_data.get('role'),
+                department=user_data.get('department'),
+                created_by_email=requester_email,
+            )
+        except Exception as e:
+            print(f"[users] new-user alert email failed (non-fatal): {e}")
+
+        # Send login details to the new user.
+        try:
+            from services.email_service import send_email
+
+            password = data.get('password')
+            subject = '[SAS] Your user account has been created'
+            body = f"""Hello {user_data.get('full_name') or 'there'},
+
+Your SAS account has been created.
+
+Email: {email}
+Password: {password}
+
+Please log in and change your password after your first login.
+"""
+
+            send_email(email, subject, body)
+        except Exception as email_error:
+            # Do not fail account creation if email delivery fails.
+            print(f"Failed to send new-user email to {email}: {email_error}")
 
         return jsonify({
             'message': 'User created successfully',

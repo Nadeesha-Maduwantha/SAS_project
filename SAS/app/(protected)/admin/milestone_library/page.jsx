@@ -91,7 +91,7 @@ export default function MilestoneLibraryPage() {
   const data = useMemo(() => {
     const q = search.trim().toLowerCase();
     return items.filter(m => {
-      const matchQ = !q || (m.name || "").toLowerCase().includes(q) || trackedFieldOf(m).toLowerCase().includes(q);
+      const matchQ = !q || (m.name || "").toLowerCase().includes(q) || (trackedFieldOf(m) || "").toLowerCase().includes(q);
       const matchType = typeFil === "all" || m.milestone_type === typeFil;
       const matchCrit = critFil === "all" || (critFil === "critical" ? m.is_critical : !m.is_critical);
       return matchQ && matchType && matchCrit;

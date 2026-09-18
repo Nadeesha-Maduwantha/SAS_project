@@ -11,12 +11,21 @@
 import { useState, useEffect } from 'react';
 import { Plane, Anchor, AlertCircle, Package, CheckCircle2 } from 'lucide-react';
 import DonutChart, { DonutLegendRow } from '@/components/shared/DonutChart';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { useCoverSelection } from '@/lib/hooks/useCoverSelection';
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
 
 function authHeaders() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
   return { Authorization: `Bearer ${token}` };
+}
+
+// When the admin has a whose-work selection, filter these counts to those users
+// (admin role authorizes anyone). No selection → empty string → global counts.
+function coverQ(email?: string, ownersParam?: string) {
+  if (!ownersParam) return '';
+  return `?${new URLSearchParams({ role: 'admin', email: email ?? '', owners: ownersParam }).toString()}`;
 }
 
 // ── Spinner ────────────────────────────────────────────────────────────────────
@@ -172,9 +181,11 @@ function CriticalCard() {
   const [total,   setTotal]   = useState(0);
   const [items,   setItems]   = useState<TickerItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const user = useAuth();
+  const { ownersParam } = useCoverSelection();
 
   useEffect(() => {
-    fetch(`${API}/api/alerts/active`, { headers: authHeaders() })
+    fetch(`${API}/api/alerts/active${coverQ(user.email, ownersParam)}`, { headers: authHeaders() })
       .then(r => r.json())
       .then(d => {
         const groups: any[] = d.data || [];
@@ -200,7 +211,8 @@ function CriticalCard() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownersParam, user.email]);
 
   const badge = !loading ? (
     <span style={{
@@ -250,14 +262,17 @@ function CriticalCard() {
 function ShipmentSummaryCard() {
   const [stats,   setStats]   = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const user = useAuth();
+  const { ownersParam } = useCoverSelection();
 
   useEffect(() => {
-    fetch(`${API}/api/shipments/stats`, { headers: authHeaders() })
+    fetch(`${API}/api/shipments/stats${coverQ(user.email, ownersParam)}`, { headers: authHeaders() })
       .then(r => r.json())
       .then(d => setStats(d.data))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownersParam, user.email]);
 
   const total     = stats?.total     ?? 0;
   const completed = stats?.delivered ?? 0;

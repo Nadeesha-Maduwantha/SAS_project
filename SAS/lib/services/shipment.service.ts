@@ -228,6 +228,19 @@ export async function getShipmentsBySalesUser(email: string): Promise<Shipment[]
   return (data ?? []).map(mapRow)
 }
 
+// Generic role-scoped fetch — for custom user types (System Settings -> User
+// Types), whose visibility can't be expressed as sales_user_email/assigned_email.
+// Hits the additive ?role= branch on GET /api/shipments (services/scope.py),
+// the same scoping already used by the dashboard cards and milestone board.
+// Additive: getShipmentsBySalesUser/getShipmentsByOperationUser above are
+// untouched and still used by the real sales_user/operation_user pages.
+export async function getShipmentsByRole(role: string, email: string, department?: string): Promise<Shipment[]> {
+  const params = new URLSearchParams({ role, email })
+  if (department) params.set('department', department)
+  const data = await fetchFlask<ShipmentRow[]>(`/api/shipments?${params.toString()}`)
+  return (data ?? []).map(mapRow)
+}
+
 // Milestone Functions 
 // NOT CHANGED — these belong to the milestone module (teammate's work).
 // Left exactly as originally written.

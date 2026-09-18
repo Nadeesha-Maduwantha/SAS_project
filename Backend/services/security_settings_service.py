@@ -70,7 +70,8 @@ def get_notification_preferences() -> dict:
             supabase.table('security_settings_general')
             .select(
                 'notify_failed_attempts, notify_password_changes, '
-                'notify_permission_changes, notify_new_device_login'
+                'notify_permission_changes, notify_new_device_login, '
+                'notify_new_user_created, notify_user_account_suggested'
             )
             .eq('id', 1)
             .execute()
@@ -84,6 +85,8 @@ def get_notification_preferences() -> dict:
         'password_changes': bool(row.get('notify_password_changes')),
         'permission_changes': bool(row.get('notify_permission_changes')),
         'new_device_login': bool(row.get('notify_new_device_login')),
+        'new_user_created': bool(row.get('notify_new_user_created')),
+        'user_account_suggested': bool(row.get('notify_user_account_suggested')),
     }
 
 

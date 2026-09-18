@@ -1,10 +1,17 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
+import RoleSuggestion from '@/components/shared/RoleSuggestion'
+import CountrySelect from '@/components/shared/CountrySelect'
 
 const departmentRoles = ['salesuser', 'operationuser', 'superuser']
+
+interface UserType {
+  key: string
+  label: string
+}
 
 interface FormData {
   email: string
@@ -23,9 +30,11 @@ interface FormData {
 
 export default function CreateUserPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [customTypes, setCustomTypes] = useState<UserType[]>([])
   const [formData, setFormData] = useState<FormData>({
     email: '',
     password: '',
@@ -55,12 +64,41 @@ export default function CreateUserPage() {
     return () => el.removeEventListener('input', syncAddress)
   }, [])
 
+  // Prefill from ?email=&role= — the "Create user" shortcut on the User Type
+  // Rules suggested-accounts queue (System Settings) links here with both.
+  useEffect(() => {
+    const email = searchParams.get('email')
+    const role = searchParams.get('role')
+    if (!email && !role) return
+    setFormData(prev => ({
+      ...prev,
+      ...(email && { email }),
+      ...(role && { role }),
+    }))
+  }, [searchParams])
+
+  // System Settings -> User Types -> Custom user types — any admin has
+  // defined show up here as extra Role options, same standing as the 4 built
+  // ins for the purposes of this form.
+  useEffect(() => {
+    const token = localStorage.getItem('access_token')
+    fetch('http://127.0.0.1:5000/api/user-types', {
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    })
+      .then(r => r.json())
+      .then(j => setCustomTypes(j.data || []))
+      .catch(() => { /* custom types are additive — a failed fetch just means none show up */ })
+  }, [])
+
+  const customTypeKeys = customTypes.map(t => t.key)
+  const hasDepartment = (role: string) => departmentRoles.includes(role) || customTypeKeys.includes(role)
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
       [name]: value,
-      ...(name === 'role' && !departmentRoles.includes(value) && { department: '' }),
+      ...(name === 'role' && !hasDepartment(value) && { department: '' }),
     }))
   }
 
@@ -113,7 +151,7 @@ export default function CreateUserPage() {
     router.back()
   }
 
-  const showDepartment = departmentRoles.includes(formData.role)
+  const showDepartment = hasDepartment(formData.role)
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
@@ -169,6 +207,9 @@ export default function CreateUserPage() {
             </div>
           </div>
 
+          <RoleSuggestion email={formData.email} currentRole={formData.role}
+            onApply={(role) => setFormData(prev => ({ ...prev, role, ...(!hasDepartment(role) && { department: '' }) }))} />
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
@@ -198,21 +239,12 @@ export default function CreateUserPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Ethnicity</label>
-              <select
-                name="ethnicity"
+              <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+              <CountrySelect
                 value={formData.ethnicity}
-                onChange={handleInputChange}
+                onChange={(v) => setFormData(prev => ({ ...prev, ethnicity: v }))}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select option</option>
-                <option value="asian">Asian</option>
-                <option value="african">African</option>
-                <option value="caucasian">Caucasian</option>
-                <option value="hispanic">Hispanic</option>
-                <option value="other">Other</option>
-              </select>
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">User Role</label>
@@ -228,6 +260,13 @@ export default function CreateUserPage() {
                 <option value="superuser">Super User</option>
                 <option value="salesuser">Sales User</option>
                 <option value="operationuser">Operation User</option>
+                {customTypes.length > 0 && (
+                  <optgroup label="Custom types">
+                    {customTypes.map(t => (
+                      <option key={t.key} value={t.key}>{t.label}</option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </div>
           </div>

@@ -18,19 +18,37 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useCoverSelection } from '@/lib/hooks/useCoverSelection';
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ??
-  process.env.NEXT_PUBLIC_BACKEND_URL ??
-  'http://127.0.0.1:5000';
+// Small "whose work" badge, shown on rows when covering a colleague's work.
+function OwnerTag({ name, inline }: { name?: string | null; inline?: boolean }) {
+  if (!name) return null;
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700,
+      color: '#2563EB', background: '#EFF4FF', border: '1px solid #DBEAFE', borderRadius: 20,
+      padding: '1px 8px', marginTop: inline ? 0 : 3, whiteSpace: 'nowrap', flexShrink: 0 }}>
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="8" r="4" /><path d="M4 21v-1a6 6 0 0 1 12 0v1" /></svg>
+      {name}
+    </span>
+  );
+}
 
-// Build the ?role=&email=&department= scope query for the current viewer.
-function scopeQuery(scope: string | undefined, user: { email?: string; department?: string }) {
-  if (!scope || scope === 'admin') return '';
-  const p = new URLSearchParams({ role: scope });
-  if (scope === 'super') p.set('department', user.department ?? '');
-  else p.set('email', user.email ?? '');
-  return `?${p.toString()}`;
+// Build the ?role=&email=&department=&owners= scope query for the current viewer.
+// `ownersParam` is the whose-work cover selection; when present the backend shows
+// those (authorized) people's work. Absent → unchanged behavior.
+function scopeQuery(scope: string | undefined, user: { email?: string; department?: string }, ownersParam?: string) {
+  const p = new URLSearchParams();
+  if (scope && scope !== 'admin') {
+    p.set('role', scope);
+    if (scope === 'super') p.set('department', user.department ?? '');
+    else p.set('email', user.email ?? '');
+  }
+  if (ownersParam) {
+    if (!p.has('role')) { p.set('role', scope || 'admin'); p.set('email', user.email ?? ''); }
+    p.set('owners', ownersParam);
+  }
+  const s = p.toString();
+  return s ? `?${s}` : '';
 }
 
 // ── status → colour ────────────────────────────────────────────────────────────
@@ -74,7 +92,7 @@ interface Props {
   apiBase?:     string;   // default http://127.0.0.1:5000
   detailBase?:  string;   // e.g. /admin/milestone_detail  → `${detailBase}?id=<shipmentId>`
   canByMember?: boolean;  // admin + super users only
-  scope?:       'admin' | 'operation' | 'sales' | 'super';  // role-based data scoping
+  scope?:       'admin' | 'operation' | 'sales' | 'super' | (string & {});  // role-based data scoping — widened for custom user types
 }
 
 type Tab = 'completed' | 'overdue' | 'delayed' | 'by_client' | 'by_member';
@@ -98,6 +116,7 @@ export default function MilestoneBoard({
 }: Props) {
   const router = useRouter();
   const user = useAuth();
+  const { ownersParam } = useCoverSelection();          // whose-work global selection
   const [rows, setRows]       = useState<any[]>([]);   // [{ shipment, milestones }]
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
@@ -109,13 +128,14 @@ export default function MilestoneBoard({
   const [memberBy, setMemberBy] = useState<'person' | 'sales'>('person');
 
   useEffect(() => {
-    fetch(`${apiBase}/api/shipments/all-milestones${scopeQuery(scope, user)}`)
+    setLoading(true);
+    fetch(`${apiBase}/api/shipments/all-milestones${scopeQuery(scope, user, ownersParam)}`)
       .then(r => { if (!r.ok) throw new Error(`Server error: ${r.status}`); return r.json(); })
       .then(res => setRows(res.data ?? []))
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiBase, scope, user.email, user.department]);
+  }, [apiBase, scope, user.email, user.department, ownersParam]);
 
   // ── flatten: one entry per milestone, carrying its shipment ──
   const flat = useMemo(() => {
@@ -333,7 +353,10 @@ function FlatTable({ list, detailBase, router }: { list: any[]; detailBase?: str
                       {s.job_number ?? s.id.slice(0, 8)}
                     </span>
                   </td>
-                  <td style={{ padding: '13px 16px', fontSize: 13, fontWeight: 500, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.consignee_name ?? '—'}</td>
+                  <td style={{ padding: '13px 16px', maxWidth: 180 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.consignee_name ?? '—'}</div>
+                    <OwnerTag name={m.assigned_to} />
+                  </td>
                   <td style={{ padding: '13px 16px', fontSize: 13, color: 'var(--gray-700)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</td>
                   <td style={{ padding: '13px 16px' }}><StatusPill m={m} /></td>
                   <td style={{ padding: '13px 16px', fontSize: 12, color: m.status === 'overdue' ? '#DC2626' : 'var(--gray-500)', fontWeight: m.status === 'overdue' ? 600 : 400, whiteSpace: 'nowrap' }}>{fmtDate(m.due_date)}</td>
@@ -416,6 +439,7 @@ function ShipmentBlock({ entry, detailBase, router }: { entry: any; detailBase?:
               <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', marginTop: 4, background: t.bg, border: `1px solid ${t.border}`, borderLeft: `4px solid ${t.dot}`, borderRadius: 8 }}>
                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: t.dot, flexShrink: 0 }} />
                 <span style={{ fontSize: 13, fontWeight: 600, color: t.color, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
+                <OwnerTag name={m.assigned_to} inline />
                 {m.is_critical && <span style={{ fontSize: 9, fontWeight: 800, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #FECACA', padding: '1px 6px', borderRadius: 4 }}>CRITICAL</span>}
                 <span style={{ fontSize: 11, color: 'var(--gray-400)', whiteSpace: 'nowrap' }}>{fmtDate(m.due_date)}</span>
                 <StatusPill m={m} />

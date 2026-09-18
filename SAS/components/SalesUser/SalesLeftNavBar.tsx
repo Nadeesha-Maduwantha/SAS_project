@@ -200,6 +200,11 @@ export default function SalesLeftNavBar({ topOffset = 57 }: { topOffset?: number
           isActive={active('/sales_user/profile')}
           onClick={() => go('/sales_user/profile')}
         />
+        <NavItem
+          label="Cover Access"
+          isActive={active('/sales_user/cover')}
+          onClick={() => go('/sales_user/cover')}
+        />
       </Section>
     </div>
   );

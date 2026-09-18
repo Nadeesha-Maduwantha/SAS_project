@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Bell, AlertTriangle, KeyRound, ShieldAlert, Monitor } from 'lucide-react';
-import { apiUrl } from '@/lib/api';
+import { Bell, AlertTriangle, KeyRound, ShieldAlert, Monitor, UserPlus, UserSearch } from 'lucide-react';
 
-type NotificationType = 'failed_login' | 'password_changed' | 'permission_changed' | 'new_device_login';
+type NotificationType = 'failed_login' | 'password_changed' | 'permission_changed' | 'new_device_login' | 'new_user_created' | 'user_account_suggested';
 
 type Notification = {
   id: string;
@@ -18,6 +17,8 @@ const ICONS: Record<NotificationType, React.ReactNode> = {
   password_changed:   <KeyRound size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />,
   permission_changed: <ShieldAlert size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />,
   new_device_login:   <Monitor size={16} className="text-purple-500 flex-shrink-0 mt-0.5" />,
+  new_user_created:   <UserPlus size={16} className="text-green-500 flex-shrink-0 mt-0.5" />,
+  user_account_suggested: <UserSearch size={16} className="text-teal-500 flex-shrink-0 mt-0.5" />,
 };
 
 function timeAgo(iso: string): string {

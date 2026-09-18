@@ -204,6 +204,11 @@ export default function OperationLeftNavBar({ topOffset = 57, alertsCount = 0 }:
           isActive={active('/operation_user/profile')}
           onClick={() => go('/operation_user/profile')}
         />
+        <NavItem
+          label="Cover Access"
+          isActive={active('/operation_user/cover')}
+          onClick={() => go('/operation_user/cover')}
+        />
       </Section>
     </div>
   );
