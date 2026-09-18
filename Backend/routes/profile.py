@@ -2,7 +2,7 @@ import os
 import uuid
 from flask import Blueprint, jsonify, request
 from utils.auth_helper import require_auth, get_current_user
-from services.supabase_service import get_supabase
+from services.supabase_service import get_supabase, get_supabase_admin
 from utils.profile_validation import validate_full_name, validate_phone_number
 
 bp = Blueprint('profile', __name__, url_prefix='/api/profile')
@@ -30,8 +30,7 @@ def manage_profile():
     if request.method == 'PUT':
         user_id, _ = get_current_user()
         data = request.json
-        supabase = get_supabase()
-        
+
         update_data = {}
         if 'full_name' in data:
             name_error = validate_full_name(data['full_name'])
@@ -46,7 +45,16 @@ def manage_profile():
             update_data['phoneNumber'] = (data['phone_number'] or '').strip()
 
         try:
-            supabase.table('profiles').update(update_data).eq('id', user_id).execute()
+            # get_supabase() carries no user session, so under RLS
+            # (auth.uid() = id) the update matches 0 rows and Postgrest
+            # returns success with empty data instead of raising — the
+            # same footgun already fixed for profile deletion in
+            # user_edit.py. Use the service-role client and confirm a row
+            # actually changed.
+            supabase_admin = get_supabase_admin()
+            result = supabase_admin.table('profiles').update(update_data).eq('id', user_id).execute()
+            if not result.data:
+                return jsonify({"error": "Failed to update profile. Please try again."}), 400
             return jsonify({"message": "Profile updated successfully"}), 200
         except Exception as e:
             print(f"Failed to update profile for {user_id}: {e}")
