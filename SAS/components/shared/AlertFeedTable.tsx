@@ -14,7 +14,7 @@ import { exportAlertFeedPDF } from '@/lib/Utils/exportPDF';
 function scopeQuery(scope: string | undefined, u: { email?: string; department?: string }) {
   if (!scope || scope === 'admin') return '';
   const p = new URLSearchParams({ role: scope });
-  if (scope === 'super') p.set('department', u.department ?? '');
+  if (scope === 'super') { p.set('department', u.department ?? ''); p.set('email', u.email ?? ''); }
   else p.set('email', u.email ?? '');
   return `?${p.toString()}`;
 }
@@ -766,7 +766,7 @@ function FDRow({ fd, onMap }: { fd: FDItem; onMap: () => void }) {
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function AlertFeedTable({
   title   = 'Alert Feed',
-  apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5000',
+  apiBase = 'http://127.0.0.1:5000',
   maxRows = 8,
   showFieldDelayed = false,
   scope,
@@ -846,7 +846,7 @@ export default function AlertFeedTable({
   const processed = groups
     .filter(g => {
       const q = search.toLowerCase();
-      const matchSearch = !q || g.consignee_name.toLowerCase().includes(q) || g.job_number.toLowerCase().includes(q);
+      const matchSearch = !q || (g.consignee_name || '').toLowerCase().includes(q) || (g.job_number || '').toLowerCase().includes(q);
       const matchStatus =
         filterStatus === 'all'      ? true :
         filterStatus === 'critical' ? g.has_critical :

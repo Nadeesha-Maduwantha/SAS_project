@@ -93,6 +93,10 @@ export default function MilestoneTemplatePage() {
   const [countAnim,   setCountAnim]   = useState(false);
   const [prevDerived, setPrevDerived] = useState(null);
 
+  // Shipments this template is assigned to (for the "Assigned Shipments" panel).
+  const [assignedShips, setAssignedShips] = useState([]);
+  const [loadingShips,  setLoadingShips]  = useState(false);
+
   const onFocus = (e) => { e.target.style.borderColor = T.blue;    e.target.style.boxShadow = `0 0 0 3px ${T.blueBg}`; };
   const onBlur  = (e) => { e.target.style.borderColor = T.gray200; e.target.style.boxShadow = "none"; };
 
@@ -115,9 +119,24 @@ export default function MilestoneTemplatePage() {
     }
   };
 
+  const loadAssignedShipments = async () => {
+    if (!templateId) return;
+    setLoadingShips(true);
+    try {
+      const res = await fetch(`http://127.0.0.1:5000/api/templates/${templateId}/shipments`, { headers: authHeaders() });
+      const j   = await res.json();
+      if (res.ok) setAssignedShips(j.data || []);
+    } catch {
+      /* leave list empty on error */
+    } finally {
+      setLoadingShips(false);
+    }
+  };
+
   useEffect(() => {
     if (!templateId) return;
     loadTemplate();
+    loadAssignedShipments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [templateId]);
 
@@ -172,8 +191,11 @@ export default function MilestoneTemplatePage() {
     setSaving(true);
     try {
       const res    = await fetch(`http://127.0.0.1:5000/api/templates/${tmpl.id}/copy`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        method: "POST", headers: authHeaders(),
+        // Send the current editor state so edits made before "Save as Copy" are
+        // carried into the copy (backend copies from the stored original only
+        // when `milestones` is omitted).
+        body: JSON.stringify({ name, milestones: slotsToPayload(slots) }),
       });
       const result = await res.json();
       if (res.ok) {
@@ -424,6 +446,46 @@ export default function MilestoneTemplatePage() {
                       <IcoTrash /> Delete Template
                     </button>
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Assigned Shipments ── */}
+            <div style={{ background: T.cardBg, border: T.cardBorder, borderRadius: T.cardRadius, boxShadow: T.cardShadow, padding: "18px 20px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+                <div style={{ fontSize: "13px", fontWeight: "700", color: T.gray900 }}>Assigned Shipments</div>
+                <span style={{ fontSize: "11px", fontWeight: "700", color: T.blue, background: T.blueBg, border: `1px solid ${T.blueBorder}`, borderRadius: "20px", padding: "2px 9px" }}>
+                  {loadingShips ? "…" : assignedShips.length}
+                </span>
+              </div>
+              <div style={{ fontSize: "12px", color: T.gray500, marginBottom: "12px", lineHeight: "1.5" }}>
+                Shipments currently using this template. Click one to open its milestones.
+              </div>
+
+              {loadingShips ? (
+                <div style={{ fontSize: "12px", color: T.gray400, padding: "8px 0" }}>Loading…</div>
+              ) : assignedShips.length === 0 ? (
+                <div style={{ fontSize: "12px", color: T.gray400, padding: "8px 0" }}>Not assigned to any shipments yet.</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px", maxHeight: "280px", overflowY: "auto" }}>
+                  {assignedShips.map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => router.push(`/admin/shipment_milestones?id=${s.id}`)}
+                      style={{
+                        textAlign: "left", width: "100%", padding: "8px 10px", borderRadius: "8px",
+                        border: `1px solid ${T.gray200}`, background: T.cardBg, cursor: "pointer",
+                        fontFamily: T.font, transition: "all 0.12s",
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = T.blueBg; e.currentTarget.style.borderColor = T.blueBorder; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = T.cardBg; e.currentTarget.style.borderColor = T.gray200; }}
+                    >
+                      <div style={{ fontSize: "12px", fontWeight: "600", color: T.gray900, fontFamily: T.mono }}>
+                        {s.job_number ?? s.id.slice(0, 8)}
+                      </div>
+                      <div style={{ fontSize: "11px", color: T.gray500 }}>{s.consignee_name ?? "—"}</div>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>

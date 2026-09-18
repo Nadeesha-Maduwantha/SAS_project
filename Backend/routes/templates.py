@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from services.supabase_client import supabase
+from services.supabase_client import supabase, run_with_retry
 from datetime import datetime, timedelta
 import uuid
 
@@ -62,6 +62,63 @@ def _compute_due_date(cfg, shipment):
     return d.isoformat() if d else None
 
 
+def _resolve_manual(manual_due_dates, shipment_id, lib_id, cfg):
+    """Resolve what the admin chose at assign time for a 'manual' milestone.
+
+    The admin can pick any due-date basis at assignment (same options as the
+    milestone builder), so the payload per milestone can be:
+      • rich object → { "basis": "manual"|"another_field"|"days_after_creation"|
+                        "after_previous_milestone",
+                        "date": "YYYY-MM-DD",              (basis 'manual', shared)
+                        "per_shipment": { "<sid>": "..." },(basis 'manual', per-ship)
+                        "field": "<column>", "offset": <int> }  (field/relative bases)
+      • legacy string      → "YYYY-MM-DD"                 (treated as basis 'manual')
+      • legacy per-ship    → { "<sid>": { "<mkey>": "..." } }
+
+    Returns a normalized dict: {basis, due_date, field, offset}. basis is None
+    when nothing was provided for this milestone.
+    """
+    keys = [str(lib_id), cfg.get('milestone_key') or '', cfg.get('name') or '']
+
+    # 1) Rich object keyed by milestone.
+    for k in keys:
+        v = manual_due_dates.get(k)
+        if isinstance(v, dict) and 'basis' in v:
+            basis = v.get('basis') or 'manual'
+            if basis == 'manual':
+                due = (v.get('per_shipment') or {}).get(shipment_id) or v.get('date')
+                return {'basis': 'manual', 'due_date': due, 'field': None, 'offset': 0}
+            return {'basis': basis, 'due_date': None,
+                    'field': v.get('field'), 'offset': v.get('offset') or 0}
+
+    # 2) Legacy per-shipment nested map.
+    ps = manual_due_dates.get(shipment_id)
+    if isinstance(ps, dict):
+        for k in keys:
+            if ps.get(k):
+                return {'basis': 'manual', 'due_date': ps[k], 'field': None, 'offset': 0}
+
+    # 3) Legacy shared string.
+    for k in keys:
+        v = manual_due_dates.get(k)
+        if isinstance(v, str) and v:
+            return {'basis': 'manual', 'due_date': v, 'field': None, 'offset': 0}
+
+    return {'basis': None, 'due_date': None, 'field': None, 'offset': 0}
+
+
+def _manual_missing(resolved, cfg):
+    """True when a 'manual' milestone still lacks a usable due-date choice."""
+    basis = resolved.get('basis')
+    if basis is None:
+        return True
+    if basis == 'manual':
+        return not resolved.get('due_date')
+    if basis == 'another_field':
+        return not resolved.get('field')  # needs a reference field
+    return False  # days_after_creation / after_previous_milestone → offset only
+
+
 def _identity(row):
     """Stable identity for matching a milestone across a template re-assignment.
     Works for both existing DB rows and freshly-built snapshot rows."""
@@ -85,6 +142,11 @@ def _snapshot_row(shipment, template_id, cfg, rules, seq, milestone_lib_id):
         'sequence_order':       seq,
         'is_critical':          bool(cfg.get('is_critical', False)),
         'status':               'pending',
+        # Always present so a batched insert has a uniform key set. The Replace
+        # preservation path may set this on some rows (matched milestones) and not
+        # others; without a default key those rows would differ and PostgREST
+        # rejects the whole insert with PGRST102 "All object keys must match".
+        'completed_date':       None,
         'due_date':             _compute_due_date(cfg, shipment),
         'automated':            False,
         # Responsible person comes straight from CargoWise (created_by). The
@@ -163,13 +225,13 @@ def _with_counts(tpl: dict) -> dict:
 @templates_bp.route('/api/templates', methods=['GET'])
 def get_all_templates():
     try:
-        response = (
+        response = run_with_retry(lambda: (
             supabase.table('milestone_templates')
             .select(_TEMPLATE_SELECT)
             .eq('is_active', True)
             .order('created_at', desc=True)
             .execute()
-        )
+        ))
 
         data = [_with_counts(t) for t in (response.data or [])]
         return jsonify({"data": data}), 200
@@ -181,13 +243,13 @@ def get_all_templates():
 @templates_bp.route('/api/templates/<template_id>', methods=['GET'])
 def get_template(template_id):
     try:
-        response = (
+        response = run_with_retry(lambda: (
             supabase.table('milestone_templates')
             .select(_TEMPLATE_SELECT)
             .eq('id', template_id)
             .single()
             .execute()
-        )
+        ))
 
         if not response.data:
             return jsonify({"error": "Template not found"}), 404
@@ -327,6 +389,11 @@ def update_template(template_id):
 @templates_bp.route('/api/templates/<template_id>/copy', methods=['POST'])
 def copy_template(template_id):
     try:
+        # Body is optional. When the editor sends `name` / `milestones`, the copy
+        # is built from the CURRENT (possibly unsaved) editor state instead of the
+        # stored original — so "edit then Save as Copy" keeps the edits.
+        body = request.get_json(silent=True) or {}
+
         # Step 1: Get the original template and its milestones
         original = (
             supabase.table('milestone_templates')
@@ -341,11 +408,13 @@ def copy_template(template_id):
 
         original_data = original.data
 
-        # Step 2: Create new template with "Copy of" prefix
+        # Step 2: Create the new template. Use the name the user typed; fall back
+        # to "Copy of <original>" only when no name was provided.
+        copy_name = (body.get('name') or '').strip() or f"Copy of {original_data['name']}"
         new_template_data = {
-            "name":          f"Copy of {original_data['name']}",
-            "shipment_type": original_data['shipment_type'],
-            "description":   original_data['description'],
+            "name":          copy_name,
+            "shipment_type": body.get('shipment_type') or original_data['shipment_type'],
+            "description":   body.get('description', original_data.get('description', '')),
             "is_active":     True,
         }
 
@@ -357,26 +426,36 @@ def copy_template(template_id):
 
         new_template_id = new_template_response.data[0]['id']
 
-        # Step 3a: Copy legacy name-only milestones (older templates)
-        original_milestones = original_data.get('template_milestones', [])
-        if original_milestones:
-            new_milestones = [{
-                "template_id":    new_template_id,
-                "name":           m['name'],
-                "sequence_order": m['sequence_order'],
-            } for m in original_milestones]
-            supabase.table('template_milestones').insert(new_milestones).execute()
+        # Step 3: Populate the copy's milestones.
+        if body.get('milestones') is not None:
+            # ── From the editor's current state (edited-then-copied) ──────────
+            # Same shape/handling as create/update, so unsaved edits are kept.
+            rows = [_build_tml_row(new_template_id, m, i)
+                    for i, m in enumerate(body['milestones'])]
+            for row in rows:
+                supabase.table('template_milestone_library').insert(row).execute()
+        else:
+            # ── From the stored original (plain copy, no edits) ───────────────
+            # Step 3a: Copy legacy name-only milestones (older templates)
+            original_milestones = original_data.get('template_milestones', [])
+            if original_milestones:
+                new_milestones = [{
+                    "template_id":    new_template_id,
+                    "name":           m['name'],
+                    "sequence_order": m['sequence_order'],
+                } for m in original_milestones]
+                supabase.table('template_milestones').insert(new_milestones).execute()
 
-        # Step 3b: Copy library/local milestone links (new templates)
-        original_links = original_data.get('template_milestone_library', [])
-        for link in original_links:
-            supabase.table('template_milestone_library').insert({
-                "template_id":      new_template_id,
-                "milestone_lib_id": link.get('milestone_lib_id'),
-                "sequence_order":   link.get('sequence_order', 0),
-                "is_local":         link.get('is_local', False),
-                "local_config":     link.get('local_config'),
-            }).execute()
+            # Step 3b: Copy library/local milestone links (new templates)
+            original_links = original_data.get('template_milestone_library', [])
+            for link in original_links:
+                supabase.table('template_milestone_library').insert({
+                    "template_id":      new_template_id,
+                    "milestone_lib_id": link.get('milestone_lib_id'),
+                    "sequence_order":   link.get('sequence_order', 0),
+                    "is_local":         link.get('is_local', False),
+                    "local_config":     link.get('local_config'),
+                }).execute()
 
         return jsonify({
             "message": "Template copied successfully",
@@ -420,7 +499,12 @@ def preview_assignment(template_id):
         _MODE = {'air_import': 'air', 'air_export': 'air', 'sea_import': 'sea', 'sea_export': 'sea'}
         _DIR  = {'air_import': 'import', 'air_export': 'export', 'sea_import': 'import', 'sea_export': 'export'}
 
-        if assign_type in _MODE:
+        # Freight mode only — we don't have reliable import/export direction data
+        # (st_description is mostly empty), so assignment is by transport_mode.
+        if assign_type in ('air', 'sea'):
+            query = query.ilike('transport_mode', assign_type)
+
+        elif assign_type in _MODE:  # legacy air_import/sea_export ids, still supported
             query = (query
                      .ilike('transport_mode', _MODE[assign_type])
                      .ilike('st_description', f"%{_DIR[assign_type]}%"))
@@ -513,6 +597,30 @@ def assign_template_to_shipments(template_id):
         )
         shipments_map = {s['id']: s for s in (shipments_res.data or [])}
 
+        # ── Guard: every 'manual'-basis milestone must have a due date ────────
+        # Validated up-front so we never do a partial assign. Only the shipments
+        # that will actually receive the template need dates (skipped conflicts
+        # don't). Shared date covers all; per-shipment must cover each target.
+        manual_specs = [(cfg, lib_id) for (cfg, _rules, lib_id) in milestone_specs
+                        if cfg.get('expected_date_source') == 'manual']
+        if manual_specs:
+            existing_rows = (supabase.table('shipment_milestones')
+                             .select('shipment_id')
+                             .in_('shipment_id', shipment_ids).execute()).data or []
+            have = {r['shipment_id'] for r in existing_rows}
+            targets = (shipment_ids if conflict_strategy == 'replace'
+                       else [s for s in shipment_ids if s not in have])
+            missing = set()
+            for sid in targets:
+                for cfg, lib_id in manual_specs:
+                    resolved = _resolve_manual(manual_due_dates, sid, lib_id, cfg)
+                    if _manual_missing(resolved, cfg):
+                        missing.add(cfg.get('name') or 'Milestone')
+            if missing:
+                return jsonify({'error':
+                    'Set a due date for every manual milestone before assigning. '
+                    'Missing: ' + ', '.join(sorted(missing))}), 400
+
         assigned = 0
         skipped  = 0
  
@@ -521,7 +629,8 @@ def assign_template_to_shipments(template_id):
             # Check for existing milestones on this shipment
             existing = (
                 supabase.table('shipment_milestones')
-                .select('id, name, milestone_lib_id, status, completed_date, due_date, milestone_snapshot')
+                .select('id, name, milestone_lib_id, status, completed_date, due_date, '
+                        'milestone_snapshot, assigned_to, assigned_email')
                 .eq('shipment_id', shipment_id)
                 .execute()
             )
@@ -555,19 +664,35 @@ def assign_template_to_shipments(template_id):
             new_rows = []
             for seq, (cfg, rules, lib_id) in enumerate(milestone_specs):
                 row = _snapshot_row(shipment, template_id, cfg, rules, seq, lib_id)
-                # 'manual' basis: use the date the admin picked at assignment.
+                # 'manual' basis: apply what the admin chose at assignment. They
+                # can pick a fixed date (shared or per-shipment) OR another basis
+                # (a date field / days-after-creation / after-previous-milestone),
+                # in which case we rewrite the snapshot's due-basis so the normal
+                # status recompute resolves the deadline at runtime.
                 if cfg.get('expected_date_source') == 'manual':
-                    md = manual_due_dates.get(str(lib_id)) \
-                        or manual_due_dates.get(cfg.get('milestone_key') or '') \
-                        or manual_due_dates.get(cfg.get('name') or '')
-                    if md:
-                        row['due_date'] = md
+                    resolved = _resolve_manual(manual_due_dates, shipment_id, lib_id, cfg)
+                    if resolved['basis'] == 'manual':
+                        if resolved['due_date']:
+                            row['due_date'] = resolved['due_date']
+                    elif resolved['basis']:
+                        snap = row['milestone_snapshot']
+                        snap['expected_date_source'] = resolved['basis']
+                        snap['expected_date_field']  = resolved['field']
+                        snap['expected_date_offset'] = resolved['offset']
+                        # Compute now where possible; after_previous resolves later.
+                        row['due_date'] = _compute_due_date(snap, shipment)
                 new_rows.append(row)
 
             # Preserve prior progress on Replace: a milestone that already existed
             # (matched by identity) keeps its status / completed_date / due_date, so
             # a previously overdue, delayed or completed milestone is NOT reset to a
             # fresh 'pending' just because the template was re-assigned.
+            #
+            # The responsible person is preserved the same way. _snapshot_row
+            # defaults assigned_to/assigned_email to the shipment's created_by,
+            # which would otherwise overwrite a person the admin picked by hand
+            # (PATCH /api/milestones/<id>) — and blank the field entirely on
+            # shipments that carry no created_by_email.
             if conflict_strategy == 'replace' and existing.data:
                 prev = {_identity(m): m for m in existing.data}
                 for row in new_rows:
@@ -578,6 +703,10 @@ def assign_template_to_shipments(template_id):
                         row['completed_date'] = old.get('completed_date')
                         if old.get('due_date'):
                             row['due_date'] = old['due_date']
+                        if old.get('assigned_email'):
+                            row['assigned_email'] = old['assigned_email']
+                        if old.get('assigned_to'):
+                            row['assigned_to'] = old['assigned_to']
 
             if new_rows:
                 supabase.table('shipment_milestones').insert(new_rows).execute()

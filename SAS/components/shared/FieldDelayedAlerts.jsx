@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import { AlertTriangle, ArrowRight, RefreshCw } from "lucide-react";
 import { T } from "@/styles/tokens";
 
-const API = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+const API = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:5000";
 
 function authHeaders() {
   const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : "";

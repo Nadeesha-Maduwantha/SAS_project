@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
-const FLASK_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
+const FLASK_API = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:5000';
 const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'] as const;
 
 function clearSession() {
