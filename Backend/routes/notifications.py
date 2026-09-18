@@ -109,6 +109,52 @@ def get_notifications():
                     'timestamp': r.get('created_at'),
                 })
 
+        if prefs.get('new_user_created'):
+            rows = (
+                supabase.table('audit_trail')
+                .select('audit_id, created_at, description, new_value')
+                .eq('action_type_id', 1)   # Create
+                .eq('entity_type_id', 2)   # User Profile
+                .order('created_at', desc=True)
+                .limit(FEED_LIMIT_PER_CATEGORY)
+                .execute()
+            ).data or []
+            for r in rows:
+                new_val = r.get('new_value')
+                if isinstance(new_val, str):
+                    try:
+                        new_val = json.loads(new_val)
+                    except Exception:
+                        new_val = None
+                role = (new_val or {}).get('role') if isinstance(new_val, dict) else None
+                message = r.get('description') or 'A new user account was created'
+                if role:
+                    message += f" ({role})"
+                items.append({
+                    'id': f"new_user_{r.get('audit_id')}",
+                    'type': 'new_user_created',
+                    'message': message,
+                    'timestamp': r.get('created_at'),
+                })
+
+        if prefs.get('user_account_suggested'):
+            rows = (
+                supabase.table('suggested_user_accounts')
+                .select('id, email, detected_role, first_seen_at, status')
+                .eq('status', 'pending')
+                .order('first_seen_at', desc=True)
+                .limit(FEED_LIMIT_PER_CATEGORY)
+                .execute()
+            ).data or []
+            for r in rows:
+                role_hint = f" — looks like a {r['detected_role']}" if r.get('detected_role') else ""
+                items.append({
+                    'id': f"user_account_suggested_{r.get('id')}",
+                    'type': 'user_account_suggested',
+                    'message': f"New email with no account yet: {r.get('email')}{role_hint}",
+                    'timestamp': r.get('first_seen_at'),
+                })
+
         items.sort(key=lambda x: x['timestamp'] or '', reverse=True)
         return jsonify({'data': items[:FEED_LIMIT_TOTAL]}), 200
 

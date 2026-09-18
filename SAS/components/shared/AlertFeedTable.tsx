@@ -2,21 +2,28 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Mail, RefreshCw, AlertTriangle, LayoutGrid, List, Search, ChevronDown, X, ArrowRight, Download } from 'lucide-react';
+import { ChevronRight, Mail, RefreshCw, AlertTriangle, LayoutGrid, List, Search, ChevronDown, X, ArrowRight } from 'lucide-react';
 import EmailComposeModal from '@/components/EmailComposeModal';
 import { AlertData } from '@/components/AlertDetailsModal';
 import ShipmentMilestonesModal from '@/components/Shipmentmilestonesmodal';
 import MilestoneDetailModal    from '@/components/Milestonedetailmodal';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { exportAlertFeedPDF } from '@/lib/Utils/exportPDF';
+import { useCoverSelection } from '@/lib/hooks/useCoverSelection';
 
-// Build the ?role=&email=&department= scope query for the current viewer.
-function scopeQuery(scope: string | undefined, u: { email?: string; department?: string }) {
-  if (!scope || scope === 'admin') return '';
-  const p = new URLSearchParams({ role: scope });
-  if (scope === 'super') { p.set('department', u.department ?? ''); p.set('email', u.email ?? ''); }
-  else p.set('email', u.email ?? '');
-  return `?${p.toString()}`;
+// Build the ?role=&email=&department=&owners= scope query for the current viewer.
+function scopeQuery(scope: string | undefined, u: { email?: string; department?: string }, ownersParam?: string) {
+  const p = new URLSearchParams();
+  if (scope && scope !== 'admin') {
+    p.set('role', scope);
+    if (scope === 'super') { p.set('department', u.department ?? ''); p.set('email', u.email ?? ''); }
+    else p.set('email', u.email ?? '');
+  }
+  if (ownersParam) {
+    if (!p.has('role')) { p.set('role', scope || 'admin'); p.set('email', u.email ?? ''); }
+    p.set('owners', ownersParam);
+  }
+  const s = p.toString();
+  return s ? `?${s}` : '';
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -52,7 +59,7 @@ interface Props {
   apiBase?: string;
   maxRows?: number;
   showFieldDelayed?: boolean;   // include yellow "expected data not arrived" rows/cards
-  scope?: 'admin' | 'operation' | 'sales' | 'super';  // role-based data scoping
+  scope?: 'admin' | 'operation' | 'sales' | 'super' | (string & {});  // role-based data scoping — widened for custom user types
 }
 
 // "expected data field delayed / possibly renamed" item (yellow)
@@ -268,8 +275,12 @@ function MilestonePopup({
                     )}
                   </div>
                   {alert.assigned_to && (
-                    <div style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: 2, paddingLeft: 13 }}>
-                      {alert.assigned_to}
+                    <div style={{ marginTop: 3, paddingLeft: 13 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700,
+                        color: '#2563EB', background: '#EFF4FF', border: '1px solid #DBEAFE', borderRadius: 20, padding: '1px 8px' }}>
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg>
+                        {alert.assigned_to}
+                      </span>
                     </div>
                   )}
                   {alert.notes && (
@@ -623,7 +634,7 @@ function ShipmentAlertRow({
                           <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: '#FEE2E2', color: '#B91C1C', border: '1px solid #FECACA' }}>CRITICAL</span>
                         )}
                       </div>
-                      {alert.assigned_to && <div style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: 2, paddingLeft: 13 }}>{alert.assigned_to}</div>}
+                      {alert.assigned_to && <div style={{ marginTop: 3, paddingLeft: 13 }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: '#2563EB', background: '#EFF4FF', border: '1px solid #DBEAFE', borderRadius: 20, padding: '1px 8px' }}><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/></svg>{alert.assigned_to}</span></div>}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--gray-500)', padding: '11px 4px' }}>{fmtDate(alert.due_date)}</div>
                     <div style={{ padding: '11px 4px' }}><OverdueBadge days={alert.overdue_days} status={alert.status} /></div>
@@ -773,6 +784,7 @@ export default function AlertFeedTable({
 }: Props) {
   const router = useRouter();
   const user = useAuth();
+  const { ownersParam } = useCoverSelection();          // whose-work global selection
   const [groups,    setGroups]    = useState<ShipmentAlertGroup[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState<string | null>(null);
@@ -787,26 +799,16 @@ export default function AlertFeedTable({
   
 
   // ── View: table or cards — default cards, remembered ───────
-  const [view, setView] = useState<'table' | 'cards'>('cards');
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('alertFeedView') as 'table' | 'cards' | null;
-      if (saved === 'table' || saved === 'cards') {
-        setView(saved);
-      }
-    } catch {
-      /* ignore storage access errors */
+  const [view, setView] = useState<'table' | 'cards'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('alertFeedView') as 'table' | 'cards') ?? 'cards';
     }
-  }, []);
+    return 'cards';
+  });
 
   const switchView = (v: 'table' | 'cards') => {
     setView(v);
-    try {
-      localStorage.setItem('alertFeedView', v);
-    } catch {
-      /* ignore */
-    }
+    if (typeof window !== 'undefined') localStorage.setItem('alertFeedView', v);
   };
 
   // ── Search ──────────────────────────────────────────────────
@@ -821,7 +823,7 @@ export default function AlertFeedTable({
   const fetchAlerts = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const res = await fetch(`${apiBase}/api/alerts/active${scopeQuery(scope, user)}`);
+      const res = await fetch(`${apiBase}/api/alerts/active${scopeQuery(scope, user, ownersParam)}`);
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
       const data = await res.json();
       setGroups(data.data ?? []);
@@ -838,7 +840,7 @@ export default function AlertFeedTable({
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiBase, showFieldDelayed, scope, user.email, user.department]);
+  }, [apiBase, showFieldDelayed, scope, user.email, user.department, ownersParam]);
 
   useEffect(() => { fetchAlerts(); }, [fetchAlerts]);
 
@@ -916,35 +918,18 @@ export default function AlertFeedTable({
               </div>
             )}
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={() => exportAlertFeedPDF(processed, `${title} — Report`)}
-              disabled={loading || processed.length === 0}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500,
-                color: 'var(--gray-500)', background: 'none', border: '1px solid var(--card-border-color)',
-                padding: '5px 12px', borderRadius: 7, fontFamily: 'inherit',
-                cursor: loading || processed.length === 0 ? 'not-allowed' : 'pointer',
-                opacity: loading || processed.length === 0 ? 0.5 : 1,
-              }}
-              onMouseEnter={e => { if (!(loading || processed.length === 0)) e.currentTarget.style.background = 'var(--gray-50)'; }}
-              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-            >
-              <Download size={12} /> Export PDF
-            </button>
-            <button
-              onClick={fetchAlerts}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500,
-                color: 'var(--gray-500)', background: 'none', border: '1px solid var(--card-border-color)',
-                padding: '5px 12px', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--gray-50)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-            >
-              <RefreshCw size={12} /> Refresh
-            </button>
-          </div>
+          <button
+            onClick={fetchAlerts}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500,
+              color: 'var(--gray-500)', background: 'none', border: '1px solid var(--card-border-color)',
+              padding: '5px 12px', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--gray-50)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+          >
+            <RefreshCw size={12} /> Refresh
+          </button>
         </div>
 
         {/* ── Shared Toolbar ──────────────────────────────────── */}

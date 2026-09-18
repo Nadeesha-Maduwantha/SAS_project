@@ -85,6 +85,23 @@ def get_all_shipments():
                 return jsonify({"data": []}), 200
             query = query.in_('id', shipment_ids)
 
+        # Generic role-based scoping (?role=&email=&department=&owners=), additive
+        # on top of the legacy params above. Used by custom user types (and any
+        # future generic caller) whose visibility can't be expressed as
+        # sales_user_email/assigned_email — the modern scope.py system already
+        # backing /api/shipments/stats and /api/shipments/all-milestones. Only
+        # engages when ?role= is present, so every existing caller (sales_user,
+        # operation_user pages) that never sends it is completely unaffected.
+        role_param = request.args.get('role')
+        if role_param:
+            from services.scope import read_scope, cover_allowed_shipment_ids
+            role, email, dept = read_scope(request.args)
+            allowed = cover_allowed_shipment_ids(role, email, dept, request.args.get('owners'))
+            if allowed is not None:
+                if not allowed:
+                    return jsonify({"data": []}), 200
+                query = query.in_('id', list(allowed))
+
         response = query.execute()
         return jsonify({"data": response.data}), 200
     except Exception as e:
@@ -140,8 +157,7 @@ def get_archived_shipments_by_department(mode):
         response = (
             supabase.table('shipments')
             .select('*')
-            # ilike, not eq — transport_mode is stored as both 'AIR' and 'Air'.
-            .ilike('transport_mode', mode)
+            .eq('transport_mode', mode.upper())
             .order('created_at', desc=True)
             .execute()
         )
@@ -156,18 +172,11 @@ def get_shipment_stats():
     """
     select only the columns needed for counting instead of select('*').
     Fetching all columns of all rows just to count them wastes bandwidth.
-
-    ?mode=AIR|SEA           one freight desk — a super user only sees their own
-    ?sales_user_email=<e>    shipments owned by one sales user
-    ?assigned_email=<e>      shipments with a milestone assigned to this person
-                             (operation users own milestones, not shipments)
-
-    All optional; with none of them the totals cover every shipment.
     """
     try:
-        from services.scope import read_scope, allowed_shipment_ids
+        from services.scope import read_scope, cover_allowed_shipment_ids
         role, email, dept = read_scope(request.args)
-        allowed = allowed_shipment_ids(role, email, dept)   # None = all
+        allowed = cover_allowed_shipment_ids(role, email, dept, request.args.get('owners'))   # None = all
         if allowed is not None and not allowed:
             return jsonify({"data": {'total': 0, 'pending': 0, 'delivered': 0, 'delayed': 0}}), 200
 
@@ -256,9 +265,7 @@ def get_department_stats(mode):
         response = (
             supabase.table('shipments')
             .select('milestones, llm_identified_type, llm_note')
-            # ilike, not eq — transport_mode is stored as both 'AIR' and 'Air',
-            # and eq('AIR') silently drops the odd-cased rows.
-            .ilike('transport_mode', mode)
+            .eq('transport_mode', mode.upper())
             .execute()
         )
         shipments = response.data or []
@@ -292,22 +299,14 @@ def get_branch_stats():
 
     Branches with no delays are still returned so the caller can show
     the full picture rather than only the bad ones.
-
-    ?mode=AIR|SEA restricts the breakdown to one freight desk — a super user
-    only ever sees their own. Omitted or unrecognised means all shipments.
     """
     try:
-        query = (
+        response = (
             supabase.table('shipments')
             .select('branch, milestones, llm_identified_type')
+            .execute()
         )
-
-        # ilike, not eq — transport_mode is stored as both 'AIR' and 'Air'.
-        mode = (request.args.get('mode') or '').strip().upper()
-        if mode in ('AIR', 'SEA'):
-            query = query.ilike('transport_mode', mode)
-
-        shipments = query.execute().data or []
+        shipments = response.data or []
 
         totals: dict[str, int] = {}
         delayed: dict[str, int] = {}
@@ -346,8 +345,7 @@ def get_shipments_by_department(mode):
         response = (
             supabase.table('shipments')
             .select('*')
-            # ilike, not eq — transport_mode is stored as both 'AIR' and 'Air'.
-            .ilike('transport_mode', mode)
+            .eq('transport_mode', mode.upper())
             .not_.ilike('llm_identified_type', '%delivered%')
             .order('created_at', desc=True)
             .execute()
@@ -419,11 +417,22 @@ def get_all_milestones():
     Milestone.status is one of completed | overdue | delayed | pending.
     """
     try:
-        from services.scope import read_scope, allowed_shipment_ids
+        from services.scope import read_scope, cover_allowed_shipment_ids
         role, email, dept = read_scope(request.args)
-        allowed = allowed_shipment_ids(role, email, dept)   # None = all
+        # Include a covered colleague's work when an active grant exists, honoring
+        # the whose-work filter (?owners=a@x,b@y). No grant → unchanged (self only).
+        owners_param = request.args.get('owners')
+        allowed = cover_allowed_shipment_ids(role, email, dept, owners_param)   # None = all
+        # Active grants let the frontend build the whose-work filter + owner tags.
+        grants = []
+        if role in ('operation', 'sales') and email:
+            try:
+                from services.cover_access import active_grants_for
+                grants = active_grants_for(email)
+            except Exception:
+                grants = []
         if allowed is not None and not allowed:
-            return jsonify({"data": []}), 200
+            return jsonify({"data": [], "grants": grants}), 200
 
         q = (
             supabase.table('shipments')
@@ -463,7 +472,7 @@ def get_all_milestones():
             {"shipment": s, "milestones": ms_by_ship.get(s['id'], [])}
             for s in shipments
         ]
-        return jsonify({"data": result}), 200
+        return jsonify({"data": result, "grants": grants}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

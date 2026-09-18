@@ -1,9 +1,16 @@
 'use client'
 import SuperLeftNavBar from '@/components/SuperUser/SuperLeftNavBar'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import AppDialog, { AppDialogState } from '@/components/shared/AppDialog'
+import RoleSuggestion from '@/components/shared/RoleSuggestion'
+import CountrySelect from '@/components/shared/CountrySelect'
+
+interface UserType {
+  key: string
+  label: string
+}
 
 interface FormData {
   email: string
@@ -25,6 +32,7 @@ export default function CreateUserPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [dialog, setDialog] = useState<AppDialogState | null>(null)
+  const [customTypes, setCustomTypes] = useState<UserType[]>([])
   const [formData, setFormData] = useState<FormData>({
     email: '',
     password: '',
@@ -35,6 +43,20 @@ export default function CreateUserPage() {
     department: '',
     address: '',
   })
+
+  // System Settings -> User Types -> Custom user types with the same
+  // standing as Sales/Operation show up here too (the backend allows a
+  // Super User to create Sales User, Operation User, or an active custom
+  // type — see routes/users.py).
+  useEffect(() => {
+    const token = localStorage.getItem('access_token')
+    fetch('http://127.0.0.1:5000/api/user-types', {
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    })
+      .then(r => r.json())
+      .then(j => setCustomTypes(j.data || []))
+      .catch(() => { /* custom types are additive — a failed fetch just means none show up */ })
+  }, [])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -152,6 +174,9 @@ export default function CreateUserPage() {
             </div>
           </div>
 
+          <RoleSuggestion email={formData.email} currentRole={formData.role}
+            onApply={(role) => setFormData(prev => ({ ...prev, role }))} />
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
@@ -181,21 +206,12 @@ export default function CreateUserPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Ethnicity</label>
-              <select
-                name="ethnicity"
+              <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+              <CountrySelect
                 value={formData.ethnicity}
-                onChange={handleInputChange}
+                onChange={(v) => setFormData(prev => ({ ...prev, ethnicity: v }))}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select option</option>
-                <option value="asian">Asian</option>
-                <option value="african">African</option>
-                <option value="caucasian">Caucasian</option>
-                <option value="hispanic">Hispanic</option>
-                <option value="other">Other</option>
-              </select>
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">User Role</label>
@@ -209,6 +225,13 @@ export default function CreateUserPage() {
                 <option value="">Select Role</option>
                 <option value="salesuser">Sales User</option>
                 <option value="operationuser">Operation User</option>
+                {customTypes.length > 0 && (
+                  <optgroup label="Custom types">
+                    {customTypes.map(t => (
+                      <option key={t.key} value={t.key}>{t.label}</option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </div>
           </div>

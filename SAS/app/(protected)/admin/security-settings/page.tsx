@@ -41,6 +41,8 @@ const defaultSettings: SecuritySettings = {
     notifyPasswordChanges: true,
     notifyPermissionChanges: true,
     notifyNewDeviceLogin: true,
+    notifyNewUserCreated: true,
+    notifyUserAccountSuggested: true,
     dailySummaryEmail: true,
   },
 };

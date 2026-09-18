@@ -32,6 +32,8 @@ export interface SecurityNotifications {
   notifyPasswordChanges: boolean;
   notifyPermissionChanges: boolean;
   notifyNewDeviceLogin: boolean;
+  notifyNewUserCreated: boolean;
+  notifyUserAccountSuggested: boolean;
   dailySummaryEmail: boolean;
 }
 
