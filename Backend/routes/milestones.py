@@ -7,11 +7,18 @@ milestones_bp = Blueprint('milestones', __name__)
 @milestones_bp.route('/api/milestones', methods=['GET'])
 def get_milestones():
     """
-    Returns all shipment milestones joined with their shipment info.
+    Returns all shipment milestones joined with their shipment info,
+    soonest due date first.
     Supports optional query params:
       ?status=overdue|pending|completed|current
       ?is_critical=true|false
       ?shipment_id=<id>
+      ?assigned_email=<email>   only milestones assigned to this person
+      ?upcoming=true            drop already-completed milestones
+      ?limit=<n>                cap the rows returned
+
+    assigned_email + upcoming + limit together give a dashboard feed:
+    "the next N things this operation user has to deal with".
     """
     try:
         query = (
@@ -40,6 +47,24 @@ def get_milestones():
         shipment_id = request.args.get('shipment_id')
         if shipment_id:
             query = query.eq('shipment_id', shipment_id)
+
+        # ilike, not eq — assigned_email casing is not normalised on write.
+        assigned_email = (request.args.get('assigned_email') or '').strip()
+        if assigned_email:
+            query = query.ilike('assigned_email', assigned_email)
+
+        # A feed shows what is still outstanding, not what is already done.
+        if request.args.get('upcoming') == 'true':
+            query = query.is_('completed_date', 'null')
+
+        # Rows are already ordered by due_date ascending, so limiting here
+        # returns the soonest-due ones rather than an arbitrary slice.
+        try:
+            limit = int(request.args.get('limit', 0))
+        except (TypeError, ValueError):
+            limit = 0
+        if limit > 0:
+            query = query.limit(min(limit, 200))
 
         response = query.execute()
         data = response.data or []

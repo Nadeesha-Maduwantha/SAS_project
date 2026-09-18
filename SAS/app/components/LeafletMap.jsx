@@ -124,7 +124,9 @@ export default function LeafletMap({ pins = [], routes = [], selectedPin, onPinC
   return (
     <div
       ref={containerRef}
-      style={{ width: "100%", height: "100%", minHeight: "400px" }}
+      // isolation:isolate + zIndex:0 keep Leaflet's internal control/pane
+      // z-indexes contained inside the map, so they can't render over the sidebar.
+      style={{ width: "100%", height: "100%", minHeight: "400px", isolation: "isolate", zIndex: 0, position: "relative" }}
     />
   );
 }

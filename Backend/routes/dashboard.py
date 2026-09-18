@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 from services.supabase_client import supabase
+from services.sales_digest import count_digest_emails
 from datetime import datetime, timezone
 
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -28,8 +29,9 @@ def admin_metrics():
         # total users
         users = supabase.table('profiles').select('id, role').execute()
 
-        # emails
-        emails = supabase.table('email_logs').select('id').execute()
+        # Generated emails = digest emails that actually went out. The old count
+        # read email_logs, which nothing writes to, so the card always showed 0.
+        digest_emails = count_digest_emails()
 
         # Milestones drive both the success rate and the alert counts.
         #
@@ -65,7 +67,7 @@ def admin_metrics():
                 "active_alerts": len(active),
                 "critical_alerts": sum(1 for m in active if m.get('is_critical')),
                 "alert_shipments": len({m['shipment_id'] for m in active}),
-                "total_emails": len(emails.data),
+                "total_emails": digest_emails['sent'],
                 "success_rate": round(success_rate, 2)
             }
         }), 200

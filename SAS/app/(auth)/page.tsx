@@ -3,6 +3,7 @@
 import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { apiUrl } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -52,7 +53,7 @@ export default function LoginPage() {
     }
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/auth/login', {
+      const response = await fetch(apiUrl('/api/auth/login'), {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
@@ -62,7 +63,7 @@ export default function LoginPage() {
           remember_device_token: localStorage.getItem('remember_device_token'),
         }),
       });
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (data.remember_device_token) {
         localStorage.setItem('remember_device_token', data.remember_device_token);

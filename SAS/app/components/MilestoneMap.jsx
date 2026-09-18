@@ -128,7 +128,7 @@ export default function MilestoneMap({ milestone, allMilestones, currentIndex })
   }, [currentIndex]);
 
   return (
-    <div className="relative w-full rounded-xl overflow-hidden border border-gray-700" style={{ height: "280px" }}>
+    <div className="relative w-full rounded-xl overflow-hidden border border-gray-700" style={{ height: "280px", isolation: "isolate", zIndex: 0 }}>
       <style>{`
         .sas-tooltip { background:white!important;border:1px solid #e2e8f0!important;border-radius:8px!important;padding:6px 10px!important;box-shadow:0 4px 12px rgba(0,0,0,0.15)!important; }
         .sas-tooltip::before { display:none!important; }

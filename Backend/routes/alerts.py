@@ -134,6 +134,16 @@ def get_active_alerts():
                 'id, job_number, consignee_name, consignee_email, transport_mode',
             )
         }
+
+        # Role scoping: keep only shipments this viewer may see.
+        from services.scope import read_scope, allowed_shipment_ids
+        role, email, dept = read_scope(request.args)
+        allowed = allowed_shipment_ids(role, email, dept)   # None = all
+        if allowed is not None:
+            milestones = [m for m in milestones if m['shipment_id'] in allowed]
+            shipment_map = {sid: s for sid, s in shipment_map.items() if sid in allowed}
+            if not milestones:
+                return jsonify({'data': [], 'total': 0}), 200
  
         # Step 4: Calculate overdue_days and group by shipment
         today = datetime.now(timezone.utc)

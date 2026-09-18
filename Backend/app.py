@@ -33,8 +33,13 @@ from routes.field_map import field_map_bp
 from routes.system_settings import system_settings_bp
 from routes.field_definitions import field_definitions_bp
 from routes.field_watch import field_watch_bp
-from routes.alert_engine_routes import alert_engine_bp
+
+from routes.department_overview import department_overview_bp
+
+
 from routes.sales_digest_routes import sales_digest_bp
+from routes.operations_digest_routes import operations_digest_bp
+from routes.super_digest_routes import super_digest_bp
 
 from routes.dashboard import dashboard_bp
 
@@ -222,18 +227,6 @@ def run_field_watch():
         print(f"[field_watch] ERROR: {e}")
 
 
-def run_alert_engine_job():
-    try:
-        from services.alert_engine import run_alert_engine
-        result = run_alert_engine()
-        print(f"[alert_engine] evaluated={result.get('evaluated')} "
-              f"outstanding={result.get('outstanding')} sent={result.get('sent')} "
-              f"skipped={result.get('skipped')} stopped={result.get('stopped')} "
-              f"errors={len(result.get('errors', []))}")
-    except Exception as e:
-        print(f"[alert_engine] ERROR: {e}")
-
-
 def run_sales_digest_job():
     try:
         from services.sales_digest import run_sales_digest
@@ -243,6 +236,28 @@ def run_sales_digest_job():
               f"errors={len(result.get('errors', []))}")
     except Exception as e:
         print(f"[sales_digest] ERROR: {e}")
+
+
+def run_operations_digest_job():
+    try:
+        from services.operations_digest import run_operations_digest
+        result = run_operations_digest()
+        print(f"[operations_digest] overdue_emails={result.get('overdue_emails')} "
+              f"reminder_emails={result.get('reminder_emails')} "
+              f"errors={len(result.get('errors', []))}")
+    except Exception as e:
+        print(f"[operations_digest] ERROR: {e}")
+
+
+def run_super_digest_job():
+    try:
+        from services.super_digest import run_super_digest
+        result = run_super_digest()
+        print(f"[super_digest] overdue_emails={result.get('overdue_emails')} "
+              f"reminder_emails={result.get('reminder_emails')} "
+              f"errors={len(result.get('errors', []))}")
+    except Exception as e:
+        print(f"[super_digest] ERROR: {e}")
 
 
 # ── App setup ────────────────────────────────────────────────────────────────
@@ -288,10 +303,12 @@ app.register_blueprint(field_map_bp)
 app.register_blueprint(system_settings_bp)
 app.register_blueprint(field_definitions_bp)
 
-app.register_blueprint(alert_engine_bp)
 app.register_blueprint(sales_digest_bp)
+app.register_blueprint(operations_digest_bp)
+app.register_blueprint(super_digest_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(field_watch_bp)
+app.register_blueprint(department_overview_bp)
 
 @app.route("/health")
 def health_check():
@@ -365,19 +382,27 @@ scheduler.add_job(
     replace_existing=True,
 )
 
-# Alert engine at :05 every hour
-scheduler.add_job(
-    run_alert_engine_job,
-    CronTrigger(minute=5, timezone='Asia/Colombo'),
-    id='alert_engine_run',
-    replace_existing=True,
-)
-
 # Sales-user digest emails (overdue + upcoming) at 8:00 AM Sri Lanka time
 scheduler.add_job(
     run_sales_digest_job,
     CronTrigger(hour=8, minute=0, timezone='Asia/Colombo'),
     id='sales_digest_run',
+    replace_existing=True,
+)
+
+# Operation-user digest emails (overdue + upcoming) at 8:00 AM Sri Lanka time
+scheduler.add_job(
+    run_operations_digest_job,
+    CronTrigger(hour=8, minute=0, timezone='Asia/Colombo'),
+    id='operations_digest_run',
+    replace_existing=True,
+)
+
+# Super-user digest emails (overdue + upcoming) at 8:00 AM Sri Lanka time
+scheduler.add_job(
+    run_super_digest_job,
+    CronTrigger(hour=8, minute=0, timezone='Asia/Colombo'),
+    id='super_digest_run',
     replace_existing=True,
 )
 
@@ -388,17 +413,20 @@ app.config['SCHEDULER'] = scheduler
 app.config['RUN_SYNC_JOB'] = run_sync_job
 
 
-def find_available_port(start_port: int, max_attempts: int = 20) -> int:
+def find_available_port(start_port: int, host: str, max_attempts: int = 20) -> int:
     import socket
 
     configured_port = int(os.getenv('PORT', str(start_port)))
     ports_to_try = [configured_port] + list(range(configured_port + 1, configured_port + max_attempts + 1))
 
+    # Probe with the same host and SO_REUSEADDR that werkzeug's server uses, so
+    # the result reflects what app.run() will actually manage to bind. Probing a
+    # different host than we serve on reports free ports as busy and vice versa.
     for port in ports_to_try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
-                sock.bind(('127.0.0.1', port))
+                sock.bind((host, port))
                 return port
             except OSError:
                 continue
@@ -407,6 +435,10 @@ def find_available_port(start_port: int, max_attempts: int = 20) -> int:
 
 
 if __name__ == '__main__':
-    port = find_available_port(5000)
-    print(f'Starting Flask app on port {port}')
-    app.run(debug=True, host='0.0.0.0', port=port, use_reloader=False)
+    # Loopback by default: the frontend calls http://127.0.0.1:5000, and binding
+    # the specific address rather than the wildcard lets us share port 5000 with
+    # macOS AirPlay Receiver, which holds *:5000. Set HOST=0.0.0.0 for LAN access.
+    host = os.getenv('HOST', '127.0.0.1')
+    port = find_available_port(5000, host=host)
+    print(f'Starting Flask app on {host}:{port}')
+    app.run(debug=True, host=host, port=port, use_reloader=False)
