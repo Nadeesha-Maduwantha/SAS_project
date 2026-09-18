@@ -19,6 +19,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ??
+  process.env.NEXT_PUBLIC_BACKEND_URL ??
+  'http://127.0.0.1:5000';
+
 // Build the ?role=&email=&department= scope query for the current viewer.
 function scopeQuery(scope: string | undefined, user: { email?: string; department?: string }) {
   if (!scope || scope === 'admin') return '';
@@ -66,7 +71,7 @@ const SearchIcon = () => (
 
 // ── types ────────────────────────────────────────────────────────────────────────
 interface Props {
-  apiBase?:     string;   // default http://localhost:5000
+  apiBase?:     string;   // default http://127.0.0.1:5000
   detailBase?:  string;   // e.g. /admin/milestone_detail  → `${detailBase}?id=<shipmentId>`
   canByMember?: boolean;  // admin + super users only
   scope?:       'admin' | 'operation' | 'sales' | 'super';  // role-based data scoping
@@ -86,7 +91,7 @@ function StatusPill({ m }: { m: any }) {
 
 // ── main ─────────────────────────────────────────────────────────────────────────
 export default function MilestoneBoard({
-  apiBase = 'http://localhost:5000',
+  apiBase = 'http://127.0.0.1:5000',
   detailBase,
   canByMember = false,
   scope,

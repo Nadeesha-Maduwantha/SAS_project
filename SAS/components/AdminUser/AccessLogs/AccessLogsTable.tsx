@@ -21,6 +21,15 @@ export function formatTimestamp(ts: string): string {
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()} ${hours}.${minutes}${ampm}`;
 }
 
+// Returns up to `maxButtons` page numbers, sliding the window to keep `current` visible.
+function getVisiblePages(current: number, total: number, maxButtons: number): number[] {
+  if (total <= maxButtons) return Array.from({ length: total }, (_, i) => i + 1);
+  let start = Math.max(1, current - Math.floor(maxButtons / 2));
+  const end = Math.min(total, start + maxButtons - 1);
+  start = Math.max(1, end - maxButtons + 1);
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+}
+
 const AccessLogsTable: React.FC<AccessLogsTableProps> = ({
   logs,
   currentPage,
@@ -29,8 +38,14 @@ const AccessLogsTable: React.FC<AccessLogsTableProps> = ({
   onPageChange,
 }) => {
   const totalPages = Math.ceil(totalResults / resultsPerPage);
+  const visiblePages = getVisiblePages(currentPage, totalPages, 5);
   const startResult = (currentPage - 1) * resultsPerPage + 1;
   const endResult = Math.min(currentPage * resultsPerPage, totalResults);
+  // `logs` arrives as the full filtered list — resultsPerPage/currentPage
+  // were only ever used for the "Showing X to Y" label and page buttons
+  // above, never to actually slice what gets rendered, so every page
+  // showed the same rows.
+  const pageLogs = logs.slice((currentPage - 1) * resultsPerPage, currentPage * resultsPerPage);
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -50,7 +65,7 @@ const AccessLogsTable: React.FC<AccessLogsTableProps> = ({
             </tr>
           </thead>
           <tbody>
-            {logs.map((log, index) => (
+            {pageLogs.map((log, index) => (
               <tr
                 key={log.id}
                 className={`border-b border-gray-100 transition-colors ${
@@ -96,7 +111,7 @@ const AccessLogsTable: React.FC<AccessLogsTableProps> = ({
           >
             Previous
           </button>
-          {Array.from({ length: Math.min(totalPages, 3) }, (_, i) => i + 1).map((page) => (
+          {visiblePages.map((page) => (
             <button
               key={page}
               onClick={() => onPageChange(page)}

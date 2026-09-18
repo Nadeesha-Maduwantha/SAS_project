@@ -7,6 +7,7 @@ import { UserFormData } from '@/types';
 import AdminTopBar from '@/components/AdminUser/AdminTopBar';
 import AdminLeftNavBar from '@/components/AdminUser/AdminLeftNavBar';
 import AppDialog, { AppDialogState } from '@/components/shared/AppDialog';
+import { apiUrl } from '@/lib/api';
 
 const EditUserPage: React.FC = () => {
   // --- New state for search ---
@@ -39,7 +40,7 @@ const EditUserPage: React.FC = () => {
       const token = localStorage.getItem('access_token');
       
       // Connects to your Python Flask backend
-      const response = await fetch(`http://127.0.0.1:5000/api/users/search?email=${encodeURIComponent(searchEmail)}`, {
+      const response = await fetch(apiUrl(`/api/users/search?email=${encodeURIComponent(searchEmail)}`), {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -102,7 +103,7 @@ const EditUserPage: React.FC = () => {
     try {
       const token = localStorage.getItem('access_token');
 
-      const response = await fetch(`http://localhost:5000/api/users/${formData.id}`, {
+      const response = await fetch(apiUrl(`/api/users/${formData.id}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

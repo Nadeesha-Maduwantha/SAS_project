@@ -13,7 +13,7 @@ import { useState, useEffect } from 'react';
 import { Package, AlertTriangle, CheckCircle2, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/lib/hooks/useAuth';
 
-const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+const API = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
 
 type Scope = 'admin' | 'operation' | 'sales' | 'super';
 

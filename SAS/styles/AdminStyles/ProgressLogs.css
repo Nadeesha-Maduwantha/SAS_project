@@ -80,3 +80,14 @@
   letter-spacing: var(--ls-caps);
   color: var(--c-text-muted);
 }
+
+/* Loading / empty / error line, in place of the three rows. */
+.logs-state {
+  @apply py-8 text-center;
+  font-size: var(--fs-md);
+  color: var(--c-text-subtle);
+}
+
+.logs-state--error {
+  color: var(--c-danger);
+}

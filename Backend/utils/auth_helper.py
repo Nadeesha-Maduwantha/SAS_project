@@ -2,8 +2,6 @@ from flask import request, jsonify
 from services.supabase_service import get_supabase
 from functools import wraps
 import traceback
-import jwt
-import os
 
 
 def _fetch_user_role(user_id):
@@ -46,45 +44,37 @@ def get_current_user():
         print(f"[AUTH STEP 2] Token extracted, length: {len(token)}")
 
         try:
-            # Decode JWT token WITHOUT verification
-            print(f"[AUTH STEP 3] Attempting to decode JWT...")
-            decoded = jwt.decode(
-                token,
-                options={"verify_signature": False},
-                algorithms=["ES256", "HS256"],
-            )
-            print(f"[AUTH STEP 3] SUCCESS: Token decoded")
-            print(f"[AUTH STEP 3] Token keys: {list(decoded.keys())}")
-            print(f"[AUTH STEP 3] Token content: {decoded}")
+            # Verify the token against Supabase's Auth server rather than
+            # trusting its (unverified) claims locally.
+            print(f"[AUTH STEP 3] Verifying token with Supabase...")
+            supabase = get_supabase()
+            user_response = supabase.auth.get_user(token)
+            user = user_response.user if user_response else None
 
-            user_id = decoded.get('sub')
-            print(f"[AUTH STEP 4] Extracted user_id (sub): {user_id}")
-
-            if not user_id:
-                print("[AUTH STEP 4] FAILED: Token missing 'sub' claim")
+            if not user or not user.id:
+                print("[AUTH STEP 3] FAILED: Token rejected by Supabase")
                 return None, None
 
-            print(f"[AUTH STEP 5] Querying profiles table for user_id: {user_id}")
-            user_role = None
-            try:
-                user_role = _fetch_user_role(user_id)
-            except Exception as exc:
-                print(f"[AUTH STEP 5] Profile lookup error: {exc}")
-                user_role = decoded.get('role') or decoded.get('user_role') or 'authenticated'
+            user_id = str(user.id)
+            print(f"[AUTH STEP 3] SUCCESS: Token verified for user_id: {user_id}")
 
-            print(f"[AUTH STEP 5] Resolved role: {user_role}")
-            if user_role is None:
-                print(f"[AUTH STEP 5] FAILED: User {user_id} not found in profiles table")
+            print(f"[AUTH STEP 4] Querying profiles table for user_id: {user_id}")
+
+            # Fetch user role from profiles table
+            profiles = supabase.table('profiles').select('role').eq('id', user_id).execute()
+            print(f"[AUTH STEP 4] Query returned data: {bool(profiles.data)}")
+            if profiles.data:
+                print(f"[AUTH STEP 4] Profile data: {profiles.data}")
+
+            if not profiles.data:
+                print(f"[AUTH STEP 4] FAILED: User {user_id} not found in profiles table")
                 return None, None
 
+            user_role = profiles.data[0]['role']
             print(f"[AUTH SUCCESS] User {user_id} authenticated with role {user_role}")
             print("="*80 + "\n")
             return user_id, user_role
 
-        except jwt.DecodeError as e:
-            print(f"[AUTH STEP 3] FAILED: JWT decode error: {str(e)}")
-            traceback.print_exc()
-            return None, None
         except Exception as e:
             print(f"[AUTH EXCEPTION] Token validation failed: {str(e)}")
             traceback.print_exc()

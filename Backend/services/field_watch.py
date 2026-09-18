@@ -316,6 +316,10 @@ def resolve_field_conflict(expected_field, real_field, milestone_key=None):
             try:
                 supabase.table('milestone_field_map').upsert(
                     {'milestone_key': mk, 'api_field': real_field.strip(),
+                     # canonical_field = the name the milestone reads, so the sync
+                     # stores the renamed incoming field's value UNDER the expected
+                     # name and resolve_field_value() actually finds it.
+                     'canonical_field': expected_field.strip(),
                      'source': 'api_discovery', 'is_active': True},
                     on_conflict='milestone_key,api_field',
                 ).execute()

@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import PhoneInput from "react-phone-number-input";
+import "react-phone-number-input/style.css";
+import { validateFullName, validatePhoneNumber } from "@/lib/profileValidation";
 
 interface PersonalInformationProps {
   profile: {
@@ -25,6 +28,7 @@ export default function PersonalInformation({
 
   const [isModified, setIsModified] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{ fullName?: string; phone?: string }>({});
 
   // THIS IS THE FIX: Update the form when the database data arrives
   useEffect(() => {
@@ -42,17 +46,42 @@ export default function PersonalInformation({
       ...prev,
       [name]: value,
     }));
+    setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
+    setIsModified(true);
+  };
+
+  const handlePhoneChange = (value?: string) => {
+    setFormData((prev) => ({ ...prev, phone: value || "" }));
+    setFieldErrors((prev) => ({ ...prev, phone: undefined }));
     setIsModified(true);
   };
 
   const handleSave = async () => {
+    // Only validate (and send) fields the user actually changed. Accounts
+    // with a phone number saved before this validation existed may have a
+    // value that wouldn't pass it (e.g. a bare local number with no country
+    // code) — that shouldn't block saving an unrelated field like the name,
+    // and shouldn't force a re-entry of data the user never touched.
+    const nameChanged = formData.fullName !== profile.fullName;
+    const phoneChanged = formData.phone !== profile.phone;
+
+    const nameError = nameChanged ? validateFullName(formData.fullName) : null;
+    const phoneError = phoneChanged ? validatePhoneNumber(formData.phone) : null;
+    if (nameError || phoneError) {
+      setFieldErrors({ fullName: nameError ?? undefined, phone: phoneError ?? undefined });
+      return;
+    }
+    setFieldErrors({});
+
     setIsSaving(true);
     try {
-      const { department, email, ...editableData } = formData;
+      const editableData: { fullName?: string; phone?: string } = {};
+      if (nameChanged) editableData.fullName = formData.fullName;
+      if (phoneChanged) editableData.phone = formData.phone;
       await onUpdate(editableData); // Wait for the backend update
       setIsModified(false);
     } catch (err) {
-      alert("Failed to save changes.");
+      alert(err instanceof Error ? err.message : "Failed to save changes.");
     } finally {
       setIsSaving(false);
     }
@@ -65,6 +94,7 @@ export default function PersonalInformation({
       phone: profile.phone,
       department: profile.department,
     });
+    setFieldErrors({});
     setIsModified(false);
   };
 
@@ -100,8 +130,14 @@ export default function PersonalInformation({
             name="fullName"
             value={formData.fullName}
             onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-full"
+            maxLength={100}
+            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-full ${
+              fieldErrors.fullName ? "border-red-400" : "border-gray-300"
+            }`}
           />
+          {fieldErrors.fullName && (
+            <p className="text-sm text-red-500 mt-1">{fieldErrors.fullName}</p>
+          )}
         </div>
 
         <div>
@@ -121,13 +157,23 @@ export default function PersonalInformation({
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Phone Number
           </label>
-          <input
-            type="tel"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-full"
+          <PhoneInput
+            international
+            // react-phone-number-input requires `value` to already be a
+            // valid E.164 string. A pre-existing number saved before this
+            // validation existed (e.g. a bare local number) isn't, and would
+            // crash the component — show it as unset instead until the user
+            // enters a properly-formatted one.
+            value={formData.phone?.startsWith('+') ? formData.phone : undefined}
+            onChange={handlePhoneChange}
+            className={`w-full px-3 py-2 border rounded-lg focus-within:ring-2 focus-within:ring-blue-500 max-w-full ${
+              fieldErrors.phone ? "border-red-400" : "border-gray-300"
+            }`}
+            numberInputProps={{ className: "outline-none bg-transparent flex-1 min-w-0" }}
           />
+          {fieldErrors.phone && (
+            <p className="text-sm text-red-500 mt-1">{fieldErrors.phone}</p>
+          )}
         </div>
 
         <div>

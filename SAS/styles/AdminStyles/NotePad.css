@@ -19,16 +19,31 @@
 .note-item:last-child { border-bottom: 0; }
 .note-item:hover      { background: var(--c-surface-sunken); }
 
-.note-item__title {
-  font-size: var(--fs-md);
+.note-item__shipment {
+  @apply inline-flex items-center gap-1 px-1.5 py-0.5;
+  max-width: 100%;
+  border-radius: var(--radius-inner);
+  background: var(--c-accent-bg);
+  font-size: var(--fs-xs);
   font-weight: var(--fw-medium);
-  color: var(--c-text-strong);
+  color: var(--c-accent);
 }
 
-.note-item__preview {
-  @apply mt-0.5 truncate;
-  font-size: var(--fs-sm);
-  color: var(--c-text-muted);
+.note-item__shipment-label {
+  @apply truncate;
+}
+
+/* Two lines of the note, then an ellipsis — the row stays one height
+   whether the note is a phone number or three paragraphs. */
+.note-item__text {
+  @apply mt-1 overflow-hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: var(--fs-md);
+  color: var(--c-text-strong);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .note-item__time {
@@ -45,7 +60,7 @@
 
 /* ── Editor ───────────────────────────────────────────────── */
 
-.note-input,
+.note-select,
 .note-textarea {
   @apply w-full px-3 py-2;
   border: 1px solid var(--c-border);
@@ -56,15 +71,22 @@
   font-family: inherit;
 }
 
-.note-input::placeholder,
 .note-textarea::placeholder { color: var(--c-text-subtle); }
 
-.note-input:focus,
+.note-select:focus,
 .note-textarea:focus {
   outline: none;
   border-color: var(--c-accent);
   box-shadow: 0 0 0 3px var(--c-accent-bg);
 }
+
+.note-select {
+  @apply mt-2;
+  cursor: pointer;
+}
+
+/* First control in the editor — nothing above it to space away from. */
+.note-select--first { @apply mt-0; }
 
 .note-textarea {
   @apply mt-2;

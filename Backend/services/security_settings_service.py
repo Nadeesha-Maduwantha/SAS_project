@@ -117,6 +117,43 @@ def get_login_restriction_settings() -> dict:
     }
 
 
+def is_remember_device_enabled() -> bool:
+    """True when Security Settings -> Session Management -> 'Remember device
+    for 30 days' is on. Defaults to False (no remembering) if the settings
+    row is missing, same convention as every other toggle here."""
+    try:
+        resp = (
+            supabase.table('security_settings_general')
+            .select('session_remember_device')
+            .eq('id', 1)
+            .execute()
+        )
+        row = resp.data[0] if resp.data else {}
+    except Exception:
+        row = {}
+
+    return bool(row.get('session_remember_device'))
+
+
+def get_max_concurrent_sessions() -> int | None:
+    """Returns Security Settings -> Session Management -> 'Max concurrent
+    sessions', or None if unset/missing — meaning no cap, both the behavior
+    before this setting existed and while the row hasn't been seeded yet."""
+    try:
+        resp = (
+            supabase.table('security_settings_general')
+            .select('session_max_concurrent')
+            .eq('id', 1)
+            .execute()
+        )
+        row = resp.data[0] if resp.data else {}
+    except Exception:
+        row = {}
+
+    value = row.get('session_max_concurrent')
+    return int(value) if value else None
+
+
 DEFAULT_PASSWORD_MIN_LENGTH = 8
 DEFAULT_PASSWORD_EXPIRY_DAYS = 0  # 0 = passwords never expire
 

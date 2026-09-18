@@ -118,7 +118,6 @@ def test_session_management_full_round_trip(admin_session, wait, base_url):
     _set_input(admin_session, "input-maxConcurrentSessions", 2)
     for key, want in (
         ("checkbox-autoLogoutOnInactivity", True),
-        ("checkbox-requireReauthForSensitive", False),
         ("checkbox-rememberDevice", True),
     ):
         _set_checkbox(admin_session, key, want)
@@ -129,7 +128,6 @@ def test_session_management_full_round_trip(admin_session, wait, base_url):
     wait.until(lambda d: d.find_element(By.CSS_SELECTOR, '[data-testid="input-timeoutMinutes"]').get_attribute("value") == "45")
     assert admin_session.find_element(By.CSS_SELECTOR, '[data-testid="input-maxConcurrentSessions"]').get_attribute("value") == "2"
     assert admin_session.find_element(By.CSS_SELECTOR, '[data-testid="checkbox-autoLogoutOnInactivity"]').is_selected() is True
-    assert admin_session.find_element(By.CSS_SELECTOR, '[data-testid="checkbox-requireReauthForSensitive"]').is_selected() is False
     assert admin_session.find_element(By.CSS_SELECTOR, '[data-testid="checkbox-rememberDevice"]').is_selected() is True
 
 

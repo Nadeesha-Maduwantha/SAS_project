@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     Mail, Clock, CheckCircle2, XCircle, Search,
     ChevronRight, RefreshCw, Send,
@@ -101,11 +101,13 @@ export default function SuperDigestLogPage() {
 
     useEffect(() => { fetchHistory(); }, []);
 
-    const handleSendNow = async () => {
-        const confirmed = window.confirm(
-            'This will immediately email every super user with overdue or upcoming-due milestones in their department. Continue?'
-        );
-        if (!confirmed) return;
+    const handleSendNow = async (skipConfirm = false) => {
+        if (!skipConfirm) {
+            const confirmed = window.confirm(
+                'This will immediately email every super user with overdue or upcoming-due milestones in their department. Continue?'
+            );
+            if (!confirmed) return;
+        }
 
         setSending(true);
         setSendResult(null);
@@ -133,6 +135,21 @@ export default function SuperDigestLogPage() {
         }
         setSending(false);
     };
+
+    // Auto-run the digest when opened with ?autosend=1 (e.g. from the Admin
+    // dashboard "Send Digest Email" card). That click is the confirmation, so
+    // skip the prompt and strip the param so a refresh won't fire it again.
+    const autoSendFired = useRef(false);
+    useEffect(() => {
+        if (autoSendFired.current) return;
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('autosend') === '1') {
+            autoSendFired.current = true;
+            window.history.replaceState(null, '', window.location.pathname);
+            handleSendNow(true);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const filtered = rows.filter((r) => {
         const matchKind   = kindFilter === 'All Types' || r.kind === kindFilter.toLowerCase();
@@ -172,7 +189,7 @@ export default function SuperDigestLogPage() {
                         <RefreshCw size={14} /> Refresh
                     </button>
                     <button
-                        onClick={handleSendNow}
+                        onClick={() => handleSendNow()}
                         disabled={sending}
                         style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', border: 'none', borderRadius: '8px', background: sending ? '#93c5fd' : '#4f8ef7', color: 'white', fontSize: '13px', cursor: sending ? 'default' : 'pointer', fontWeight: 600 }}
                     >

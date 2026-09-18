@@ -172,6 +172,95 @@ export function exportArchivedShipmentsPDF(shipments: Shipment[]) {
   doc.save(`archived-shipments-${Date.now()}.pdf`)
 }
 
+// ─── Alert Feed Export ───────────────────────────────────────
+// Shape mirrors AlertFeedTable's ShipmentAlertGroup / AlertMilestone, kept
+// local so the util has no dependency on that component.
+interface AlertFeedMilestone {
+  name: string
+  due_date: string | null
+  overdue_days: number
+  is_critical: boolean
+  status: string
+}
+interface AlertFeedGroup {
+  job_number: string
+  consignee_name: string
+  transport_mode: string
+  alerts: AlertFeedMilestone[]
+}
+
+export function exportAlertFeedPDF(
+  groups: AlertFeedGroup[],
+  reportTitle = 'Alert Feed Report',
+) {
+  const doc = new jsPDF()
+
+  // One row per alert milestone (a shipment can hold several).
+  const rows: string[][] = []
+  for (const g of groups) {
+    for (const a of g.alerts ?? []) {
+      const priority = a.is_critical
+        ? 'Critical'
+        : a.status === 'delayed'
+        ? 'Low'
+        : 'Medium'
+      const overdue =
+        a.status === 'delayed'
+          ? 'Delayed'
+          : a.overdue_days <= 0
+          ? 'Due today'
+          : `${a.overdue_days}d overdue`
+      rows.push([
+        g.job_number,
+        g.consignee_name || '—',
+        g.transport_mode || '—',
+        a.name || '—',
+        priority,
+        formatDate(a.due_date ? new Date(a.due_date) : null),
+        overdue,
+      ])
+    }
+  }
+
+  // Header — same layout as exportAllShipmentsPDF.
+  doc.setFontSize(18)
+  doc.setTextColor(37, 99, 235)
+  doc.text('Dart Global Logistics', 14, 18)
+
+  doc.setFontSize(12)
+  doc.setTextColor(30, 30, 30)
+  doc.text(reportTitle, 14, 26)
+
+  doc.setFontSize(9)
+  doc.setTextColor(120, 120, 120)
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 32)
+  doc.text(`Total Alerts: ${rows.length}  (across ${groups.length} shipments)`, 14, 37)
+
+  autoTable(doc, {
+    startY: 44,
+    head: [['Shipment ID', 'Client', 'Transport', 'Milestone', 'Priority', 'Due Date', 'Overdue']],
+    body: rows.length ? rows : [['—', '—', '—', 'No alerts to report', '—', '—', '—']],
+    headStyles: {
+      fillColor: [37, 99, 235],
+      textColor: 255,
+      fontSize: 9,
+      fontStyle: 'bold',
+    },
+    bodyStyles: {
+      fontSize: 8,
+      textColor: 50,
+    },
+    alternateRowStyles: {
+      fillColor: [245, 247, 255],
+    },
+    styles: {
+      cellPadding: 4,
+    },
+  })
+
+  doc.save(`alert-feed-${Date.now()}.pdf`)
+}
+
 // ─── Single Shipment Detail Export ───────────────────────────
 export function exportShipmentDetailPDF(shipment: Shipment) {
   const doc = new jsPDF()
